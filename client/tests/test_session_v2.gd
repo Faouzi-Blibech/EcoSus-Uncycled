@@ -128,3 +128,12 @@ func test_new_match_resets_v2_fields() -> bool:
 	assert_near(s.infected_s, -1.0, 0.001, "infection")
 	_cleanup_save()
 	return true
+
+
+func test_spot_cleaned_updates_bags_and_the_spot_at_once() -> bool:
+	var s: Object = _session()
+	s._on_snapshot(_cleaner_snapshot())
+	s._on_event({"t": "spot_cleaned", "spot": "market_bins", "bags": 1})
+	assert_eq(s.spots.get("market_bins"), "clean", "spot clean before the next snapshot")
+	assert_eq(s.bags, 1, "bag count from the event")
+	return true

@@ -256,6 +256,10 @@ func send_use(console_id: String) -> void:
 	send("use", {"console": console_id})
 
 
+func send_spot_done(spot_id: String) -> void:
+	send("spot_done", {"spot": spot_id})
+
+
 func send_task_step(task_id: int) -> void:
 	send("task_step", {"task": task_id})
 

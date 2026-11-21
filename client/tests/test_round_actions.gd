@@ -14,7 +14,7 @@ const TILE_PX: float = 32.0
 const SESSION_FIELDS: Array[String] = [
 	"map_id", "map_version", "seat_id", "role", "phase", "partner_seat", "tuning", "task_types",
 	"my_tasks", "piles", "out_seats", "is_out", "spawn", "spawn_pending", "has_me_pos", "seats",
-	"cooldowns", "emergencies_left", "move_seq", "sabotage",
+	"cooldowns", "emergencies_left", "move_seq", "sabotage", "spots", "bags", "bag_cap",
 ]
 
 var _saved: Dictionary = {}
@@ -50,6 +50,9 @@ func _round(role: String, at: String, offset: float) -> RoundScene:
 	Session.out_seats = {}
 	Session.piles = []
 	Session.sabotage = {}
+	Session.spots = {CONSOLE: "dirty", OTHER_CONSOLE: "dirty"}
+	Session.bags = 0
+	Session.bag_cap = 1
 	Session.cooldowns = {}
 	Session.emergencies_left = 1
 	Session.tuning = {"poison": {"hit_range": HIT_RANGE_TILES, "hit_cooldown_s": 25}, "dump": {"cooldown_s": 40}}
@@ -98,13 +101,17 @@ func test_near_console_only_inside_its_range() -> bool:
 	return true
 
 
-func test_has_task_here_only_with_my_task_at_that_console() -> bool:
+## v2: the near task console is a spot; its state and the bag load come from Session.
+func test_near_spot_state_and_bags_full_come_from_session() -> bool:
 	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
-	assert_true(bool(r.interaction_context()["has_task_here"]), "my task is here")
-	Session.my_tasks = [{"id": 1, "type": "check_meter", "steps": 1, "steps_done": 0, "console": OTHER_CONSOLE}]
-	assert_true(not bool(r.interaction_context()["has_task_here"]), "my task is elsewhere")
-	Session.my_tasks = [{"id": 1, "type": "sort_waste", "steps": 1, "steps_done": 1, "console": CONSOLE}]
-	assert_true(not bool(r.interaction_context()["has_task_here"]), "task already done")
+	assert_eq(r.interaction_context()["near_spot_state"], "dirty", "dirty spot")
+	assert_true(not bool(r.interaction_context()["bags_full"]), "0 of 1 bag")
+	Session.spots[CONSOLE] = "clean"
+	Session.bags = 1
+	assert_eq(r.interaction_context()["near_spot_state"], "clean", "clean spot")
+	assert_true(bool(r.interaction_context()["bags_full"]), "1 of 1 bag")
+	Session.bag_cap = 0
+	assert_true(not bool(r.interaction_context()["bags_full"]), "no cap (a Trasher): never full")
 	_restore()
 	return true
 
@@ -113,7 +120,7 @@ func test_emergency_console_is_near_with_its_kind() -> bool:
 	var r: RoundScene = _round("citizen", EMERGENCY, 0.0)
 	var near: Dictionary = r.interaction_context()["near_console"]
 	assert_eq(str(near.get("kind", "")), "emergency", "kind")
-	assert_true(not bool(r.interaction_context()["has_task_here"]), "no task at the emergency console")
+	assert_eq(r.interaction_context()["near_spot_state"], "", "the emergency console is no spot")
 	_restore()
 	return true
 
@@ -156,11 +163,23 @@ func test_citizen_use_sends_use_for_the_console() -> bool:
 	return true
 
 
-func test_citizen_without_the_task_cannot_use() -> bool:
+func test_cleaner_with_full_bags_cannot_use_a_spot() -> bool:
 	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
-	Session.my_tasks = []
+	Session.bags = 1
 	r.perform_action("use")
-	assert_eq(_sent.size(), 0, "no use without the task")
+	assert_eq(_sent.size(), 0, "no clean while carrying a full load")
+	_restore()
+	return true
+
+
+func test_clean_spot_offers_no_use_to_anyone() -> bool:
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
+	Session.spots[CONSOLE] = "clean"
+	r.perform_action("use")
+	assert_eq(_sent.size(), 0, "a Cleaner sends nothing at a clean spot")
+	Session.role = "polluter"
+	r.perform_action("use")
+	assert_true(not r._minigames.is_open(), "a Trasher fakes only on dirty spots")
 	_restore()
 	return true
 
@@ -664,5 +683,21 @@ func test_a_repeat_tap_does_not_restart_the_smog_repair() -> bool:
 	r.begin_hold("fix")
 	assert_eq(_sent, [["fix", SMOG_PANEL, false]], "the second tap sends nothing: the server keeps its timer")
 	assert_eq(r.repair_progress()["elapsed"], 1.5, "and the progress stays")
+	_restore()
+	return true
+
+
+## One SpotView per task console of the map (11 on greybox_01), each following Session.spots.
+func test_spot_views_follow_the_session_state() -> bool:
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
+	r._build_spots()
+	assert_eq(r._spot_views.size(), 11, "one per task console")
+	var v: SpotView = r._spot_views[CONSOLE] as SpotView
+	assert_eq(v.state, "dirty", "starts dirty")
+	assert_eq(v.art_type, "sort_waste", "art named after the mini-game")
+	Session.spots[CONSOLE] = "clean"
+	r._update_spots()
+	assert_eq(v.state, "clean", "follows the snapshot")
+	assert_eq(v.modulate, Color.WHITE, "no dirt tint once clean")
 	_restore()
 	return true

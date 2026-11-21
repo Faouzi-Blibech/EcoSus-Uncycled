@@ -209,6 +209,12 @@ func min_s_for(task_type: String) -> float:
 	return float(Net.as_dict(task_types.get(task_type)).get("min_s", 0.0))
 
 
+## The seconds the server wants before spot_done: min_s, times spots.tool_time_mult with the Cleaning Tool.
+func clean_min_s(task_type: String) -> float:
+	var mult: float = float(Net.as_dict(tuning.get("spots")).get("tool_time_mult", 1.0)) if has_tool else 1.0
+	return min_s_for(task_type) * mult
+
+
 ## consoles[step % size], "" when the type is unknown.
 func console_for_step(task_type: String, step: int) -> String:
 	var consoles: Array = Net.as_array(Net.as_dict(task_types.get(task_type)).get("consoles"))
@@ -612,6 +618,11 @@ func _on_event(data: Dictionary) -> void:
 				my_tasks.append(added)
 		"poisoned":
 			poison = int(data.get("level", poison))
+		"spot_cleaned":
+			bags = int(_num(data.get("bags"), bags))
+			var cleaned: String = str(data.get("spot", ""))
+			if not cleaned.is_empty():
+				spots[cleaned] = "clean"
 		"hit_ok":
 			cooldowns["hit"] = float(data.get("cooldown", 0.0))
 		"dump_ok":
