@@ -147,22 +147,43 @@ namespace Sim.Match
             Emit(new DeliveredEvent(p.Seat, bags, Meter.Value));
             if (!p.UpgradeOfferOpen)
             {
-                p.UpgradeOfferOpen = true;
+                // Only items the Cleaner can take are offered; with none left there is no offer.
                 var items = new List<UpgradeKind>();
                 foreach (UpgradeKind kind in new[] { UpgradeKind.Backpack, UpgradeKind.Tool, UpgradeKind.Heal, UpgradeKind.Mask })
                 {
-                    // Backpack and tool are not offered once owned; heal and mask are always offered.
-                    if (kind == UpgradeKind.Heal || kind == UpgradeKind.Mask || !IsUpgradeOwned(p, kind))
+                    if (!IsUpgradeOwned(p, kind))
                     {
                         items.Add(kind);
                     }
                 }
 
-                Emit(new UpgradeOfferEvent(p.Seat, items));
+                if (items.Count > 0)
+                {
+                    p.UpgradeOffer = items;
+                }
+            }
+
+            // A delivery while an offer is open re-sends the same offer (never a second one).
+            if (p.UpgradeOffer != null)
+            {
+                Emit(new UpgradeOfferEvent(p.Seat, p.UpgradeOffer));
             }
 
             TryEndMatch();
             return CommandResult.Ok;
+        }
+
+        private static bool ContainsItem(IReadOnlyList<UpgradeKind> items, UpgradeKind item)
+        {
+            foreach (UpgradeKind k in items)
+            {
+                if (k == item)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // Heal and mask are held at most once; the backpack and tool do not stack.
@@ -179,7 +200,10 @@ namespace Sim.Match
             }
         }
 
-        /// <summary>pick_upgrade: only while an offer is open (else no_item); an owned backpack/tool or a full heal/mask is refused.</summary>
+        /// <summary>The items of the offer open for a seat (a rejoin re-sends them), or null.</summary>
+        public IReadOnlyList<UpgradeKind>? OpenUpgradeOffer(byte seat) => Find(seat)?.UpgradeOffer;
+
+        /// <summary>pick_upgrade: only an item of the open offer; no offer or another item is no_item.</summary>
         private CommandResult ApplyPickUpgrade(PlayerState p, PickUpgradeCommand c)
         {
             if (Phase != MatchPhase.Playing)
@@ -192,14 +216,9 @@ namespace Sim.Match
                 return Reject(RejectReason.NotAllowed);
             }
 
-            if (!p.UpgradeOfferOpen)
+            if (p.UpgradeOffer == null || !ContainsItem(p.UpgradeOffer, c.Item))
             {
                 return Reject(RejectReason.NoItem);
-            }
-
-            if (IsUpgradeOwned(p, c.Item))
-            {
-                return Reject(RejectReason.NotAllowed);
             }
 
             switch (c.Item)
@@ -210,7 +229,7 @@ namespace Sim.Match
                 default: p.Masks++; break;
             }
 
-            p.UpgradeOfferOpen = false;
+            p.UpgradeOffer = null;
             Emit(new UpgradeOkEvent(p.Seat, c.Item));
             return CommandResult.Ok;
         }
