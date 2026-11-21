@@ -4,7 +4,7 @@ extends Node
 ## updated data when their own handler of the same signal runs.
 
 const Router := preload("res://scenes/router.gd")
-const Phrases := preload("res://content/phrases.gd")
+const ChatLimits := preload("res://content/chat_limits.gd")
 const SESSION_PATH: String = "user://session.cfg"
 const BUFFER_SIZE: int = 8
 const MAX_EXTRAPOLATION_S: float = 0.2
@@ -20,6 +20,8 @@ const DEFAULT_MAX_LAG_S: float = 0.5
 ## A render time that jumps by more than this, forward or back (app paused, new match), restarts the
 ## playback clock. Smaller backward steps (a late snapshot moves the server offset) just hold it.
 const PLAYBACK_RESET_GAP_S: float = 1.0
+## Ghost lines kept for the out player's panel (the server keeps 100 for a welcome).
+const GHOST_KEEP: int = 100
 
 
 class Snap:
@@ -37,6 +39,9 @@ var seat_id: int = -1
 var room_code: String = ""
 var reconnect_token: String = ""
 var host_seat: int = -1
+## Seats in the room (lobby "size") and the sizes the host may pick ("sizes").
+var room_size: int = 0
+var room_sizes: Array = []
 var map_id: String = ""
 var phase: String = "lobby"
 var tuning: Dictionary = {}
@@ -48,7 +53,7 @@ var map_version: String = ""
 ## task type id -> definition ({category, steps, min_s, consoles}) from welcome.tasks.tasks.
 var task_types: Dictionary = {}
 var poison: int = 0
-## "hit", "dump", "sabotage" -> seconds left.
+## "repollute", "virus", "gas", "sabotage" -> seconds left (Trashers only).
 var cooldowns: Dictionary = {}
 ## The running sabotage: {} or {kind ("fire"/"smog"), countdown (fire), held (fire console ids)}.
 var sabotage: Dictionary = {}
@@ -70,9 +75,16 @@ var out_seats: Dictionary = {}
 ## cause, by, clues, task_bar, stage (discussion/voting/results), ends_at (local time, Net.local_time()),
 ## voted (Array[int]), votes. Empty when no meeting.
 var meeting: Dictionary = {}
-## Chat phrases I sent in this meeting. The server does not report it on a rejoin: it restarts at 0
-## and a "not_allowed" rejection of chat_phrase corrects it.
-var chat_used: int = 0
+## Chat phrases I sent in this meeting. A rejoin welcome reports it (meeting.my_chat); a
+## "phrase_limit" rejection of chat_phrase corrects it.
+var phrases_used: int = 0
+## Typed chat lines I sent in this meeting (welcome meeting.my_text; "text_limit" corrects it).
+var text_used: int = 0
+## Net.local_time() of my last chat line, typed, phrase or ghost: the server keeps a gap between two.
+var last_chat_t: float = -1.0e9
+## Ghost chat lines seen so far, as the server sent them ({seat, text} or {seat, id, args}, ghost
+## true). Only an out seat receives any.
+var ghost_chat: Array = []
 var last_game_over: Dictionary = {}
 ## Polluters voted out so far in this match, as far as the client knows; -1 while unknown (rejoined
 ## on a device that has no saved count). Read it through polluters_left().
@@ -85,6 +97,33 @@ var partner_seat: int = -1
 var signature: Variant = null
 
 var meter: float = 0.0
+## v2 (protocol 2). Spot id -> "dirty" or "clean", from every snapshot.
+var spots: Dictionary = {}
+var machine_jammed: bool = false
+## Seconds of my machine fix the server has counted (snapshot machine.repair_t); -1 when not counting.
+var machine_repair_t: float = -1.0
+## The open upgrade offer after a delivery (items), [] when none. Cleared by a pick or a new match.
+var upgrade_offer: Array = []
+## The Trasher's open ability choice (["virus", "gas"]), [] when none; ability_pick_sent stops a
+## second offer while the pick is on its way.
+var ability_choices: Array = []
+var ability_pick_sent: bool = false
+## True once ALERT called a meeting during the current infection (the server allows one).
+var alert_used: bool = false
+## The room a toxic gas warning runs in ("" when none) and the seconds before it lands.
+var gas_room: String = ""
+var gas_in_s: float = 0.0
+## Cleaner-only private fields. bag_cap 0 means this seat has no bags (a Trasher): no bag counter.
+var bags: int = 0
+var bag_cap: int = 0
+var has_tool: bool = false
+var heals: int = 0
+var masks: int = 0
+## Seconds before the virus takes me out; -1 when not infected.
+var infected_s: float = -1.0
+## Trasher-only: re-pollutes so far and the unlocked ability ("", "virus" or "gas").
+var repollutes: int = 0
+var ability: String = ""
 var match_t: float = 0.0
 var me_pos: Vector2 = Vector2.ZERO
 var has_me_pos: bool = false
@@ -183,6 +222,12 @@ func min_s_for(task_type: String) -> float:
 	return float(Net.as_dict(task_types.get(task_type)).get("min_s", 0.0))
 
 
+## The seconds the server wants before spot_done: min_s, times spots.tool_time_mult with the Cleaning Tool.
+func clean_min_s(task_type: String) -> float:
+	var mult: float = float(Net.as_dict(tuning.get("spots")).get("tool_time_mult", 1.0)) if has_tool else 1.0
+	return min_s_for(task_type) * mult
+
+
 ## consoles[step % size], "" when the type is unknown.
 func console_for_step(task_type: String, step: int) -> String:
 	var consoles: Array = Net.as_array(Net.as_dict(task_types.get(task_type)).get("consoles"))
@@ -201,9 +246,41 @@ func seat_color(seat: int) -> Color:
 	return color_of(int(seat_info(seat).get("color", -1)))
 
 
+func _meeting_tuning() -> Dictionary:
+	return Net.as_dict(tuning.get("meeting"))
+
+
+func phrase_limit() -> int:
+	return int(_meeting_tuning().get("phrases_per_meeting", ChatLimits.PHRASES_PER_MEETING))
+
+
+func text_limit() -> int:
+	return int(_meeting_tuning().get("text_per_meeting", ChatLimits.TEXT_PER_MEETING))
+
+
+## Longest typed line, in characters (the server counts code points, like a Godot LineEdit).
+func text_max_chars() -> int:
+	return int(_meeting_tuning().get("text_max_chars", ChatLimits.TEXT_MAX_CHARS))
+
+
+## Seconds the server keeps between two chat lines of one seat.
+func chat_gap_s() -> float:
+	return float(_meeting_tuning().get("chat_min_gap_s", ChatLimits.MIN_GAP_S))
+
+
 ## Chat phrases I may still send in this meeting.
 func chat_left() -> int:
-	return maxi(Phrases.LIMIT - chat_used, 0)
+	return maxi(phrase_limit() - phrases_used, 0)
+
+
+## Typed chat lines I may still send in this meeting.
+func text_left() -> int:
+	return maxi(text_limit() - text_used, 0)
+
+
+## Seconds before my next chat line may go; 0 or less when it may go now.
+func chat_gap_left() -> float:
+	return last_chat_t + chat_gap_s() - Net.local_time()
 
 
 ## Polluters still hidden: tuning.polluters minus the ejected ones; -1 when the count is unknown
@@ -258,6 +335,8 @@ func clear_room() -> void:
 	room_code = ""
 	reconnect_token = ""
 	host_seat = -1
+	room_size = 0
+	room_sizes = []
 	phase = "lobby"
 	seats = []
 	my_tasks = []
@@ -352,8 +431,21 @@ func _reset_match_state() -> void:
 	out_cause = ""
 	out_seats = {}
 	meeting = {}
-	chat_used = 0
+	phrases_used = 0
+	text_used = 0
+	last_chat_t = -1.0e9
+	ghost_chat = []
 	last_game_over = {}
+	spots = {}
+	machine_jammed = false
+	machine_repair_t = -1.0
+	upgrade_offer = []
+	ability_choices = []
+	ability_pick_sent = false
+	alert_used = false
+	gas_room = ""
+	gas_in_s = 0.0
+	_read_private({})
 
 
 func _mark_out_from_seats() -> void:
@@ -373,6 +465,7 @@ func _on_welcome(data: Dictionary) -> void:
 	room_code = str(data.get("room", ""))
 	reconnect_token = str(data.get("token", ""))
 	host_seat = int(data.get("host_seat", -1))
+	_read_room_size(data)
 	map_id = str(data.get("map_id", ""))
 	tuning = Net.as_dict(data.get("tuning"))
 	speed_px_per_s = float(tuning.get("speed_px_per_s", Net.tiles_to_px(Net.DEFAULT_SPEED_TILES_PER_S)))
@@ -395,6 +488,8 @@ func _on_welcome(data: Dictionary) -> void:
 	if data.has("seats"):
 		seats = Net.as_array(data.get("seats"))
 	_mark_out_from_seats()
+	# Only an out seat's welcome carries the ghost chat so far.
+	ghost_chat = Net.as_array(data.get("ghost_chat")).duplicate()
 
 	var st: Dictionary = Net.as_dict(data.get("state"))
 	if not st.is_empty():
@@ -416,6 +511,7 @@ func _on_welcome(data: Dictionary) -> void:
 		cooldowns = Net.as_dict(st.get("cooldowns")).duplicate()
 		sabotage = Net.as_dict(st.get("sabotage")).duplicate(true)
 		emergencies_left = int(st.get("emergencies_left", 0))
+		_read_private(st)
 		var mt: Dictionary = Net.as_dict(st.get("meeting")).duplicate()
 		if not mt.is_empty():
 			mt["ends_at"] = Net.local_time() + float(mt.get("ends_in", 0.0))
@@ -428,17 +524,26 @@ func _on_welcome(data: Dictionary) -> void:
 		last_game_over = Net.as_dict(st.get("game_over")).duplicate()
 		ejected_polluters = _load_ejections()
 		if not mt.is_empty():
-			# The server may report how many phrases I sent already (my_chat) and who is alive
-			# (living); without them a rejoin counts from 0 and trusts what the client saw.
-			chat_used = int(mt.get("my_chat", 0))
+			# The server may report how many phrases (my_chat) and typed lines (my_text) I sent
+			# already and who is alive (living); without them a rejoin counts from 0 and trusts
+			# what the client saw.
+			phrases_used = int(mt.get("my_chat", 0))
+			text_used = int(mt.get("my_text", 0))
 			_mark_victims(Net.as_array(mt.get("clues")))
 			_apply_living()
 	_save_saved()
 
 
+func _read_room_size(data: Dictionary) -> void:
+	room_size = int(data.get("size", room_size))
+	if data.has("sizes"):
+		room_sizes = Net.as_array(data.get("sizes"))
+
+
 func _on_lobby(data: Dictionary) -> void:
 	seats = Net.as_array(data.get("seats"))
 	host_seat = int(data.get("host_seat", host_seat))
+	_read_room_size(data)
 	_mark_out_from_seats()
 	phase = "lobby"
 	_save_saved()
@@ -483,6 +588,21 @@ func _on_snapshot(data: Dictionary) -> void:
 		poison = int(me["poison"])
 	if me.has("cd"):
 		cooldowns = Net.as_dict(me["cd"]).duplicate()
+	if data.has("me"):
+		_read_private(me)
+		_offer_ability_after_rejoin()
+	if data.has("spots"):
+		spots = {}
+		for e in Net.as_array(data["spots"]):
+			var spot: Dictionary = Net.as_dict(e)
+			if spot.has("id"):
+				spots[str(spot["id"])] = str(spot.get("state", "dirty"))
+	var machine: Dictionary = Net.as_dict(data.get("machine"))
+	machine_jammed = machine.get("jammed") == true
+	machine_repair_t = _num(machine.get("repair_t"), -1.0)
+	var gas: Dictionary = Net.as_dict(data.get("gas"))
+	gas_room = str(gas.get("room", ""))
+	gas_in_s = _num(gas.get("in_s"), 0.0)
 	if me.has("status"):
 		is_out = str(me["status"]) == "out"
 		if is_out:
@@ -493,6 +613,37 @@ func _on_snapshot(data: Dictionary) -> void:
 		piles = []
 	sabotage = Net.as_dict(data.get("sabotage")).duplicate(true)
 	push_snapshot(data)
+
+
+## The v2 private fields of a snapshot's `me` or a rejoin's `welcome.state`. The server sends each only
+## to the seats it belongs to, so a missing (or null) key means "not mine", never an error.
+func _read_private(me: Dictionary) -> void:
+	bags = int(_num(me.get("bags"), 0.0))
+	bag_cap = int(_num(me.get("cap"), 0.0))
+	has_tool = me.get("tool") == true
+	heals = int(_num(me.get("heals"), 0.0))
+	masks = int(_num(me.get("masks"), 0.0))
+	infected_s = _num(me.get("infected_s"), -1.0)
+	repollutes = int(_num(me.get("repollutes"), 0.0))
+	ability = str(me["ability"]) if me.get("ability") is String else ""
+
+
+## The server sends ability_unlocked once and not again after a rejoin: a Trasher with enough
+## re-pollutes and no ability yet gets the choice back, unless a pick is on its way.
+func _offer_ability_after_rejoin() -> void:
+	if not ability.is_empty():
+		ability_choices = []
+		ability_pick_sent = false
+		return
+	var unlock_after: int = int(_num(Net.as_dict(tuning.get("trasher")).get("unlock_after"), 3.0))
+	if role == "polluter" and ability_choices.is_empty() and not ability_pick_sent and repollutes >= unlock_after:
+		ability_choices = ["virus", "gas"]
+
+
+static func _num(v: Variant, fallback: float) -> float:
+	if typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT:
+		return float(v)
+	return fallback
 
 
 func _on_event(data: Dictionary) -> void:
@@ -510,23 +661,60 @@ func _on_event(data: Dictionary) -> void:
 				my_tasks.append(added)
 		"poisoned":
 			poison = int(data.get("level", poison))
-		"hit_ok":
-			cooldowns["hit"] = float(data.get("cooldown", 0.0))
-		"dump_ok":
-			cooldowns["dump"] = float(data.get("cooldown", 0.0))
+		"delivered":
+			bags = 0
+			meter = _num(data.get("meter"), meter)
+		"upgrade_offer":
+			upgrade_offer = Net.as_array(data.get("items")).duplicate()
+		"spot_cleaned":
+			bags = int(_num(data.get("bags"), bags))
+			var cleaned: String = str(data.get("spot", ""))
+			if not cleaned.is_empty():
+				spots[cleaned] = "clean"
+		"infected":
+			infected_s = _num(data.get("countdown"), infected_s)
+			alert_used = false
+		"healed":
+			infected_s = -1.0
+		"mask_used":
+			masks = maxi(masks - 1, 0)
+		"gas_warning":
+			gas_room = str(data.get("room", ""))
+			gas_in_s = _num(data.get("in_s"), 0.0)
+		"gas_done":
+			gas_room = ""
+			gas_in_s = 0.0
+		"repollute_ok":
+			cooldowns["repollute"] = _num(data.get("cooldown"), 0.0)
+			repollutes = int(_num(data.get("count"), repollutes))
+		"ability_unlocked":
+			ability_choices = Net.as_array(data.get("choices")).duplicate()
+		"ability_ok":
+			ability = str(data.get("ability", ""))
+			ability_choices = []
+			ability_pick_sent = false
 		"you_are_out":
 			is_out = true
 			out_cause = str(data.get("cause", ""))
 			_mark_out(seat_id)
 		"sabotage_started":
-			sabotage = {"kind": str(data.get("kind", "")), "held": []}
-			if data.has("countdown"):
-				sabotage["countdown"] = float(data["countdown"])
+			# A machine jam is not the smog/fire object: snapshots report it as machine.jammed.
+			if str(data.get("kind", "")) == "machine":
+				machine_jammed = true
+			else:
+				sabotage = {"kind": str(data.get("kind", "")), "held": []}
+				if data.has("countdown"):
+					sabotage["countdown"] = float(data["countdown"])
 		"sabotage_ended":
-			sabotage = {}
+			if str(data.get("kind", "")) == "machine":
+				machine_jammed = false
+				machine_repair_t = -1.0
+			else:
+				sabotage = {}
 		"meeting_started":
 			phase = "meeting"
-			chat_used = 0
+			phrases_used = 0
+			text_used = 0
 			meeting = {
 				"cause": str(data.get("cause", "")),
 				"by": int(data.get("by", -1)),
@@ -542,12 +730,14 @@ func _on_event(data: Dictionary) -> void:
 			_mark_victims(meeting["clues"])
 			_apply_living()
 		"chat":
-			if int(data.get("seat", -1)) == seat_id:
-				chat_used += 1
+			_on_chat(data)
 		"action_rejected":
-			# The server counts the limit itself: a refusal for that reason closes the picker.
-			if str(data.get("action", "")) == "chat_phrase" and str(data.get("reason", "")) == "not_allowed":
-				chat_used = Phrases.LIMIT
+			# The server counts the limits itself: a refusal for a limit closes that control only.
+			var reason: String = str(data.get("reason", ""))
+			if str(data.get("action", "")) == "chat_phrase" and reason == "phrase_limit":
+				phrases_used = phrase_limit()
+			elif str(data.get("action", "")) == "chat_text" and reason == "text_limit":
+				text_used = text_limit()
 		"voting_started":
 			phase = "meeting"
 			meeting["stage"] = "voting"
@@ -579,6 +769,25 @@ func _on_event(data: Dictionary) -> void:
 		"game_over":
 			phase = "ended"
 			last_game_over = data
+
+
+## A chat line: a ghost line goes to the ghost list and counts for no meeting limit; one of mine
+## starts the gap and takes a phrase or a typed line.
+func _on_chat(data: Dictionary) -> void:
+	var mine: bool = int(data.get("seat", -1)) == seat_id
+	if bool(data.get("ghost", false)):
+		# Only an out seat receives ghost lines; one that reaches a living seat is dropped, not kept.
+		if is_out or seat_out(seat_id):
+			ghost_chat.append(data.duplicate())
+			if ghost_chat.size() > GHOST_KEEP:
+				ghost_chat.pop_front()
+	elif mine:
+		if data.has("text"):
+			text_used += 1
+		else:
+			phrases_used += 1
+	if mine:
+		last_chat_t = Net.local_time()
 
 
 ## A polluter voted out lowers the count; the server's own count, when it sends one, wins. An

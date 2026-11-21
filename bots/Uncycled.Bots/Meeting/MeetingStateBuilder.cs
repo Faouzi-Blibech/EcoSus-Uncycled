@@ -14,8 +14,9 @@ namespace Uncycled.Bots.Meeting
     {
         private const int MaxOwnZones = 3;
 
+        /// <param name="seats">The seat ids of the room, for a meeting view that does not list the living (null: the seats this bot knows of).</param>
         /// <param name="heatOf">Heat of a seat in [0, 1]; null uses the Round 5 heat of the memory (BotMemory.HeatOf, clamped to 1), which counts this meeting's chat accusations.</param>
-        public static MeetingState Build(SeatView view, BotMemory mem, MeetingLog log, SuspicionModel suspicion, Func<byte, float>? heatOf)
+        public static MeetingState Build(SeatView view, BotMemory mem, MeetingLog log, SuspicionModel suspicion, Func<byte, float>? heatOf, IReadOnlyList<byte>? seats = null)
         {
             MeetingView meeting = view.Meeting ?? throw new ArgumentException("The seat is not in a meeting.", nameof(view));
             byte self = view.Me.Seat;
@@ -29,12 +30,20 @@ namespace Uncycled.Bots.Meeting
             {
                 living.AddRange(meeting.Living);
             }
+            else if (seats != null && seats.Count > 0)
+            {
+                living.AddRange(seats);
+            }
             else
             {
-                for (int i = 0; i < mem.Config.Seats; i++)
-                {
-                    living.Add((byte)i);
-                }
+                // no list: the seats this bot knows of (never invented ids 0..Seats-1: a seat id may be above the room size)
+                living.Add(self);
+                var known = new HashSet<byte>(mem.SeenSeats) { meeting.CalledBy };
+                known.UnionWith(meeting.Voted);
+                known.Remove(self);
+                var rest = new List<byte>(known);
+                rest.Sort();
+                living.AddRange(rest);
             }
 
             living.RemoveAll(seat => seat != self && mem.IsKnownOut(seat));
@@ -81,9 +90,13 @@ namespace Uncycled.Bots.Meeting
             {
                 if (r.Actor != self)
                 {
-                    items.Add(new EvidenceItem(r.Act == ActKind.Dump ? EvidenceItem.SawDump : EvidenceItem.SawHit, r.Actor, r.ZoneId, r.At));
+                    items.Add(new EvidenceItem(r.Act == ActKind.Hit ? EvidenceItem.SawHit : EvidenceItem.SawDump, r.Actor, r.ZoneId, r.At));
                 }
             }
+
+            // A fake clean (mem.Inferred) is a tell this bot worked out, not an act it saw: it is no evidence item.
+            // It counts in the suspicion score (SuspicionModel), and when the bot accuses on it the line is the
+            // vague "sus", never a saw_dump line with a zone (which every listener would count as an eyewitness).
 
             if (view.Meeting != null)
             {

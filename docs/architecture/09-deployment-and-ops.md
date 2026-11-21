@@ -18,6 +18,11 @@
 | VPS + Caddy | yes (Caddy auto-TLS, needs a domain) | yes | low | Most control, most setup |
 
 Whatever the host: one instance only (rooms are in memory), region in Europe, `/health` probe.
+The Docker build context is the **repo root** (`docker build -f server/Dockerfile .`), because
+the image must contain `content/` as well as `server/`.
+
+Web build host: itch.io (set the page to "mobile friendly" and landscape) or GitHub Pages.
+Both work because the web export has threads off and needs no special headers.
 
 ## 3. Build pipeline
 
@@ -59,9 +64,9 @@ Exports can run locally first (`AGENTS.md` section 9 commands); CI export is a P
 
 | When | Action |
 |---|---|
-| Day before | Deploy final server; `/health` ok; install APK on spare phones; Windows zip on 2 laptops; open the itch.io page on an Android and an iPhone |
+| Day before | Deploy final server; `/health` ok; install APK on spare phones; Windows zip on 2 laptops; open the web build on an Android and an iPhone; print the QR code of the web link |
 | 30 min before | Wake server (`/health`), create a test room, 3-device smoke round |
-| During | Show the room code + QR on a laptop screen; spare phones ready for judges without a working browser |
+| During | Show the QR of the web link and the 4-letter room code on a laptop screen; spare phones ready for judges without a working browser |
 | If Wi-Fi fails | Plan B1: hotspot / mobile data. Plan B2: laptop server + hotspot, devices set `ws://<ip>:5000` in Settings |
 | If server misbehaves | Restart the container (rooms are lost, start a new one); fall back to B2 |
 | After | Save logs (match summaries) for the pitch numbers |

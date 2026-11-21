@@ -5,7 +5,8 @@
     docker compose exec verifier python -m ecoverify.smoke_test
 
 Uses the sample photos that ship with Ultralytics, and a fresh random player
-each run. Exits 1 if any check fails.
+each run. Every photo gets a fresh EXIF capture time, so it works with the
+freshness check on (clients cannot skip it). Exits 1 if any check fails.
 """
 import io
 import json
@@ -13,6 +14,7 @@ import sys
 import urllib.error
 import urllib.request
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from PIL import Image
@@ -42,14 +44,26 @@ def paper_photo() -> bytes:
     return buf.getvalue()
 
 
-def post(base: str, data: bytes, player: str | None, skip_exif: bool = True) -> tuple[int, dict]:
+def fresh(data: bytes) -> bytes:
+    """Re-save a photo with EXIF DateTimeOriginal = now (UTC; sent with X-Tz-Offset-Minutes: 0)."""
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    exif = Image.Exif()
+    exif.get_ifd(0x8769)[36867] = datetime.now(timezone.utc).strftime("%Y:%m:%d %H:%M:%S")
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=92, exif=exif.tobytes())
+    return buf.getvalue()
+
+
+def post(base: str, data: bytes, player: str | None, with_exif: bool = True) -> tuple[int, dict]:
+    if with_exif:
+        data = fresh(data)
     boundary = uuid.uuid4().hex
     body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"p.jpg\"\r\n"
             f"Content-Type: image/jpeg\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
-    headers = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
+    headers = {"Content-Type": f"multipart/form-data; boundary={boundary}", "X-Tz-Offset-Minutes": "0"}
     if player:
         headers["X-Player-Id"] = player
-    url = f"{base}/verify-daily-photo" + ("?skip_exif=true" if skip_exif else "")
+    url = f"{base}/verify-daily-photo"
     return _send(urllib.request.Request(url, data=body, headers=headers, method="POST"))
 
 
@@ -90,8 +104,11 @@ def main() -> int:
     status, r = post(base, sample("zidane.jpg"), None)
     check("missing player id -> 400", status == 400, status)
 
-    status, r = post(base, plain.getvalue(), player, skip_exif=False)
-    check("no EXIF -> rejected", r.get("reason") == "exif", r.get("reason"))
+    if h.get("dev_skip_exif"):
+        print("INFO  EXIF check is off on this server (UNCYCLED_DEV_SKIP_EXIF=1): skipping the no-EXIF check")
+    else:
+        status, r = post(base, plain.getvalue(), player, with_exif=False)
+        check("no EXIF -> rejected", r.get("reason") == "exif", r.get("reason"))
 
     status, r = post(base, sample("bus.jpg"), player)
     check("people/bus -> not_recyclable", r.get("reason") == "not_recyclable", r.get("detected_class"))

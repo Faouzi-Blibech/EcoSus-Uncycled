@@ -192,6 +192,7 @@ namespace Uncycled.Bots
             ConsoleDef? panel = ActionQuery.NthOfKind(map, ConsoleKind.SmogFix, 0);
             w.Put(view.Phase == MatchPhase.Meeting ? 1f : 0f);
             w.Put(Unit((view.DeadlineS - view.DeadlineClockValue) / Math.Max(1f, view.DeadlineS)));
+            // v2: the meter is the cleanliness (0 = dirty, 100 = Cleaners win), not a pollution; the name stays, so the hash does
             w.Put(Unit(view.Meter / MeterMax));
             w.Put(fire ? 1f : 0f);
             w.Put(fire && sab!.Countdown != null ? Unit(Ratio(sab.Countdown.Value, cfg.FireCountdownS)) : 0f);
@@ -340,7 +341,7 @@ namespace Uncycled.Bots
             sb.Append("const:DirectWeight=").Append(SuspicionModel.DirectWeight.ToString("R", CultureInfo.InvariantCulture)).Append('\n');
             sb.Append("const:NearPileWeight=").Append(SuspicionModel.NearPileWeight.ToString("R", CultureInfo.InvariantCulture)).Append('\n');
             sb.Append("const:NearPileWindowS=").Append(SuspicionModel.NearPileWindowS.ToString("R", CultureInfo.InvariantCulture)).Append('\n');
-            foreach (string action in Enum.GetNames(typeof(BotAction)))
+            foreach (string action in Enum.GetNames(typeof(BotAction)).Take(ActionCatalogue.Count))
             {
                 sb.Append("action:").Append(action).Append('\n');
             }
@@ -351,9 +352,11 @@ namespace Uncycled.Bots
                 typeof(MeetingView), typeof(CooldownView), typeof(TaskInfo),
             })
             {
-                // MeetingView.MyChatCount and .Living are for the welcome message (picker); the observation never reads them
+                // Chat data is for the welcome message and the chat panels; the observation never reads it (networks never see chat):
+                // MeetingView.MyChatCount, .MyText and .Living, and SeatView.GhostChat.
+                // The v2 spots and bags (SeatView.Spots, SeatView.Gas, MyView.Bags/BagCap/HasTool/Heals/Masks) and the Trasher kit (MyView.Repollutes/Ability/InfectedS, CooldownView.Repollute/Virus/Gas) are not read yet either: the trained models keep their hash.
                 foreach (PropertyInfo p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(x => !(t == typeof(MeetingView) && (x.Name == "MyChatCount" || x.Name == "Living")))
+                    .Where(x => !(t == typeof(MeetingView) && (x.Name == "MyChatCount" || x.Name == "MyText" || x.Name == "Living")) && !(t == typeof(SeatView) && (x.Name == "GhostChat" || x.Name == "Spots" || x.Name == "MachineJammed" || x.Name == "Gas")) && !(t == typeof(MyView) && (x.Name == "Bags" || x.Name == "BagCap" || x.Name == "HasTool" || x.Name == "Heals" || x.Name == "Masks" || x.Name == "Repollutes" || x.Name == "Ability" || x.Name == "InfectedS")) && !(t == typeof(CooldownView) && (x.Name == "Repollute" || x.Name == "Virus" || x.Name == "Gas")))
                     .OrderBy(x => x.Name, StringComparer.Ordinal))
                 {
                     sb.Append("view:").Append(t.Name).Append('.').Append(p.Name).Append(':').Append(p.PropertyType.ToString()).Append('\n');

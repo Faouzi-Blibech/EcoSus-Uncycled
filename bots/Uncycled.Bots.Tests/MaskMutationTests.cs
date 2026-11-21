@@ -27,8 +27,8 @@ namespace Uncycled.Bots.Tests
             var polluters = m.Engine.Players.Where(p => p.Role == Role.Polluter).Select(p => p.Seat).ToList();
             Assert.Equal(2, polluters.Count);
 
-            // both polluters meet at the far fire console while the citizens stay at the spawn
-            Crowd.Do(m, polluters, BotAction.GoFireA, 14f);
+            // both polluters meet at the far smog panel while the citizens stay at the spawn
+            Crowd.Do(m, polluters, BotAction.GoSmogPanel, 14f);
             m.TickFor(2f);
 
             byte p = polluters[0];
@@ -40,7 +40,7 @@ namespace Uncycled.Bots.Tests
             Assert.False(MaskOf(m, p)[(int)BotAction.HitNearest]);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Mask_NoHitWhileHitCooldownRuns()
         {
             TestMatch m = TestMatch.Create(2);
@@ -84,18 +84,11 @@ namespace Uncycled.Bots.Tests
         {
             TestMatch m = TestMatch.Create(2);
             m.TickFor(11f);
-            byte polluter = m.FirstSeatOf(Role.Polluter);
-            SeatView pv = m.Engine.ViewFor(polluter);
-            PlayerView victim = pv.Players.First(p => Vec2.Distance(p.Position, pv.Me.Position) <= m.Config.HitRange
-                && !pv.Me.Partners.Contains(p.Seat));
-            for (int i = 0; i < 3000 && m.Engine.Find(victim.Seat)!.IsActive; i++)
-            {
-                m.Engine.Apply(polluter, new HitCommand(victim.Seat));
-                m.Tick();
-            }
+            byte victim = m.FirstSeatOf(Role.Citizen);
+            m.EjectByVote(victim);
 
-            Assert.Equal(PlayerStatus.Out, m.Engine.ViewFor(victim.Seat).Me.Status);
-            bool[] mask = MaskOf(m, victim.Seat);
+            Assert.Equal(PlayerStatus.Out, m.Engine.ViewFor(victim).Me.Status);
+            bool[] mask = MaskOf(m, victim);
             for (int i = 0; i < mask.Length; i++)
             {
                 Assert.Equal(i == (int)BotAction.Stay, mask[i]);

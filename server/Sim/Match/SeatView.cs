@@ -60,11 +60,28 @@ namespace Sim.Match
         public PileState State { get; }
     }
 
+    /// <summary>A spot's public state: every seat sees every spot (positions come from the map).</summary>
+    public sealed class SpotView
+    {
+        public SpotView(string id, SpotState state)
+        {
+            Id = id;
+            State = state;
+        }
+
+        public string Id { get; }
+
+        public SpotState State { get; }
+    }
+
     /// <summary>Remaining cooldowns of a polluter, in seconds.</summary>
     public sealed class CooldownView
     {
-        public CooldownView(float hit, float dump, float sabotage)
+        public CooldownView(float hit, float dump, float sabotage, float repollute = 0f, float virus = 0f, float gas = 0f)
         {
+            Repollute = repollute;
+            Virus = virus;
+            Gas = gas;
             Hit = hit;
             Dump = dump;
             Sabotage = sabotage;
@@ -75,6 +92,15 @@ namespace Sim.Match
         public float Dump { get; }
 
         public float Sabotage { get; }
+
+        /// <summary>Seconds until the next re-pollute (v2).</summary>
+        public float Repollute { get; }
+
+        /// <summary>Seconds until the next virus (v2; 0 until the virus rule fills it).</summary>
+        public float Virus { get; }
+
+        /// <summary>Seconds until the next gas (v2; 0 until the gas rule fills it).</summary>
+        public float Gas { get; }
     }
 
     /// <summary>The viewer's own private data.</summary>
@@ -90,8 +116,24 @@ namespace Sim.Match
             float vision,
             int? poison,
             CooldownView? cooldowns,
-            IReadOnlyList<TaskInfo> tasks)
+            IReadOnlyList<TaskInfo> tasks,
+            int bags = 0,
+            int bagCap = 0,
+            bool hasTool = false,
+            int repollutes = 0,
+            TrasherAbility ability = TrasherAbility.None,
+            int heals = 0,
+            int masks = 0,
+            float? infectedS = null)
         {
+            InfectedS = infectedS;
+            Repollutes = repollutes;
+            Ability = ability;
+            Bags = bags;
+            BagCap = bagCap;
+            HasTool = hasTool;
+            Heals = heals;
+            Masks = masks;
             Seat = seat;
             Role = role;
             Partners = partners;
@@ -128,6 +170,27 @@ namespace Sim.Match
 
         /// <summary>Own tasks (empty for polluters).</summary>
         public IReadOnlyList<TaskInfo> Tasks { get; }
+
+        /// <summary>Bags carried. Private to the carrier; the wire sends it to citizens only.</summary>
+        public int Bags { get; }
+
+        public int BagCap { get; }
+
+        public bool HasTool { get; }
+
+        /// <summary>Re-pollutes done so far. Trashers only (the wire never sends it to a Cleaner).</summary>
+        public int Repollutes { get; }
+
+        /// <summary>The picked ability, None before. Trashers only.</summary>
+        public TrasherAbility Ability { get; }
+        /// <summary>Heals held (0 or 1). Private to the carrier; the wire sends it to citizens only.</summary>
+        public int Heals { get; }
+
+        /// <summary>Masks held (0 or 1). Private to the carrier; the wire sends it to citizens only.</summary>
+        public int Masks { get; }
+
+        /// <summary>Seconds until the virus puts this Cleaner out; null unless the viewer is infected. Never about another seat.</summary>
+        public float? InfectedS { get; }
     }
 
     public sealed class SabotageView
@@ -155,8 +218,9 @@ namespace Sim.Match
     /// <summary>Meeting state any seat may know (for rejoin): never who voted for whom.</summary>
     public sealed class MeetingView
     {
-        public MeetingView(MeetingStage stage, float endsIn, byte calledBy, MeetingCause cause, IReadOnlyList<ClueInfo> clues, IReadOnlyList<byte> voted, bool myVoteCast, byte? myVote, float taskBar, int myChatCount = 0, IReadOnlyList<byte>? living = null)
+        public MeetingView(MeetingStage stage, float endsIn, byte calledBy, MeetingCause cause, IReadOnlyList<ClueInfo> clues, IReadOnlyList<byte> voted, bool myVoteCast, byte? myVote, float taskBar, int myChatCount = 0, IReadOnlyList<byte>? living = null, int myText = 0)
         {
+            MyText = myText;
             Stage = stage;
             EndsIn = endsIn;
             CalledBy = calledBy;
@@ -194,6 +258,23 @@ namespace Sim.Match
 
         /// <summary>Seats that were active when this meeting started (public: meeting_started carries it too).</summary>
         public IReadOnlyList<byte> Living { get; }
+
+        /// <summary>Typed chat lines this seat has sent in this meeting (counts toward TextPerMeeting).</summary>
+        public int MyText { get; }
+    }
+
+    /// <summary>A running gas warning: the warned room and the active seconds until it resolves.</summary>
+    public sealed class GasView
+    {
+        public GasView(string room, float inS)
+        {
+            Room = room;
+            InS = inS;
+        }
+
+        public string Room { get; }
+
+        public float InS { get; }
     }
 
     /// <summary>Everything one seat may know right now. Becomes the snapshot message.</summary>
@@ -214,8 +295,16 @@ namespace Sim.Match
             IReadOnlyList<PileView> piles,
             SabotageView? sabotage,
             MeetingView? meeting,
-            GameOverEvent? gameOver)
+            GameOverEvent? gameOver,
+            IReadOnlyList<ChatEvent>? ghostChat = null,
+            IReadOnlyList<SpotView>? spots = null,
+            bool machineJammed = false,
+            GasView? gas = null)
         {
+            Gas = gas;
+            MachineJammed = machineJammed;
+            Spots = spots ?? new List<SpotView>();
+            GhostChat = ghostChat ?? new List<ChatEvent>();
             Seat = seat;
             Phase = phase;
             PhaseTimeLeft = phaseTimeLeft;
@@ -267,5 +356,17 @@ namespace Sim.Match
         public MeetingView? Meeting { get; }
 
         public GameOverEvent? GameOver { get; }
+
+        /// <summary>Every spot and whether it is dirty or clean, for every seat.</summary>
+        public IReadOnlyList<SpotView> Spots { get; }
+
+        /// <summary>The Recycling Machine is jammed (public: every seat sees the alarm). Deliveries are refused until it is fixed.</summary>
+        public bool MachineJammed { get; }
+
+        /// <summary>The running gas warning (public: every seat sees it); null when none runs.</summary>
+        public GasView? Gas { get; }
+
+        /// <summary>Ghost chat so far, oldest first. Non-empty only in the view of an out seat.</summary>
+        public IReadOnlyList<ChatEvent> GhostChat { get; }
     }
 }

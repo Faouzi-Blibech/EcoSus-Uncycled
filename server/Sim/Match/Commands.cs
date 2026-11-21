@@ -34,6 +34,28 @@ namespace Sim.Match
         public string ConsoleId { get; }
     }
 
+    /// <summary>protocol: spot_done {spot}. Ends the clean session opened by use.</summary>
+    public sealed class SpotDoneCommand : ICommand
+    {
+        public SpotDoneCommand(string spotId)
+        {
+            SpotId = spotId ?? "";
+        }
+
+        public string SpotId { get; }
+    }
+
+    /// <summary>protocol: pick_upgrade {item}. Answers an open upgrade offer.</summary>
+    public sealed class PickUpgradeCommand : ICommand
+    {
+        public PickUpgradeCommand(UpgradeKind item)
+        {
+            Item = item;
+        }
+
+        public UpgradeKind Item { get; }
+    }
+
     /// <summary>protocol: task_step {task}.</summary>
     public sealed class TaskStepCommand : ICommand
     {
@@ -88,6 +110,28 @@ namespace Sim.Match
         public byte? Target { get; }
 
         public bool IsSkip => Target == null;
+    }
+
+    /// <summary>protocol: repollute {spot}. A Trasher turns a clean spot dirty again.</summary>
+    public sealed class RepolluteCommand : ICommand
+    {
+        public RepolluteCommand(string spotId)
+        {
+            SpotId = spotId ?? "";
+        }
+
+        public string SpotId { get; }
+    }
+
+    /// <summary>protocol: pick_ability {ability}. Once per match, after ability_unlocked.</summary>
+    public sealed class PickAbilityCommand : ICommand
+    {
+        public PickAbilityCommand(TrasherAbility ability)
+        {
+            Ability = ability;
+        }
+
+        public TrasherAbility Ability { get; }
     }
 
     /// <summary>protocol: sabotage {kind}.</summary>
@@ -170,6 +214,50 @@ namespace Sim.Match
         public string PhraseId { get; }
 
         public IReadOnlyList<ChatArg> Args { get; }
+    }
+
+    /// <summary>protocol: chat_text {text}. A typed chat line; the engine normalises and filters it.</summary>
+    public sealed class ChatTextCommand : ICommand
+    {
+        public ChatTextCommand(string text)
+        {
+            Text = text ?? "";
+        }
+
+        public string Text { get; }
+    }
+
+    /// <summary>protocol: gas {room}. A Trasher that picked the gas; the room is a map gas_rooms id.</summary>
+    public sealed class GasCommand : ICommand
+    {
+        public GasCommand(string roomId)
+        {
+            RoomId = roomId;
+        }
+
+        public string RoomId { get; }
+    }
+
+    /// <summary>protocol: plant_virus {spot}. A Trasher with the virus plants it on a dirty spot.</summary>
+    public sealed class PlantVirusCommand : ICommand
+    {
+        public PlantVirusCommand(string spotId)
+        {
+            SpotId = spotId ?? "";
+        }
+
+        public string SpotId { get; }
+    }
+
+    /// <summary>protocol: heal {target}. A Cleaner with a heal cures an infected seat (itself or one in reach).</summary>
+    public sealed class HealCommand : ICommand
+    {
+        public HealCommand(byte target)
+        {
+            Target = target;
+        }
+
+        public byte Target { get; }
     }
 
     /// <summary>Ok, or rejected with a protocol reason.</summary>

@@ -22,10 +22,11 @@ namespace Uncycled.Bots.Meeting
 
         public IReadOnlyList<ChatAct> Acts => _acts;
 
-        /// <summary>Adds a chat line; a phrase id missing from the catalogue is ignored.</summary>
+        /// <summary>Adds a chat line; a phrase id missing from the catalogue is ignored. Ghost lines (out seats talking among themselves)
+        /// and typed lines (no phrase id) are ignored too.</summary>
         public void Add(ChatEvent e, float matchTime)
         {
-            if (!_catalogue.TryGet(e.PhraseId, out PhraseInfo info))
+            if (e.Ghost || e.PhraseId == null || !_catalogue.TryGet(e.PhraseId, out PhraseInfo info))
             {
                 return;
             }

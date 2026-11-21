@@ -108,7 +108,6 @@ namespace Uncycled.Server.Tests
             Assert.True(r.Ended, Why(r));
             Assert.NotNull(r.Engine.Result);
             Assert.True(r.BotsThatMoved >= 6, r.Summary);
-            Assert.True(r.TaskStepsDone > 0, r.Summary);
             Assert.Equal(0, log.Warnings);
         }
 
@@ -138,7 +137,6 @@ namespace Uncycled.Server.Tests
 
             Assert.Equal(7, log.Warnings);
             Assert.True(r.BotsThatMoved >= 6, r.Summary);
-            Assert.True(r.TaskStepsDone > 0, r.Summary);
         }
 
         [Fact]

@@ -15,7 +15,8 @@ public sealed class ContentBundle
         IReadOnlyList<TaskTypeDef> tasks,
         string tasksJson,
         MapData map,
-        PhraseCatalogue? phrases = null)
+        PhraseCatalogue? phrases = null,
+        ChatFilter? filter = null)
     {
         Config = config;
         TuningJson = tuningJson;
@@ -23,6 +24,7 @@ public sealed class ContentBundle
         TasksJson = tasksJson;
         Map = map;
         Phrases = phrases;
+        Filter = filter ?? ChatFilter.Empty;
     }
 
     public MatchConfig Config { get; }
@@ -40,6 +42,9 @@ public sealed class ContentBundle
     /// <summary>Chat phrase catalogue from phrases.json; every engine validates chat against it (null: any id).</summary>
     public PhraseCatalogue? Phrases { get; }
 
+    /// <summary>Word filter from chat_filter.json; every engine applies it to typed chat (Empty: no words).</summary>
+    public ChatFilter Filter { get; }
+
     public string MapId => Map.Id;
 
     public string MapVersion => Map.Version;
@@ -47,7 +52,11 @@ public sealed class ContentBundle
 
 public static class ContentLoader
 {
+    /// <summary>The map tests and tools load by default (their fixtures are laid out on it).</summary>
     public const string DefaultMapId = "greybox_01";
+
+    /// <summary>The map rooms play (UNCYCLED_MAP overrides it): the TBS campus.</summary>
+    public const string PlayMapId = "tbs_01";
 
     /// <summary>
     /// UNCYCLED_CONTENT_DIR when set, else the first "content" folder holding tuning.json found in
@@ -93,7 +102,8 @@ public static class ContentLoader
         IReadOnlyList<TaskTypeDef> tasks = ReadTasks(tasksArray);
         MapData map = ReadMap(mapDoc.RootElement);
         PhraseCatalogue phrases = PhraseCatalogue.Parse(File.ReadAllText(Path.Combine(contentDir, "phrases.json")));
-        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases);
+        ChatFilter filter = ChatFilter.Parse(File.ReadAllText(Path.Combine(contentDir, "chat_filter.json")));
+        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter);
     }
 
     // ---------- tuning ----------
@@ -174,16 +184,89 @@ public static class ContentLoader
             EmergenciesPerMatch = (int)Num(t, "meeting", "emergencies_per_match", d.EmergenciesPerMatch),
             EmergencyMinSinceMeetingS = Num(t, "meeting", "emergency_min_since_meeting_s", d.EmergencyMinSinceMeetingS),
             MissedVoteIsSkip = Flag(t, "meeting", "missed_vote_is_skip", d.MissedVoteIsSkip),
+            PhrasesPerMeeting = (int)Num(t, "meeting", "phrases_per_meeting", d.PhrasesPerMeeting),
+            TextMaxChars = (int)Num(t, "meeting", "text_max_chars", d.TextMaxChars),
+            TextPerMeeting = (int)Num(t, "meeting", "text_per_meeting", d.TextPerMeeting),
+            ChatMinGapS = Num(t, "meeting", "chat_min_gap_s", d.ChatMinGapS),
+            GhostChatKeep = (int)Num(t, "meeting", "ghost_chat_keep", d.GhostChatKeep),
+            GhostWelcomeMaxLines = (int)Num(t, "meeting", "ghost_welcome_max_lines", d.GhostWelcomeMaxLines),
+            GhostWelcomeMaxBytes = (int)Num(t, "meeting", "ghost_welcome_max_bytes", d.GhostWelcomeMaxBytes),
             LostSightGraceS = Num(t, "visibility", "lost_sight_grace_s", d.LostSightGraceS),
             SabotageSharedCooldownS = Num(t, "sabotage", "shared_cooldown_s", d.SabotageSharedCooldownS),
-            SabotageStartCooldownS = Num(t, "sabotage", "start_cooldown_s", d.SabotageStartCooldownS),
             SmogFixS = Num(t, "sabotage", "smog_fix_s", d.SmogFixS),
             FireCountdownS = Num(t, "sabotage", "fire_countdown_s", d.FireCountdownS),
+            BagCap = (int)Num(t, "bags", "cap", d.BagCap),
+            BackpackCap = (int)Num(t, "bags", "backpack_cap", d.BackpackCap),
+            ToolTimeMult = Num(t, "spots", "tool_time_mult", d.ToolTimeMult),
+            BagMeterAdd = Num(t, "spots", "bag_meter_add", d.BagMeterAdd),
+            RepolluteMeterSub = Num(t, "spots", "repollute_meter_sub", d.RepolluteMeterSub),
+            RepolluteCooldownS = Num(t, "trasher", "repollute_cooldown_s", d.RepolluteCooldownS),
+            UnlockAfter = (int)Num(t, "trasher", "unlock_after", d.UnlockAfter),
+            TrasherStartCooldownS = Num(t, "trasher", "start_cooldown_s", d.TrasherStartCooldownS),
+            VirusCooldownS = Num(t, "trasher", "virus_cooldown_s", d.VirusCooldownS),
+            GasCooldownS = Num(t, "trasher", "gas_cooldown_s", d.GasCooldownS),
+            GasWarningS = Num(t, "trasher", "gas_warning_s", d.GasWarningS),
+            MachineFixS = Num(t, "machine", "fix_s", d.MachineFixS),
+            VirusStartS = Num(t, "virus", "start_s", d.VirusStartS),
+            VirusFatalS = Num(t, "virus", "fatal_s", d.VirusFatalS),
+            VirusGrowS = Num(t, "virus", "grow_s", d.VirusGrowS),
+            HealRange = Num(t, "virus", "heal_range", d.HealRange),
             TasksCommon = (int)Num(t, "tasks", "common", d.TasksCommon),
             TasksShort = (int)Num(t, "tasks", "short", d.TasksShort),
             TasksLong = (int)Num(t, "tasks", "long", d.TasksLong),
         };
+        ReadRooms(t, c);
         return c;
+    }
+
+    /// <summary>rooms.sizes, rooms.default_size and rooms.trashers; anything missing or invalid keeps the MatchConfig default.</summary>
+    private static void ReadRooms(JsonElement t, MatchConfig c)
+    {
+        JsonElement? rooms = Child(t, "rooms");
+        if (!rooms.HasValue)
+        {
+            return;
+        }
+
+        JsonElement? sizes = Child(rooms.Value, "sizes");
+        if (sizes.HasValue && sizes.Value.ValueKind == JsonValueKind.Array)
+        {
+            var list = new List<int>();
+            foreach (JsonElement e in sizes.Value.EnumerateArray())
+            {
+                if (e.ValueKind == JsonValueKind.Number && e.TryGetInt32(out int n) && n > 1 && !list.Contains(n))
+                {
+                    list.Add(n);
+                }
+            }
+
+            if (list.Count > 0)
+            {
+                c.RoomSizes = list.ToArray();
+                c.DefaultSize = list.Contains(c.DefaultSize) ? c.DefaultSize : list[0];
+            }
+        }
+
+        JsonElement? def = Child(rooms.Value, "default_size");
+        if (def.HasValue && def.Value.ValueKind == JsonValueKind.Number && def.Value.TryGetInt32(out int d) && System.Array.IndexOf(c.RoomSizes, d) >= 0)
+        {
+            c.DefaultSize = d;
+        }
+
+        JsonElement? trashers = Child(rooms.Value, "trashers");
+        if (trashers.HasValue && trashers.Value.ValueKind == JsonValueKind.Object)
+        {
+            var map = new Dictionary<int, int>();
+            foreach (JsonProperty p in trashers.Value.EnumerateObject())
+            {
+                if (int.TryParse(p.Name, out int size) && p.Value.ValueKind == JsonValueKind.Number && p.Value.TryGetInt32(out int n) && n >= 0)
+                {
+                    map[size] = n;
+                }
+            }
+
+            c.RoomTrashers = map;
+        }
     }
 
     // ---------- tasks ----------
@@ -257,6 +340,7 @@ public static class ContentLoader
             case "emergency": return ConsoleKind.Emergency;
             case "fire_fix": return ConsoleKind.FireFix;
             case "smog_fix": return ConsoleKind.SmogFix;
+            case "machine": return ConsoleKind.Machine;
             default: throw new InvalidDataException("Unknown console kind: " + kind);
         }
     }
@@ -306,6 +390,21 @@ public static class ContentLoader
             }
         }
 
+        var gasRooms = new List<ZoneDef>();
+        if (m.TryGetProperty("gas_rooms", out JsonElement gs))
+        {
+            foreach (JsonElement g in gs.EnumerateArray())
+            {
+                JsonElement rect = g.GetProperty("rect");
+                gasRooms.Add(new ZoneDef(
+                    g.GetProperty("id").GetString() ?? "",
+                    rect[0].GetSingle(),
+                    rect[1].GetSingle(),
+                    rect[2].GetSingle(),
+                    rect[3].GetSingle()));
+            }
+        }
+
         var consoles = new List<ConsoleDef>();
         foreach (string listName in new[] { "consoles", "special" })
         {
@@ -333,6 +432,6 @@ public static class ContentLoader
 
         string id = m.TryGetProperty("id", out JsonElement idEl) ? idEl.GetString() ?? "" : "";
         string version = m.TryGetProperty("version", out JsonElement vEl) ? vEl.GetString() ?? "" : "";
-        return new MapData(width, height, walkable, sightWalls, zones, consoles, spawns, id, version, dark);
+        return new MapData(width, height, walkable, sightWalls, zones, consoles, spawns, id, version, dark, gasRooms);
     }
 }

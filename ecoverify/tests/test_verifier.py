@@ -158,10 +158,17 @@ class VerifyTests(unittest.TestCase):
         r = self.verify(make(embedder=FakeEmbedder(pick=2, prob=0.2)), pid(), photo(1))
         self.assertEqual(r["stream"], "PLASTICS")
 
-    def test_skip_exif_refused_when_disabled(self):
-        v = make(allow_skip_exif=False)
-        r = v.verify(jpeg(photo(1)), pid(), NOW, skip_exif=True)
-        self.assertEqual(r["reason"], "exif")
+    def test_exif_checked_unless_the_server_skips_it(self):
+        self.assertEqual(make().verify(jpeg(photo(1)), pid(), NOW)["reason"], "exif")
+
+    def test_clients_cannot_skip_exif(self):
+        """The bypass is a server setting (UNCYCLED_DEV_SKIP_EXIF), never a request option."""
+        import os
+        os.environ.setdefault("ECO_DB", ":memory:")
+        os.environ.setdefault("ECO_DISABLE_CLIP", "1")
+        import app
+        op = app.app.openapi()["paths"]["/verify-daily-photo"]["post"]
+        self.assertNotIn("skip_exif", [p["name"] for p in op.get("parameters", [])])
 
     def test_exif_orientation_is_applied(self):
         """A photo stored sideways with Orientation=6 is detected upright (image_size swaps)."""

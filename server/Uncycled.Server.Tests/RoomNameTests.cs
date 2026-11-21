@@ -30,6 +30,15 @@ namespace Uncycled.Server.Tests
 
         public override string? SubProtocol => null;
 
+        /// <summary>Every message sent so far, raw.</summary>
+        public List<string> AllSent()
+        {
+            lock (_lock)
+            {
+                return new List<string>(_sent);
+            }
+        }
+
         public List<JsonDocument> Sent(string type)
         {
             var list = new List<JsonDocument>();

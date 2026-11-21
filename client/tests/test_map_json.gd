@@ -38,8 +38,30 @@ func test_marker_positions_in_tiles() -> bool:
 
 func test_specials_and_spawns() -> bool:
 	var d: Dictionary = _built()
-	assert_eq(_ids(d["special"]), ["fire_a", "fire_b", "meeting_button", "smog_panel"], "specials")
-	assert_eq(d["spawns"].size(), 8, "spawn count")
+	assert_eq(_ids(d["special"]), ["machine", "meeting_button", "smog_panel"], "specials")
+	assert_eq(d["spawns"].size(), 10, "spawn count")
+	return true
+
+
+func _special(d: Dictionary, id: String) -> Dictionary:
+	for s in d["special"]:
+		if s["id"] == id:
+			return s
+	return {}
+
+
+func test_machine_must_be_next_to_the_map_edge() -> bool:
+	var d: Dictionary = _built()
+	assert_eq(MapJson.validate(d).size(), 0, "fixture machine at (1.5, 2.5) touches the west wall")
+	_special(d, "machine")["pos"] = [2.5, 2.5]
+	assert_true(_has_error(MapJson.validate(d), "machine"), "machine one tile in from the edge")
+	return true
+
+
+func test_fire_fix_special_is_optional() -> bool:
+	var d: Dictionary = _built()
+	d["special"].append({"id": "fire_a", "kind": "fire_fix", "pos": [1.5, 1.5], "range": 1.2})
+	assert_eq(MapJson.validate(d).size(), 0, "fire consoles may stay until the server drops fire")
 	return true
 
 
@@ -66,7 +88,7 @@ func test_validate_catches_missing_special() -> bool:
 	var d: Dictionary = _built()
 	var kept: Array = []
 	for s in d["special"]:
-		if s["id"] != "fire_b":
+		if s["id"] != "machine":
 			kept.append(s)
 	d["special"] = kept
 	assert_true(MapJson.validate(d).size() > 0, "has errors")
@@ -325,4 +347,52 @@ func test_duplicate_dark_id_fails_validate() -> bool:
 	var d: Dictionary = MapJson.build(root)
 	var twice: Array = [{"id": "dk_a", "rect": [1, 2, 1, 1]}, {"id": "dk_a", "rect": [3, 2, 1, 1]}]
 	assert_true(_has_error(MapJson.dark_errors(d, twice), "duplicate"), "same id twice")
+	return true
+
+
+## A fixture map plus one gas room marker (kind "gas_room" is a rect like "dark"), at tile (1, 2), 4x1 tiles.
+func _fixture_with_gas(pos_px: Vector2 = Vector2(32, 64), size_tiles: Vector2i = Vector2i(4, 1)) -> MapRoot:
+	var root: MapRoot = track(load(FIXTURE).instantiate())
+	var m: MapMarker = MapMarker.new()
+	m.marker_id = "gas_test"
+	m.kind = "gas_room"
+	m.position = pos_px
+	m.zone_size_tiles = size_tiles
+	root.get_node("Markers").add_child(m)
+	return root
+
+
+func test_gas_room_exported_to_server_json() -> bool:
+	var plain: MapRoot = track(load(FIXTURE).instantiate())
+	var with_gas: MapRoot = _fixture_with_gas()
+	var d: Dictionary = MapJson.build(with_gas)
+	var gas: Array = MapJson.gas_rooms_of(with_gas)
+	assert_eq(gas, [{"id": "gas_test", "rect": [1.0, 2.0, 4, 1]}], "gas room in tiles")
+	assert_eq(d.get("gas_rooms"), gas, "the server dictionary carries the gas rooms")
+	assert_eq(d.get("special").size(), 3, "a gas room is not a special")
+	assert_eq(MapJson.build(plain).get("gas_rooms"), [], "a map without gas rooms writes an empty list")
+	assert_eq(MapJson.gas_errors(d, gas).size(), 0, "valid gas room")
+	return true
+
+
+func test_gas_room_errors_like_dark_rooms() -> bool:
+	var d: Dictionary = MapJson.build(_fixture_with_gas())
+	assert_true(_has_error(MapJson.gas_errors(d, [{"id": "gas_off", "rect": [4, 3, 5, 5]}]), "gas_off"), "past the map edge")
+	assert_true(_has_error(MapJson.gas_errors(d, [{"id": "gas_spawn", "rect": [1, 1, 2, 2]}]), "gas_spawn"), "over a spawn")
+	var overlap: Array = [{"id": "gas_a", "rect": [1, 2, 3, 1]}, {"id": "gas_b", "rect": [3, 2, 2, 1]}]
+	assert_true(_has_error(MapJson.gas_errors(d, overlap), "overlap"), "two gas rooms overlap")
+	assert_true(_has_error(MapJson.gas_errors(d, [{"id": "", "rect": [1, 2, 1, 1]}]), "gas room"), "missing id names the kind")
+	return true
+
+
+func test_greybox_v2_layout() -> bool:
+	var root: MapRoot = load("res://world/maps/greybox_01.tscn").instantiate() as MapRoot
+	var d: Dictionary = MapJson.build(root)
+	var gas: Array = MapJson.gas_rooms_of(root)
+	root.free()
+	assert_eq(MapJson.validate(d).size(), 0, "validate: %s" % str(MapJson.validate(d)))
+	assert_eq(MapJson.gas_errors(d, gas).size(), 0, "gas rooms: %s" % str(MapJson.gas_errors(d, gas)))
+	assert_eq(_special(d, "machine").get("kind", ""), "machine", "one recycling machine")
+	assert_eq(_ids(gas), ["gas_dark", "gas_depot", "gas_garden", "gas_market"], "four gas rooms")
+	assert_eq(d["spawns"].size(), 10, "ten spawns for a 10-player room")
 	return true

@@ -1,20 +1,39 @@
 extends Control
-## Menu: player name, create a room, join by 4-letter code, settings.
+## Home page: two big art buttons (Create Game, Join Game) and three small ones (profile, scan,
+## settings). Create and Join open their own pages; a missing name opens the profile popup first.
+## Layout follows the designers' 1920x1080 mockup at 1/3 scale on a centred 640x360 stage.
 
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const SettingsPanel := preload("res://ui/widgets/settings_panel.gd")
 
-const CODE_LENGTH: int = 4
-const BUSY_TIMEOUT_S: float = 5.0
+const ART_DIR: String = "res://assets/ui/home/"
 
-var _name_edit: LineEdit
-var _code_edit: LineEdit
-var _create_btn: Button
-var _join_btn: Button
+const LOGO_RECT: Rect2 = Rect2(250.0, 10.0, 140.0, 53.0)
+const CREATE_RECT: Rect2 = Rect2(63.0, 82.0, 234.0, 207.0)
+const JOIN_RECT: Rect2 = Rect2(330.0, 84.0, 257.0, 205.0)
+const CAPTION_TOP: float = 292.0
+const CAPTION_HEIGHT: float = 40.0
+const CAPTION_FONT_SIZE: int = 34
+const STATUS_TOP: float = 334.0
+## The two big circles cast a larger shadow so it reads at their size.
+const BIG_SHADOW_SCALE: float = 2.0
+
+const POPUP_BG: Color = Color(0.13, 0.19, 0.15)
+const POPUP_BORDER: Color = Color(0.97, 0.94, 0.85)
+const POPUP_BORDER_PX: int = 2
+const POPUP_RADIUS_PX: int = 10
+
 var _status: Label
 var _panel: SettingsPanel = null
-var _busy: bool = false
+
+## Open popup (profile or scan); null when none.
+var _popup: Control = null
+var _popup_error: Label = null
+var _name_edit: LineEdit = null
+## Run after the profile popup saves a name (Create or Join pressed with no name).
+var _after_name: Callable = Callable()
 
 
 func _ready() -> void:
@@ -24,121 +43,172 @@ func _ready() -> void:
 
 	theme = UIKit.theme()
 	UIKit.fill(self)
-	UIKit.background(self)
+	PaperKit.background(self)
+	var stage: Control = PaperKit.stage(self)
 
-	var center: CenterContainer = CenterContainer.new()
-	add_child(center)
-	UIKit.fill(center)
+	var logo: TextureRect = PaperKit.picture(Assets.texture(ART_DIR + "logo.png"), LOGO_RECT)
+	stage.add_child(logo)
+	PaperKit.add_shadow(logo, logo.texture)
 
-	var box: VBoxContainer = UIKit.make_vbox(8, 320.0)
-	center.add_child(box)
+	var create_btn: TextureButton = _make_art_button(stage, "create.png", CREATE_RECT, tr("MENU_CREATE_GAME"))
+	create_btn.pressed.connect(_go_with_name.bind(Router.CREATE))
+	var join_btn: TextureButton = _make_art_button(stage, "join.png", JOIN_RECT, tr("MENU_JOIN_GAME"))
+	join_btn.pressed.connect(_go_with_name.bind(Router.JOIN))
 
-	var title: Label = UIKit.make_label(tr("BOOT_TITLE"), 30)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
+	_status = PaperKit.label("", UIKit.FONT_SIZE, PaperKit.ERROR_INK, false)
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PaperKit.place(_status, Rect2(0.0, STATUS_TOP, PaperKit.STAGE_SIZE.x, PaperKit.STAGE_SIZE.y - STATUS_TOP))
+	stage.add_child(_status)
 
-	_name_edit = UIKit.make_line_edit(tr("MENU_NAME_PLACEHOLDER"), Settings.player_name, 16)
-	box.add_child(_name_edit)
-
-	_create_btn = UIKit.make_button(tr("MENU_CREATE"))
-	_create_btn.pressed.connect(_on_create)
-	box.add_child(_create_btn)
-
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	box.add_child(row)
-	_code_edit = UIKit.make_line_edit(tr("MENU_CODE_PLACEHOLDER"), "", CODE_LENGTH)
-	_code_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_code_edit.text_submitted.connect(_on_code_submitted)
-	row.add_child(_code_edit)
-	_join_btn = UIKit.make_button(tr("MENU_JOIN"), 110.0)
-	_join_btn.pressed.connect(_on_join)
-	row.add_child(_join_btn)
-
-	_status = UIKit.make_label("", 14, Color(1.0, 0.75, 0.5))
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(320.0, 20.0)
-	box.add_child(_status)
-
-	var settings_btn: Button = UIKit.make_button(tr("COMMON_SETTINGS"))
+	var profile_btn: TextureButton = PaperKit.icon_button(self, ART_DIR + "user.png", tr("MENU_PROFILE"))
+	profile_btn.pressed.connect(_open_profile_popup)
+	PaperKit.pin_icon(profile_btn, false, 0)
+	var scan_btn: TextureButton = PaperKit.icon_button(self, ART_DIR + "tasks.png", tr("MENU_SCAN"))
+	scan_btn.pressed.connect(_open_scan_popup)
+	PaperKit.pin_icon(scan_btn, false, 1)
+	var settings_btn: TextureButton = PaperKit.icon_button(self, ART_DIR + "settings.png", tr("COMMON_SETTINGS"))
 	settings_btn.pressed.connect(_open_settings)
-	box.add_child(settings_btn)
+	PaperKit.pin_icon(settings_btn, true, 0)
 
 	if Session.pending_notice != "":
 		_status.text = tr(Session.pending_notice)
 		Session.pending_notice = ""
 
-	Net.welcome.connect(_on_welcome)
-	Net.join_failed.connect(_on_join_failed)
-	Net.error.connect(_on_error)
 	Net.disconnected.connect(_on_disconnected)
 
 
-func _read_name() -> String:
+## Big picture button with its handwritten caption underneath.
+func _make_art_button(parent: Control, file: String, rect: Rect2, caption: String) -> TextureButton:
+	var btn: TextureButton = TextureButton.new()
+	btn.texture_normal = Assets.texture(ART_DIR + file)
+	btn.ignore_texture_size = true
+	btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	PaperKit.place(btn, rect)
+	parent.add_child(btn)
+	PaperKit.add_shadow(btn, btn.texture_normal, BIG_SHADOW_SCALE)
+	PaperKit.add_press_squash(btn)
+
+	var label: Label = PaperKit.label(caption, CAPTION_FONT_SIZE)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PaperKit.place(label, Rect2(rect.position.x, CAPTION_TOP, rect.size.x, CAPTION_HEIGHT))
+	parent.add_child(label)
+	return btn
+
+
+func _has_name() -> bool:
+	return not Settings.player_name.strip_edges().is_empty()
+
+
+## Create and Join need a name: ask for it first, then open the page.
+func _go_with_name(scene: String) -> void:
+	if not _has_name():
+		_ask_name(_go_with_name.bind(scene))
+		return
+	Router.go(get_tree(), scene)
+
+
+# --- Popups ------------------------------------------------------------------------------------
+
+## Dimmed modal with a titled panel; returns the box to fill. Replaces any open popup.
+func _open_popup(title: String) -> VBoxContainer:
+	_close_popup()
+	_popup = Control.new()
+	_popup.theme = UIKit.theme()
+	_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_popup)
+	UIKit.fill(_popup)
+	UIKit.background(_popup, Color(0.0, 0.0, 0.0, 0.6))
+
+	var center: CenterContainer = CenterContainer.new()
+	_popup.add_child(center)
+	UIKit.fill(center)
+	var panel: PanelContainer = PanelContainer.new()
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = POPUP_BG
+	style.border_color = POPUP_BORDER
+	style.set_border_width_all(POPUP_BORDER_PX)
+	style.set_corner_radius_all(POPUP_RADIUS_PX)
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
+	var margin: MarginContainer = MarginContainer.new()
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(side, 12)
+	panel.add_child(margin)
+
+	var box: VBoxContainer = UIKit.make_vbox(8, 300.0)
+	margin.add_child(box)
+	box.add_child(UIKit.make_label(title, 20))
+	return box
+
+
+## Error line plus the bottom button row (Cancel/Close on the right). Returns the row.
+func _finish_popup(box: VBoxContainer, close_key: String) -> HBoxContainer:
+	_popup_error = UIKit.make_label("", UIKit.FONT_SIZE, Color(1.0, 0.6, 0.5))
+	_popup_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(_popup_error)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	var close_btn: Button = UIKit.make_button(tr(close_key))
+	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_btn.pressed.connect(_close_popup)
+	row.add_child(close_btn)
+	return row
+
+
+func _close_popup() -> void:
+	if _popup != null:
+		_popup.queue_free()
+	_popup = null
+	_popup_error = null
+	_name_edit = null
+
+
+func _open_profile_popup() -> void:
+	var box: VBoxContainer = _open_popup(tr("MENU_PROFILE"))
+	box.add_child(UIKit.make_label(tr("SETTINGS_NAME")))
+	_name_edit = UIKit.make_line_edit(tr("MENU_NAME_PLACEHOLDER"), Settings.player_name, 16)
+	_name_edit.text_submitted.connect(func(_t: String) -> void: _on_profile_save())
+	box.add_child(_name_edit)
+	var skins: Label = UIKit.make_label(tr("MENU_PROFILE_SKINS"))
+	skins.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(skins)
+	var row: HBoxContainer = _finish_popup(box, "COMMON_CANCEL")
+	var save_btn: Button = UIKit.make_button(tr("COMMON_SAVE"))
+	save_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	save_btn.pressed.connect(_on_profile_save)
+	row.add_child(save_btn)
+	row.move_child(save_btn, 0)
+	_name_edit.grab_focus()
+
+
+func _open_scan_popup() -> void:
+	var box: VBoxContainer = _open_popup(tr("MENU_SCAN"))
+	var text: Label = UIKit.make_label(tr("MENU_SCAN_TEXT"))
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(text)
+	_finish_popup(box, "COMMON_CLOSE")
+
+
+## Opens the profile popup with a hint; then runs next once a name is saved.
+func _ask_name(next: Callable) -> void:
+	_open_profile_popup()
+	_popup_error.text = tr("MENU_NAME_REQUIRED")
+	_after_name = next
+
+
+func _on_profile_save() -> void:
 	var player: String = _name_edit.text.strip_edges()
 	if player.is_empty():
-		_status.text = tr("MENU_NAME_REQUIRED")
-	else:
-		Settings.player_name = player
-		Settings.save()
-	return player
-
-
-func _on_create() -> void:
-	if _busy:
+		_popup_error.text = tr("MENU_NAME_REQUIRED")
 		return
-	var player: String = _read_name()
-	if player.is_empty():
-		return
-	_set_busy(true)
-	Net.send("create", {"name": player})
-
-
-func _on_code_submitted(_text: String) -> void:
-	_on_join()
-
-
-func _on_join() -> void:
-	if _busy:
-		return
-	var player: String = _read_name()
-	if player.is_empty():
-		return
-	var code: String = _code_edit.text.strip_edges().to_upper()
-	if code.length() != CODE_LENGTH:
-		_status.text = tr("MENU_BAD_CODE")
-		return
-	_set_busy(true)
-	Net.send("join", {"code": code, "name": player})
-
-
-func _set_busy(busy: bool) -> void:
-	_busy = busy
-	_create_btn.disabled = busy
-	_join_btn.disabled = busy
-	if busy:
-		_status.text = tr("MENU_WORKING")
-		get_tree().create_timer(BUSY_TIMEOUT_S).timeout.connect(_on_busy_timeout)
-
-
-func _on_busy_timeout() -> void:
-	if _busy:
-		_set_busy(false)
-		_status.text = tr("MENU_NO_ANSWER")
-
-
-func _on_welcome(_data: Dictionary) -> void:
-	Router.route_after_welcome(get_tree())
-
-
-func _on_join_failed(data: Dictionary) -> void:
-	_set_busy(false)
-	_status.text = UIKit.reason_text("JOIN_FAILED_", str(data.get("reason", "")), "JOIN_FAILED_UNKNOWN")
-
-
-func _on_error(data: Dictionary) -> void:
-	_set_busy(false)
-	_status.text = tr("BOOT_ERROR") % str(data.get("code", ""))
+	Settings.player_name = player
+	Settings.save()
+	_close_popup()
+	var next: Callable = _after_name
+	_after_name = Callable()
+	if next.is_valid():
+		next.call()
 
 
 func _on_disconnected() -> void:
@@ -148,6 +218,7 @@ func _on_disconnected() -> void:
 func _open_settings() -> void:
 	if _panel != null:
 		return
+	_close_popup()
 	_panel = SettingsPanel.new()
 	_panel.closed.connect(_on_settings_closed)
 	add_child(_panel)

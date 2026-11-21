@@ -59,3 +59,33 @@ def test_init_with_a_missing_file_fails_clearly(tmp_path):
     result = run_train(tmp_path, "c", "--init", str(tmp_path / "nope.zip"))
     assert result.returncode != 0
     assert "nope.zip" in result.stderr
+
+
+def test_init_from_a_checkpoint_made_on_another_schema_is_refused(tmp_path):
+    first = run_train(tmp_path, "a", "--seed", "5")
+    assert first.returncode == 0, first.stderr[-2000:]
+    ckpt_dir = tmp_path / "checkpoints" / "a"
+    meta = json.loads((ckpt_dir / "run.json").read_text())
+    host_hash = meta["schema_hash"]
+
+    # same hash: accepted
+    ok = run_train(tmp_path, "b", "--init", str(ckpt_dir / "final.zip"), "--seed", "6")
+    assert ok.returncode == 0, ok.stderr[-2000:]
+
+    # another hash (an older action list or observation): refused before any training, naming both hashes
+    meta["schema_hash"] = "0" * 64
+    (ckpt_dir / "run.json").write_text(json.dumps(meta), encoding="utf-8")
+    bad = run_train(tmp_path, "c", "--init", str(ckpt_dir / "final.zip"), "--seed", "6")
+    assert bad.returncode == 2, bad.stderr[-2000:]
+    assert "schema" in bad.stderr and host_hash in bad.stderr and "0" * 64 in bad.stderr
+    assert not (tmp_path / "checkpoints" / "c" / "final.zip").exists()
+
+
+def test_init_without_a_recorded_schema_hash_is_refused(tmp_path):
+    first = run_train(tmp_path, "a", "--seed", "5")
+    assert first.returncode == 0, first.stderr[-2000:]
+    ckpt_dir = tmp_path / "checkpoints" / "a"
+    (ckpt_dir / "run.json").unlink()
+    result = run_train(tmp_path, "b", "--init", str(ckpt_dir / "final.zip"), "--seed", "6")
+    assert result.returncode == 2, result.stderr[-2000:]
+    assert "run.json" in result.stderr

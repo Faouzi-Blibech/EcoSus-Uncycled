@@ -15,7 +15,7 @@ namespace Uncycled.Bots.Tests
         public void Navigator_ReachesEveryConsole()
         {
             TestMatch m = TestMatch.Create();
-            Assert.Equal(15, m.Map.Consoles.Count);
+            Assert.Equal(14, m.Map.Consoles.Count);
             Vec2 spawn = m.Map.SpawnFor(0);
             foreach (ConsoleDef console in m.Map.Consoles)
             {
@@ -46,7 +46,7 @@ namespace Uncycled.Bots.Tests
         {
             TestMatch m = TestMatch.Create();
             Vec2 spawn = m.Map.SpawnFor(0);
-            ConsoleDef far = m.Map.FindConsole("fire_a")!;
+            ConsoleDef far = m.Map.FindConsole("smog_panel")!;
             var nav = new Navigator(m.Map.Walk, m.Config.SpeedTilesPerS);
             Assert.True(nav.SetGoal(spawn, far.Position, 0f));
             int tiles = AStar.FindPath(m.Map.Walk, spawn, far.Position)!.Count - 1;

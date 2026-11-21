@@ -9,7 +9,6 @@
     "crop_pad_ratio": 0.05,
     "day_utc_offset_hours": 1,
     "max_photo_age_seconds": 120,
-    "allow_skip_exif": true,
     "max_upload_bytes": 10485760,
     "hash_max_distance": 10,
     "hash_window_days": 7,

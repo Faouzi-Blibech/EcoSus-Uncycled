@@ -84,16 +84,23 @@ namespace Sim.Tests
             byte pol2 = Polluter(e, 1);
             byte victim = Citizen(e);
             byte caller = Citizen(e, 1);
-            ParkOthers(e, pol, pol2, victim);
-            e.TestTeleport(pol, new Vec2(3.5f, 6.5f));
-            e.TestTeleport(victim, new Vec2(4.3f, 6.5f));
-            e.TestTeleport(pol2, new Vec2(4.3f, 7.3f));
-            Advance(e, 10.2f);
-            Assert.True(e.Apply(pol, new HitCommand(victim)).IsOk);
-            Advance(e, 25.2f);
-            Assert.True(e.Apply(pol2, new HitCommand(victim)).IsOk);
-            Advance(e, 25.2f);
-            Assert.True(e.Apply(pol, new HitCommand(victim)).IsOk);
+
+            // the victim is voted out in a first meeting
+            e.TestTeleport(caller, ButtonPos);
+            Assert.True(e.Apply(caller, new CallMeetingCommand()).IsOk);
+            Advance(e, cfg.DiscussionS + 0.1f);
+            Assert.Equal(MeetingStage.Voting, e.Meeting!.Stage);
+            foreach (PlayerState p in e.Players)
+            {
+                Assert.True(e.Apply(p.Seat, new VoteCommand(victim)).IsOk);
+            }
+
+            for (int i = 0; i < 2000 && e.Phase != MatchPhase.Playing; i++)
+            {
+                e.Tick(0.05f);
+            }
+
+            Assert.Equal(MatchPhase.Playing, e.Phase);
             Assert.False(e.Players.First(p => p.Seat == victim).IsActive);
 
             e.TestTeleport(caller, ButtonPos);
@@ -121,9 +128,10 @@ namespace Sim.Tests
             for (int i = 0; i < 5; i++)
             {
                 Assert.True(e.Apply(cit, new ChatPhraseCommand("hmm", null)).IsOk);
+                e.Tick(2f); // the gap between chat lines
             }
 
-            Assert.Equal(RejectReason.NotAllowed, e.Apply(cit, new ChatPhraseCommand("hmm", null)).Reason);
+            Assert.Equal(RejectReason.PhraseLimit, e.Apply(cit, new ChatPhraseCommand("hmm", null)).Reason);
         }
 
         [Fact]
@@ -132,6 +140,7 @@ namespace Sim.Tests
             (MatchEngine e, byte cit) = InMeeting();
             Assert.Equal(0, e.ViewFor(cit).Meeting!.MyChatCount);
             Assert.True(e.Apply(cit, new ChatPhraseCommand("hmm", null)).IsOk);
+            e.Tick(2f); // the gap between chat lines
             Assert.True(e.Apply(cit, new ChatPhraseCommand("idk", null)).IsOk);
             Assert.Equal(2, e.ViewFor(cit).Meeting!.MyChatCount);
             byte other = cit == 0 ? (byte)1 : (byte)0;

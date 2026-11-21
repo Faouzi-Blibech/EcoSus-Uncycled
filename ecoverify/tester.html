@@ -42,10 +42,7 @@
         <button class="btn-green" id="snapBtn">📸 Take Photo & Verify</button>
         <button class="btn-blue" id="switchBtn">🔄 Restart Cam</button>
       </div>
-      <div class="opt-box">
-        <input type="checkbox" id="skipExif" checked />
-        <label for="skipExif">Bypass EXIF timestamp check (web test only; server may refuse)</label>
-      </div>
+      <div class="opt-box" id="exifNote"></div>
       <label style="font-size: 13px; color: #94a3b8;">Or test an image file:</label>
       <input type="file" id="fileInput" accept="image/*" style="margin-top: 6px; width: 100%; font-size: 13px; color: #cbd5e1;" />
       <p id="player"></p>
@@ -71,6 +68,13 @@
     try { playerId = localStorage.getItem('uncycled_player_id'); } catch (e) {}
     if (!playerId) { playerId = newUuid(); try { localStorage.setItem('uncycled_player_id', playerId); } catch (e) {} }
     document.getElementById('player').textContent = 'Player id: ' + playerId;
+
+    // ── EXIF note: webcam shots and most files have no fresh capture time ──
+    fetch('/health').then(r => r.json()).then(h => {
+      document.getElementById('exifNote').textContent = h.dev_skip_exif
+        ? 'EXIF freshness check is OFF on this server (UNCYCLED_DEV_SKIP_EXIF=1, local testing).'
+        : 'EXIF freshness check is ON: webcam shots and old files will be rejected. Start the server with UNCYCLED_DEV_SKIP_EXIF=1 to test here.';
+    });
 
     // ── Guide ──
     const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -144,9 +148,8 @@
 
       const formData = new FormData();
       formData.append('file', blob, 'capture.jpg');
-      const skip = document.getElementById('skipExif').checked ? '?skip_exif=true' : '';
       try {
-        const resp = await fetch('/verify-daily-photo' + skip, {
+        const resp = await fetch('/verify-daily-photo', {
           method: 'POST',
           body: formData,
           headers: { 'X-Player-Id': playerId, 'X-Tz-Offset-Minutes': String(new Date().getTimezoneOffset()) },

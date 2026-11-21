@@ -37,6 +37,8 @@ def parse_args(argv):
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--learner", choices=sorted(AGENTS_PER_MATCH), default="citizen")
     p.add_argument("--threads", type=int, default=1)
+    p.add_argument("--map", default="")
+    p.add_argument("--seats", type=int, default=0)
     p.add_argument("--obs-size", type=int, default=64)
     p.add_argument("--actions", type=int, default=30)
     p.add_argument("--good-action", type=int, default=5)

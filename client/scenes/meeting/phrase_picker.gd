@@ -9,6 +9,7 @@ signal closed
 
 const Phrases := preload("res://content/phrases.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const ChatRules := preload("res://scenes/meeting/chat_rules.gd")
 
 const SEAT_BUTTON_SIZE: Vector2 = Vector2(140.0, UIKit.MIN_TOUCH)
 const ICON_SIZE: int = 32
@@ -19,6 +20,8 @@ const MUTED: Color = Color(0.7, 0.8, 0.75)
 
 ## The session to read (the autoload; a test passes its own).
 var session: Object = Session
+## An out seat's picker: the line goes to the ghost chat (no phrase count; any seat may be named).
+var ghost: bool = false
 var kind: String = ""
 var phrase_id: String = ""
 ## Slot picks so far: seat ints and zone id strings, in slot order.
@@ -39,7 +42,7 @@ func _ready() -> void:
 
 
 func is_enabled() -> bool:
-	return can_chat(session)
+	return ChatRules.can_ghost(session) if ghost else can_chat(session)
 
 
 func lines_left() -> int:
@@ -47,15 +50,15 @@ func lines_left() -> int:
 
 
 ## Living seats other than mine: not out as far as the client knows, and in meeting.living when
-## the server lists it (the server refuses chat about a seat that is out).
+## the server lists it (the server refuses chat about a seat that is out). A ghost may name any seat.
 func seat_options() -> Array[int]:
-	var living: Variant = (session.meeting as Dictionary).get("living")
+	var living: Variant = null if ghost else (session.meeting as Dictionary).get("living")
 	var out: Array[int] = []
 	for s in session.seats:
 		if typeof(s) != TYPE_DICTIONARY:
 			continue
 		var seat: int = int((s as Dictionary).get("seat", -1))
-		if seat < 0 or seat == session.seat_id or session.seat_out(seat):
+		if seat < 0 or seat == session.seat_id or (session.seat_out(seat) and not ghost):
 			continue
 		if typeof(living) == TYPE_ARRAY and not (living as Array).has(seat):
 			continue
@@ -206,10 +209,10 @@ func _option(text: String, action: Callable, min_width: float) -> Button:
 func _seat_button(seat: int) -> Button:
 	var btn: Button = _option(_name_of(seat), choose_slot.bind(seat), SEAT_BUTTON_SIZE.x)
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.icon = Assets.texture(ICON_PATH % int(session.seat_info(seat).get("color", 0)))
+	var tint: Color = session.seat_color(seat)
+	btn.icon = Assets.texture(ICON_PATH % int(session.seat_info(seat).get("color", 0)), tint)
 	btn.expand_icon = true
 	btn.add_theme_constant_override("icon_max_width", ICON_SIZE)
-	var tint: Color = session.seat_color(seat)
 	btn.add_theme_color_override("font_color", tint)
 	btn.add_theme_color_override("font_hover_color", tint)
 	return btn
@@ -226,9 +229,10 @@ func _back_row(with_send: bool) -> HBoxContainer:
 		send_btn.disabled = not can_send()
 		send_btn.pressed.connect(send)
 		row.add_child(send_btn)
-		var left: Label = UIKit.make_label(tr("CHAT_LEFT") % lines_left(), 12, MUTED)
-		left.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(left)
+		if not ghost:
+			var left: Label = UIKit.make_label(tr("CHAT_PHRASES_LEFT") % lines_left(), 12, MUTED)
+			left.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(left)
 	return row
 
 

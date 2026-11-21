@@ -2,6 +2,10 @@
 
 Read this first when resuming. Keep it short: done, next, known issues, decisions.
 
+**Since Sat 2026-11-21 evening the game is v2, Cleaners vs Trashers.** Design:
+`docs/design/2026-11-21-cleaners-vs-trashers.md` (wins over older docs). Who does what and when:
+`docs/team/README.md`. Per-person plans: `docs/superpowers/plans/2026-11-21-*.md`.
+
 ## Done
 - 2026-11-13: system design drafted (`docs/superpowers/specs/2026-11-13-uncycled-system-design.md`),
   context files written (`AGENTS.md`, `CLAUDE.md`, `docs/CONTEXT.md`), full architecture views
@@ -20,15 +24,14 @@ Read this first when resuming. Keep it short: done, next, known issues, decision
   other move. Web, Windows and Android (signed debug APK) exports proven on a test project.
 - 2026-11-19: `ContentTests` (server) load the real `content/` and check task consoles, spawns and
   task counts per category; `phase_changed` and `dump_ok` documented in `docs/protocol.md`.
+- 2026-11-21 (event day): scripted bots with meeting talk (PR #1), photo checker app with YOLOE and
+  duplicate-photo check (PR #2, EXIF bypass server-only in PR #4), typed meeting chat and ghost chat
+  end to end, protocol 1 (PR #3, #5). Tests: server 134, Sim 186, bots 236 (+1 skipped, needs
+  Cloudflare keys), all green. Mystery challenge announced: online game + network benchmark on the
+  organisers' networks. Design pivot to v2 (see top).
 
 ## Next
-1. Gameplay: the client's MUST tier in 4 steps: builds, world (map scene + export), match
-   (HUD, 6 mini-games), meetings and results.
-2. Server: report range in `tuning.json`, then the deadline on `ActiveTime`.
-3. Bots: still no owner (the round works with idle bots, but they never do tasks or vote).
-4. Hosting: pick a host that gives `wss://`; until then phones test against a laptop server on LAN.
-5. AI: computer-vision waste scanner (AI dev).
-6. Event: decide how pre-existing work is declared to the jury (rules Art. 8).
+The v2 plan and schedule: `docs/team/README.md`.
 
 ## Known issues
 - Server has 12 colours, client palette has 8 (colours 8-11 draw white). Fixed in gameplay step 1.
@@ -56,7 +59,7 @@ Read this first when resuming. Keep it short: done, next, known issues, decision
 | `reference` stays a separate repo, used as read-only reference | Decided 2026-11-13 |
 | Vote kick-out + poison hits (34%/hit = 3 hits, 25 s per-victim immunity, out at 100%, becomes a reportable pollution pile) | Decided 2026-11-13 |
 | Free dump + witness; one report per pile; clue = zone, time, waste type | Decided 2026-11-13 |
-| Humans talk aloud; bots use quick-chat testimony, polluter bots lie | Decided 2026-11-13 |
+| Humans chat by phrases or typed text (120 characters, 5 typed lines per meeting, word filter, 2 s gap); out players have a ghost chat living players never receive; bots use quick-chat testimony, polluter bots lie | Decided 2026-11-13, free text added 2026-11-21 |
 | 8 seats, 2 polluters, ~6 min round, 60 s talk + 30 s vote | Decided 2026-11-13 |
 | Server on .NET 10 LTS (not 9) | Decided 2026-11-13 |
 | **Event scope: the full design, built as a complete game.** The 28-hour cut (review s5) is dropped | Decided 2026-11-18 |
@@ -71,4 +74,11 @@ Read this first when resuming. Keep it short: done, next, known issues, decision
 | Stretch AI feature | Open |
 | Map setting (look); greybox layout comes with the gameplay design | Open |
 | Default language FR / EN | Open |
-| Server host (needs `wss://`) and web host | Open |
+| Server host (needs `wss://`) and web host | Open (Louay proposes in L5) |
+| **v2 design: Cleaners vs Trashers** (spots via mini-games, bags, machine, upgrades, re-pollute, virus, gas). Replaces the poison, dump, per-player task and 8-seat rows above | Decided 2026-11-21 |
+| Room sizes 6/8/10 with 1/2/2 Trashers, host picks | Replaced 2026-11-21 evening: **locked at 8 seats, 2 Trashers** (server keeps 6/10 support, unused) |
+| Platforms: Android APK, web (also for iPhone), Windows; Windows scans through a QR code on a phone | Decided 2026-11-21 |
+| Camera scan gives points and a daily streak that unlocks skins | Decided 2026-11-21 |
+| Benchmark networks: Ooredoo, Tunisie Telecom 5G, Tunisie Telecom 5G SA (Wi-Fi as reference) | Decided 2026-11-21 |
+| Faouzi is team lead; roles: Faouzi client, Hedi server + bots, Louay scan + benchmark + builds, Yasmin + Khammar art. Replaces "No lead" and the 2026-11-18 roles | Decided 2026-11-21 |
+| Code keeps `Citizen`/`Polluter` names; only screen text says Cleaner/Trasher | Proposed 2026-11-21 |

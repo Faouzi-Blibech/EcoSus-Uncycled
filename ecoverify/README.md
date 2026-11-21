@@ -53,6 +53,7 @@ material is accepted 49% of the time instead of 41% without it, with no more wro
 Local (Windows, from the repo root):
 
 ```powershell
+$env:UNCYCLED_DEV_SKIP_EXIF = "1"   # local tests only: lets the browser tester through
 venv\Scripts\python.exe -m uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
@@ -87,7 +88,7 @@ the sample photos bundled with Ultralytics. The smoke test makes a new random pl
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/verify-daily-photo` | multipart `file`; headers `X-Player-Id` (UUID, required), `X-Tz-Offset-Minutes` (JS `getTimezoneOffset()`); query `skip_exif=true` only works while `allow_skip_exif` is true |
+| POST | `/verify-daily-photo` | multipart `file`; headers `X-Player-Id` (UUID, required), `X-Tz-Offset-Minutes` (JS `getTimezoneOffset()`); no client option can skip the EXIF check |
 | GET | `/players/{id}` | streak, totals, unlocked skins, next skin |
 | GET | `/eco-stats` | totals across all players |
 | GET | `/recycling-guide` | taxonomy and skins |
@@ -98,4 +99,6 @@ Every verify response has `verified`, `reason` (`ok`, `exif`, `no_object`, `not_
 `detected_class`, `confidence_score`, `bbox`, `image_size` `[w, h]` and `contour`
 (`[[x, y], ...]`, 0..1 of the upright photo).
 
-Before a public demo, set `allow_skip_exif` to `false` in `content/eco_verify.json`.
+The EXIF freshness check can only be turned off on the server, for local tests:
+`UNCYCLED_DEV_SKIP_EXIF=1` (the browser tester needs it, since webcam shots carry no EXIF).
+`docker-compose.yml` sets it for local use; never set it on the demo server.

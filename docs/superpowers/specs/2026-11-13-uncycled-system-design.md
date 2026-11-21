@@ -1,7 +1,17 @@
 # Uncycled: System Design
 
-Status: **draft for team approval** (2026-11-13). Owner: lead developer.
+Status: **draft v2 for team approval** (2026-11-14). Owner: lead developer.
 Supersedes the old Python / pygame-ce CLAUDE.md. The timeline in that file no longer applies.
+
+This doc explains **what we build and why**. It does not repeat details that have their own
+source of truth:
+
+| Topic | Source of truth |
+|---|---|
+| Rules and every number | `docs/architecture/04-game-rules.md` (values live in `content/tuning.json`) |
+| Messages and fields | `docs/protocol.md` |
+| Diagrams of every part | `docs/architecture/` |
+| What is decided, what is open, what is next | `PROGRESS.md` |
 
 ---
 
@@ -14,12 +24,12 @@ Theme: recycling and waste management.
 **Why:** win the hackathon with a game the judges play **together, several people in the same
 round**, on their own devices, plus an AI angle that makes the team stand out.
 
-**The game in one line:** citizens clean up a neighbourhood with eco mini-games while one or more
-hidden **polluters** secretly dump waste and sabotage; citizens find clues, call meetings and vote
-the polluter out before the pollution meter fills.
+**The game in one line:** citizens clean up a neighbourhood with eco mini-games while two
+hidden **polluters** secretly dump waste, poison citizens and sabotage; citizens find clues,
+call meetings and vote the polluters out before the pollution meter fills.
 
 **Success at the event:**
-1. 4-8 judges join one room from their phones and laptops (room code / QR) and finish a full round.
+1. 4-8 judges join one room from their phones and laptops (room code) and finish a full round.
 2. Empty seats are filled by AI players so a round works with any number of humans (1 to 8).
 3. The same game runs as a **web game**, a **Windows app** and an **Android app**.
 4. At least one AI feature works live, with an offline fallback when Wi-Fi fails.
@@ -29,25 +39,28 @@ the polluter out before the pollution meter fills.
 **Goals**
 - Real-time multiplayer, 1-8 humans per room, AI bots fill the rest.
 - One client codebase exported to Web, Windows and Android.
-- Reuse the C# rules library from `reference/sim` instead of rewriting rules.
+- Reuse the tested rule components of `reference/sim` instead of rewriting them.
 - Data-driven content (tasks, maps, strings, tuning) so designers and the AI developer add content without code changes.
 
 **Non-goals (for the event)**
-- Accounts, friends, matchmaking lists, cosmetics store, ads, iOS build.
+- Accounts, friends, matchmaking lists, cosmetics store, ads, iOS app (iPhones use the web build).
 - More than one polished map.
-- Voice chat or free-text chat between humans (quick-chat phrases at most).
+- Voice chat. (Typed chat was added later: 120 characters, 5 lines per meeting, word filter.)
 
 **Anti-goals (failure even if it "works")**
 - A round that breaks when the venue Wi-Fi drops (must have a plan B, see section 9).
 - Anything recognisable from the reference game: names, map layouts, art, sounds, text. Rules and pacing only.
 - Three separate codebases.
 - AI that blocks the game while waiting for a model.
+- Bots that ignore what the humans say: bots usually hold most of the votes, so a round where
+  they cannot be convinced is not a game.
+- A judge who is out early and has nothing to do for minutes (open decision, section 11).
 
 ## 3. Approaches considered
 
 | # | Approach | Trade-off | Verdict |
 |---|---|---|---|
-| A | **Godot 4 client (GDScript) + .NET server running the existing C# `sim`** | Godot exports Web + Windows + Android from one project; server reuses `sim` as-is. Two languages (GDScript, C#) | **Picked** |
+| A | **Godot 4 client (GDScript) + .NET server built on the C# `sim` rule components** | Godot exports Web + Windows + Android from one project; the server reuses tested rules. Two languages (GDScript, C#) | **Picked** |
 | B | Godot 4 .NET (C#) client sharing `sim` directly | One language, but Godot C# **cannot export to Web** (still unshipped in 2026) | Rejected: kills the web version |
 | C | TypeScript + Phaser client + .NET server | Best mobile-browser footprint, but Windows/Android need extra wrappers (Electron, Capacitor) and the team chose Godot | Rejected |
 | D | Unity (code-first) + `sim` DLL | Loads `sim` everywhere, but heavy WebGL on phones and the team wants to avoid the Unity editor | Rejected |
@@ -63,15 +76,15 @@ draws, reads input and runs mini-games. That removes the need for C# on the clie
         \             |             /
          \  WebSocket (wss://), JSON messages
           v           v           v
-   +---------------------------------------------+
-   | Uncycled.Server  (ASP.NET Core, .NET 10 (LTS))     |
-   |  RoomManager -> Room (one per room code)    |
-   |    tick loop 20 Hz, command queue           |
-   |    GameState  <- Sim (vendored C# rules)    |
-   |    Bots       (AI seats, same commands)     |
-   |    AI service (LLM providers + offline)     |
-   |  per-client snapshot filter (hidden info)   |
-   +---------------------------------------------+
+   +-----------------------------------------------+
+   | Uncycled.Server  (ASP.NET Core, .NET 10 LTS)  |
+   |  RoomManager -> Room (one per room code)      |
+   |    tick loop 20 Hz, one input queue           |
+   |    MatchEngine (Sim, engine-free C# rules)    |
+   |    Bots       (AI seats, same commands)       |
+   |    AI service (LLM provider + offline)        |
+   |  one per-seat view for humans and bots        |
+   +-----------------------------------------------+
             |  HTTPS (keys in env vars, server only)
             v
         LLM / vision provider (swappable)
@@ -79,134 +92,128 @@ draws, reads input and runs mini-games. That removes the need for C# on the clie
 
 ### 4.1 Authority model
 - **Movement: client-authoritative with sanity checks.** The client moves its own character with
-  Godot physics and sends its position ~15 times/s. The server rejects impossible speed or
-  teleports (speed cap built from the formula in `sim/Movement/MovementSpeed`) and rejects
-  positions on non-walkable cells of the map grid. This is what the reference game does and it
-  avoids writing server-side physics.
+  Godot physics and sends its position 20 times per second. The server applies a generous
+  distance budget and sweeps each move against the map grid, so nobody passes through walls.
+  It is lenient on purpose: an honest player on a bad connection must never be snapped back.
 - **Interactions need range and line of sight.** The server checks distance *and* line of sight
-  on the map's walkable grid (implementing `Sim.Rules.Kill.ILineOfSight`), so nobody can use,
-  report or dump through a wall.
+  on the map grid, so nobody can use, report, hit or clean through a wall.
 - **One unit scale everywhere:** 1 world unit = 1 tile = 32 px. Godot converts at the edge
-  (`Net`), server and `Sim` only see tile units.
-- **Everything else: server-authoritative.** Clients send *requests* (use task, complete task,
-  dump, report, call meeting, vote, sabotage). The server validates with `Sim` (range, cooldown,
-  phase, alive) and broadcasts *results*.
-- **Hidden information stays on the server.** Each client gets a filtered snapshot: only polluters
-  learn who the polluters are. Never send a client a role it may not know.
+  (`Net`); the server and `Sim` only see tile units.
+- **Everything else: server-authoritative.** Clients send *requests*; the server validates with
+  `Sim` (range, cooldown, phase, status) and sends *results*.
+- **Hidden information stays on the server.** One function, `MatchEngine.ViewFor(seat)`, decides
+  what a seat may know. Humans receive it as a snapshot; bots read it directly. Only polluters
+  learn who the polluters are.
 
 ### 4.2 Seats and bots
-A room has N **seats**. Each seat is controlled by a human connection or by a **bot brain**.
-Bots produce the same commands as humans and go through the same validation, so the rules never
-know the difference. Seats are always filled to the room size, so role assignment always has
-enough players.
+A room has 8 **seats**. Each seat is controlled by a human connection or by a **bot brain**.
+Bots produce the same commands as humans, go through the same validation and see the same
+per-seat view, so the rules never know the difference. Seats are always filled to 8, so role
+assignment always has enough players.
 
 Disconnects: when a human drops, a bot takes over the seat **and the seat stays active**. Do not
-apply `Sim`'s `Disconnected` state (it removes the player from living counts, task totals and
-votes); that state is only for seats nobody controls. The client keeps a reconnect token
-(`user://`); reconnecting within the round gives the human their seat back.
+apply `Sim`'s `Disconnected` state (it removes the player from living counts and votes). The
+client keeps a reconnect token (`user://`); reconnecting during the match gives the human the
+seat back, in whatever phase the match is in.
 
 ### 4.3 Server modules (`server/`)
 | Module | Job |
 |---|---|
-| `Sim/` | Vendored copy of `reference/sim/src/Sim` (netstandard2.1), renamed to our theme, plus our new rules (pollution meter, dumps, clues) |
-| `Sim.Tests/` | Vendored xunit tests + tests for every new rule |
-| `Uncycled.Server/Net` | WebSocket endpoint, message (de)serialisation, connection -> seat mapping |
-| `Uncycled.Server/Rooms` | Room codes, lobby, start/end, tick loop, command queue, snapshot filter |
-| `Uncycled.Server/Bots` | Bot brains: citizen bot, polluter bot (state machine below), grid path-finding |
-| `Uncycled.Server/Ai` | `IAiProvider` with `OfflineProvider` + `RemoteProvider`, 3 s timeout, never awaited inside the tick |
-| `Sim/Match`, `Sim/Uncycled`, `Sim/World` | **New engine-free code:** `MatchEngine` (phase flow, command dispatch, task-completion validation), poison, piles, clues, witnesses, pollution meter, win order, map grid + line of sight + A*. Kept inside `Sim` so the whole game runs in unit tests and bot soak tests without a server |
-| `content/` (repo root) | JSON read by the server: tuning, tasks, maps, quick-chat phrase ids. The server sends the client what it needs (tuning, task list, phrase ids) in `welcome`, so both sides never disagree |
+| `Sim/` (vendored part) | The rule components we reuse from `reference/sim`, renamed to our theme. Only about a third of that library is vendored; the list is in `docs/architecture/02-server.md` section 1.1 |
+| `Sim/Match`, `Sim/Uncycled`, `Sim/World` | **New engine-free code:** `MatchEngine` (phase flow, command dispatch, seat views), poison, piles, clues, pollution meter, task ledger, win order, map grid + line of sight + A*. Kept inside `Sim` so the whole game runs in unit tests and bot soak tests without a server |
+| `Sim.Tests/` | Vendored xunit tests (trimmed) + tests for every new rule |
+| `Uncycled.Server/Net` | WebSocket endpoint, message (de)serialisation, rate limit |
+| `Uncycled.Server/Rooms` | Room codes, lobby, the room loop, seats, snapshot writing, event routing |
+| `Uncycled.Server/Bots` | Bot brains (citizen, polluter), memory, testimony, vote policy |
+| `Uncycled.Server/Ai` | `IAiProvider` with `OfflineProvider` + `RemoteProvider`, deadlines per request kind, never awaited inside the tick |
+| `content/` (repo root) | JSON read by the server: tuning, task catalog, maps, phrases, facts. The server sends the client what it needs in `welcome`, so both sides never disagree |
 
-Polluter bot: `WANDER -> FAKE_TASK -> FIND_UNSEEN_SPOT -> DUMP -> LEAVE_AREA -> WANDER`.
-A spot is unseen when no other character is within view radius (later: line of sight).
-All tunables in `content/tuning.json`.
-
-### 4.4 Client modules (`client/`, Godot 4 standard edition, GDScript)
+### 4.4 Client modules (`client/`, Godot 4.7 standard edition, GDScript)
 | Folder | Job |
 |---|---|
-| `autoload/` | `Net` (WebSocket + message bus), `Session` (local mirror of server state), `Settings` |
-| `scenes/` | boot, menu, lobby, round, meeting, results/debrief |
-| `world/` | map scenes, player scene, camera, interpolation of remote players (~100 ms buffer) |
-| `ui/` | HUD, virtual joystick, action buttons, task list, pollution meter, meeting/vote UI |
-| `minigames/` | one scene per eco task; on success sends `task_complete` |
+| `autoload/` | `Net` (WebSocket + message signals), `Session` (local mirror of server state), `Settings`, `Assets` |
+| `scenes/` | boot, menu, lobby, round, meeting, results |
+| `world/` | map scenes, player scene, camera, vision, interpolation of remote players (100 ms buffer) |
+| `ui/` | HUD, virtual joystick, action buttons, task list, pollution meter |
+| `minigames/` | one scene per mini-game type; a finished step sends `task_step` |
 | `assets/` | designers' art and audio (placeholders until real art) |
-| `i18n/` | Godot CSV translations (fr, en); no player-facing text in code |
+| `i18n/` | Godot CSV translations (en, fr); no player-facing text in code |
 
 Screen: landscape 16:9, logical 640x360, stretch mode `canvas_items`, aspect `expand`.
-Touch first: on-screen joystick + buttons, min 48 px targets. Keyboard (WASD/E/Space) for desktop.
+Touch first: on-screen joystick + buttons, min 48 px targets. Keyboard for desktop.
 
-### 4.5 Protocol (first version)
-JSON over WebSocket, one object per message: `{"t": "<type>", ...}`. Full schema lives in
-`docs/protocol.md` (draft v0 written; finalised in phase 1) and is the single source both sides
-follow. All architecture views (context, containers, components, state machines, sequences,
-data, security, deployment, testing) are in `docs/architecture/`.
-- Client -> server: `join`, `ready`, `move`, `use`, `task_complete`, `dump`, `report`, `call_meeting`, `vote`, `sabotage`, `chat_phrase`.
-- Server -> client: `welcome` (seat id, room state), `snapshot` (10-20 Hz, filtered), `event` (meeting started, vote result, player out, game over), `error`.
-- Every message carries a protocol version in `welcome`; mismatch shows "please update".
-Binary encoding (the `PositionCodec` in `sim`) is a later optimisation, not needed for 8 players.
+### 4.5 Protocol
+JSON over WebSocket, one object per message: `{"t": "<type>", ...}`. `docs/protocol.md` is the
+single source both sides follow; the protocol version travels in `hello`, and a mismatch shows
+"please update". Binary encoding is a later optimisation, not needed for 8 players.
 
 ### 4.6 Maps
-Maps are defined later. Contract now: a map is a Godot scene (source of truth) plus an exported
-`content/maps/<id>.json` (walkable grid, spawn points, task consoles, rooms, vents if any) that
-the server loads for range checks and bot path-finding. A headless Godot tool script writes the
-JSON. Map ideas are original; reference-game data is used only for scale (rooms, consoles, walk times).
+The first real map is designed later. Contract now: a map is a Godot scene (source of truth)
+plus an exported `content/maps/<id>.json` (walk grid, zones, consoles, spawns) that the server
+loads for range checks, line of sight and bot path-finding. Collision in the scene must fill
+whole tiles so the client and the server agree on where walls are. A headless Godot tool script
+writes the JSON. Map ideas are original; reference-game data is used only for scale (number of
+rooms and consoles, walk times).
 
-## 5. Rule mapping (reference game -> Uncycled)
+## 5. Rule mapping (reference rules -> Uncycled)
 
-Default proposal; the team confirms in "Open decisions".
+The exact rules are in `docs/architecture/04-game-rules.md`. This table only shows where each
+one comes from.
 
-| `sim` concept | Uncycled | Reuse |
+| Reference concept | Uncycled | Code |
 |---|---|---|
-| Majority / hidden saboteur roles | Citizen / Polluter | `RoleAssigner`, `RoleDefinition` (renamed) |
-| Tasks + task bar, crew wins by tasks | Eco mini-games, cleanup bar | `TaskAssigner`, task progress |
-| Kill | **Poison (decided):** a polluter "hit" adds poison to a citizen (default 34% per hit = 3 hits, 25 s per-victim immunity, in `tuning.json`). At 100% the citizen **becomes pollution** and is out of the round (spectator). Each hit is validated like a kill (alive, not a polluter, in range + line of sight, cooldown, not in a meeting) | `KillValidator`, `KillTimerRules`, `TargetSelector` (renamed); new poison counter |
-| (new) | Poisoned-out citizen leaves a **pollution pile** where they fell; it is reportable once, like a body | `ReportValidator` (as-is) |
-| (new) | Witnesses: any citizen with line of sight when a hit or a dump happens is recorded as a witness (feeds clues and bot testimony) | new rule + tests |
-| Sabotage systems | Smog (vision shrinks, like lights), overflowing bins / landfill fire (critical, 2 players fix) | `Lights`, `CriticalSabotage`, `SabotageCooldown` |
-| (new) | **Dump (decided):** a polluter can dump any time, on a cooldown. It raises the pollution meter and leaves a pile. Each pile is reportable once (starts a meeting) and gives a clue: zone, time, waste type. Cleaning a pile is a short task | new rule + tests |
-| (new) | Clues: zone, time and waste type from piles, plus witness names | new rule + tests |
-| Report / emergency meeting / vote | Same. **Vote kick-out (decided)**: the most-voted player is removed; tie or skip removes nobody | `MeetingSession`, `ReportValidator` (as-is) |
-| Meeting talk | **Decided:** humans talk out loud in the room. Bots post quick-chat lines built from what they really saw ("I saw Green near the river at 2:10"); polluter bots lie. An LLM may later rewrite bot lines (AI feature) | new `Bots/Testimony` |
-| Win checks | Citizens: all tasks done, or every polluter voted out. Polluters: pollution meter full, or polluters >= citizens still in. Check order after each event: polluters all out -> meter full -> parity -> tasks done | `WinChecker` + pollution condition |
+| Two teams, hidden roles | Citizen / Polluter (2 of 8) | `RoleAssigner` (reused) |
+| Tasks, win by tasks | Eco mini-games, task bar shown at meetings | `TaskAssigner` (reused) + new `TaskLedger` |
+| Kill | **Poison:** a covert hit adds 34%; three hits and the citizen is out and leaves a body pile | `KillValidator`, `KillTimerRules` (reused, renamed) + new `PoisonRule` |
+| (new) | **Dump:** raises the pollution meter and leaves a pile with a clue; visible to anyone looking | new |
+| (new) | **Pollution meter:** the round's clock; cleaning piles lowers it | new |
+| (new) | **Clues and signatures:** zone, time, and a waste type that links piles to one polluter | new |
+| Report / emergency meeting / vote | Same; most votes kicks a player out; timed-out votes count as skip | `MeetingSession` (reused, two edits) + new `PileReport` |
+| Meeting talk | Humans chat by phrases or typed text; bots post phrases; humans tap phrases to tell the bots | new `Bots/Testimony`, `Bots/VotePolicy` |
+| Critical sabotage | Landfill fire: two players hold two consoles | `HoldMeltdown`, `SabotageCooldown` (reused) |
+| Lights sabotage | Smog: citizen vision shrinks | new `SmogSystem` |
+| Win checks | Polluters out -> meter full -> parity -> tasks done | new `UncycledWin` |
 
-What `Sim` really gives us: rule components (role and task assignment, kill/report validation,
-meeting and vote tally, win checks, sabotage systems, movement maths), all tested. What it does
-**not** give us: a match loop, command dispatch, task-completion validation, movement
-validation, bots, dumps and clues. Those are new code in `Uncycled.Server/Match` and `Bots`.
-`ReportValidator` reports a body position; dumps need their own "reportable waste" rule.
-`WinChecker` assumes elimination and parity; it gets a pollution-meter condition and an explicit
-win order (decided in section 11).
+What `Sim` really gives us: tested rule **components** (role and task assignment, hit
+validation, cooldowns, meeting and vote tally, the two-console sabotage). What it does **not**
+give us: a match loop, command dispatch, task-completion validation, movement validation,
+seat views, bots, dumps, the meter and clues. Those are new code in `Sim/Match`, `Sim/Uncycled`,
+`Sim/World` and `Uncycled.Server/Bots`.
 
-Rename rule: strip every reference-game name (maps, roles, systems) when vendoring
-(`MapProfile`, `OptionPresets`, `Enums`, `WinChecker` currently contain them).
+Originality rule: when vendoring, rename every reference-game term. Most of those names live in
+files we do not vendor at all.
 
 ## 6. AI features
 
-The team is still choosing. Architecture supports any of them because all AI runs **on the
+The team is still choosing. The architecture supports any of them because all AI runs **on the
 server** (keys never reach a client) behind `IAiProvider`:
-- Offline version always exists (rule-based / scripted JSON); used on error or after 3 s.
-- Calls are async; the room tick never waits. The client shows a "thinking..." state.
-- Vendor-swappable (no SDK types outside `Ai/`).
+- An offline version always exists (rule-based or scripted JSON) and is ready first; an AI
+  result only replaces it if it arrives before that request kind's deadline.
+- Calls are async; the room tick never waits.
+- Vendor-swappable (no vendor types outside `Ai/`).
 
-Candidates from the earlier list that fit multiplayer best: smart bots (polluter/citizen AI),
-AI-voiced bot answers in meetings, AI eco-coach debrief, fresh case per round, waste scanner
-(camera, Android/web only, spike first).
+The bots are the main AI story for the pitch: they see only what their seat sees, remember,
+lie when they are polluters, and listen to what people tell them. On top of that the cheapest
+visible LLM features are natural-language bot lines and an eco-coach debrief. Details and the
+other candidates: `docs/architecture/06-bots-and-ai.md`.
 
 ## 7. Repo layout
 
 ```
 EcoSus-Uncycled/
-├── AGENTS.md            # rules for every coding agent (source of truth)
+├── AGENTS.md            # rules for every coding agent
 ├── CLAUDE.md            # imports AGENTS.md + Claude-only notes
 ├── PROGRESS.md          # done / next / known issues / decisions
+├── README.md
 ├── docs/
 │   ├── CONTEXT.md       # one-file brief to paste into any chatbot
-│   ├── protocol.md      # message schema (phase 1)
-│   └── superpowers/specs/  # design docs (this file)
-├── content/             # shared JSON: tuning, tasks, maps, phrases
+│   ├── protocol.md      # message schema (source of truth)
+│   ├── architecture/    # diagrams and rules (04 = rules source of truth)
+│   └── superpowers/specs/  # this design doc
+├── content/             # JSON read by the server: tuning, tasks, maps, phrases, facts
 ├── server/
 │   ├── Uncycled.sln
-│   ├── Sim/  Sim.Tests/  Uncycled.Server/
+│   ├── Sim/  Sim.Tests/  Uncycled.Server/  Uncycled.Server.Tests/
 │   └── Dockerfile
 ├── client/              # Godot project (project.godot, export_presets.cfg)
 └── reference/        # separate repo, cloned here, gitignored, read-only reference
@@ -214,102 +221,149 @@ EcoSus-Uncycled/
 
 ## 8. Phases
 
-No dates (team plans those). Each phase ends with a demo that proves it. Do risky things first.
+No dates (the team plans those). Each phase ends with a demo that proves it. Risky things first.
 
 | Phase | Goal | Done when |
 |---|---|---|
-| **P0 Foundations + spikes** | Prove the 3 platforms can talk to a hosted server | Repo layout in place; `Sim` vendored, renamed, `dotnet test` green; Godot project opens; a hello client built for **Web, Windows and Android** connects via `wss://` to the deployed server echo endpoint, tested on a **real Android phone browser, an iPhone Safari and the APK**; the plan-B LAN setup tried once (section 9) |
-| **P1 Rooms + movement** | Several people in one room | Create/join by room code; reconnect token; 4+ devices (mix of phone browser, APK, Windows) see each other move smoothly on a **greybox map at final scale** (room count and walk times close to the real map); map JSON export + server walkable grid; `docs/protocol.md` written |
-| **P2 Core loop** | A full round end to end | Roles assigned, 2 mini-games with server task validation, task bar, **dumps + pollution meter + reporting a dump**, emergency meeting, vote, eject, win/lose in the agreed order, results screen; bots fill empty seats and can win |
-| **P3 Recycling identity** | It is *our* game | Clues, one sabotage, bot meeting behaviour (quick-chat testimony, votes), debrief with a real recycling fact |
-| **P4 AI feature** | The AI angle | Chosen core AI feature live with offline fallback; stretch feature if time. **The AI dev spikes the chosen feature from P1 on**, so P4 only integrates it |
-| **P5 Content + polish** | Looks and feels finished | Real art on the greybox layout, sound, FR/EN strings, joystick feel, 30 FPS on a mid-range Android browser |
-| **P6 Event ready** | Nothing breaks on stage | Web build hosted, APK + Windows zip downloadable, server deployed + LAN fallback rehearsed, demo script, 3 full playtests |
+| **P0 Foundations + spikes** | Prove the 3 platforms can talk to a hosted server | Event rules checked (pre-existing code, AI-made assets); Godot 4.7 + export templates and the .NET 10 SDK installed; repo layout in place; the needed `sim` files vendored and renamed, `dotnet test` green; a hello client built for **Web, Windows and Android** connects via `wss://` to the deployed echo endpoint, tested on a **real Android phone browser, an iPhone Safari and the APK**; the plan-B LAN setup tried once (section 9) |
+| **P1 Rooms + movement** | Several people in one room | Create/join by room code; 4+ devices (phone browser, APK, Windows) see each other move smoothly on a **greybox map at final scale**; map JSON export + server walk grid + line of sight; reconnect gives the seat back |
+| **P2 First playable round** | A full round end to end, every MUST rule | Roles, 2 mini-game types with server validation, dump + meter + cleaning, poison, report, meeting with Ready and vote, ejection, wins, results screen; bots fill empty seats, play, vote and follow accusations |
+| **P3 Recycling identity** | It is *our* game | Clues + signatures, landfill fire, bot testimony phrases, debrief with a real recycling fact |
+| **P4 AI feature** | The AI angle | Chosen AI feature live with offline fallback. **The AI dev spikes it from P1 on**, so P4 only integrates it |
+| **P5 Content + polish** | Looks and feels finished | Real art on the greybox layout, sound, EN/FR strings, joystick feel, 30 FPS on a mid-range Android browser |
+| **P6 Event ready** | Nothing breaks on stage | Web build hosted, APK + Windows zip downloadable, server deployed + plan B rehearsed, demo script, 3 full playtests |
 | **Event** | Bug fixes only | Feature freeze holds |
+
+### 8.1 Who builds what in parallel
+
+Two contracts let three developers work at the same time without waiting for each other:
+`docs/protocol.md` (client <-> server) and the `MatchEngine` API (`Apply`, `Tick`, `ViewFor`).
+
+| Track | Owner | P0-P1 | P2 |
+|---|---|---|---|
+| Server shell | Lead | `Net`, `Rooms`, deploy with `wss://`, exports of the hello client | Wire `MatchEngine` into the room loop, snapshots, reconnect |
+| Rules engine | AI dev | Vendor `sim`, `Sim/World` (grid, line of sight, A*), `MatchEngine` skeleton, all in unit tests | Rules, then bots (they only need the engine, not the client) |
+| Client | Gameplay dev | `Net` autoload, menu, lobby, movement + interpolation, joystick | HUD, 2 mini-games, meeting screen, results |
+| Art | Designers | Greybox map layout at final scale, UI wireframes | Characters, tiles, UI kit, in the asset folders |
+
+### 8.2 The cut rule
+
+Scope tiers (MUST / SHOULD / COULD) are in `docs/architecture/04-game-rules.md` section 11.
+Checkpoints, as a share of the time left before the event:
+- by **25%**: P0 and P1 done (devices in one room, moving);
+- by **60%**: P2 done (a full round with bots);
+- at **85%**: feature freeze; only bug fixes, playtests and the demo rehearsal after that.
+
+If a checkpoint is missed, drop COULD, then SHOULD from the bottom up. Never cut a MUST to keep
+a SHOULD, and never cut a platform test to add a feature.
 
 ## 9. Deployment and demo risks
 
 | Risk | Plan |
 |---|---|
-| Web build on `https` cannot open plain `ws://` (mixed content) | Server must have TLS: host on a platform that gives `wss://` (Fly.io / Render / Railway / VPS + Caddy). Decide in P0 |
-| Rooms live in memory | Run **exactly one server instance** (no autoscaling; some hosts route new connections to other instances). WebSocket ping every 10 s; the client reconnects automatically with its token |
-| Free hosting sleeps | Wake the server before the demo; `/health` endpoint |
+| Web build on `https` cannot open plain `ws://` (mixed content) | The server must have TLS: host on a platform that gives `wss://` (Fly.io / Render / Railway / VPS + Caddy). Decide in P0 |
+| Rooms live in memory | Run **exactly one server instance** (no autoscaling; some hosts route new connections to other instances). The client pings every 2 s and reconnects automatically with its token |
+| Free hosting sleeps | Use an always-on plan; wake the server before the demo; `/health` endpoint |
 | Venue Wi-Fi fails | **Plan B1:** devices switch to mobile data / a phone hotspot and keep using the cloud server (no change). **Plan B2:** server on a laptop, APK and Windows app connect to `ws://<laptop-ip>`; a new round starts (no state transfer). Web over a LAN `http` address may hit Godot's secure-context limits: test it in P0, and if it fails the B2 web fallback is dropped |
-| Godot web on phones | Export **without threads** (no SharedArrayBuffer headers needed). Web needs WebAssembly + WebGL 2 and the Compatibility renderer; Safari has known caveats. Test Android Chrome and iPhone Safari every phase. Bring 2-3 spare Android phones with the APK so judges are never blocked |
-| Android export toolchain | Android SDK and JDK 21 exist on the lead's PC; Godot recommends 17 but supports newer, confirm with the pinned version in P0. Debug keystore only; never commit keystores. Enable the `INTERNET` permission |
+| Godot web on phones | Export **without threads** (no special headers needed). Web needs WebAssembly + WebGL 2 and the Compatibility renderer; Safari has known caveats. Test Android Chrome and iPhone Safari every phase. Bring 2-3 spare Android phones with the APK so judges are never blocked |
+| Android export toolchain | Android SDK and JDK 21 exist on the lead's PC; Godot recommends 17 but supports newer, confirm with Godot 4.7 in P0. Debug keystore only; never commit keystores. Enable the `INTERNET` permission |
 | Missing data in builds | Godot does not pack `.json` by default: add `*.json` to each preset's non-resource export filter |
 | Audio on web | Start audio only after the first tap |
+| Event rules | Check that pre-existing code (our `sim` library) and AI-made assets are allowed, and say so openly in the pitch |
 
 ## 10. Testing
 
 - `server/Sim.Tests`: table-driven xunit, one test per rule and a regression test per bug.
-  Vendored tests must stay green. New rules (pollution, dump, clues) get tests first.
+  Vendored tests must stay green. New rules get tests first.
+- Seat views: tests that no view ever contains what its seat may not know.
 - Protocol: round-trip test per message type on the server.
-- Bots: a headless soak test (8 bots, one full round, no exception).
+- Bots: a headless soak test (8 bots, 20 matches, no exception, every match ends).
 - Client and mini-games: verified by playing on a phone, not unit tests.
 
-## 11. Open decisions (team)
+Details: `docs/architecture/10-testing.md`.
 
-Decided 2026-11-13: vote kick-out + poison hits (section 5); free dump + witness; talk aloud +
-bot phrases; **8 seats, 2 polluters**, ~6 min rounds, meetings 60 s talk + 30 s vote (all in
-`tuning.json`). Exact rules and numbers: `docs/architecture/04-game-rules.md`.
+## 11. Decisions
 
-Still open:
-3. Core and stretch AI feature (if the event judges AI explicitly, decide by P1).
-4. Map setting and layout (campus, souk, beach, neighbourhood...).
-5. Default language (FR or EN).
-6. Server host (Fly.io, Render, Railway, VPS) and web host (itch.io or GitHub Pages).
-7. Exact Godot 4.x version to pin (whole team uses the same one).
+Decided by the owner (2026-11-13): multiplayer with judges in one round; Godot + .NET; Web,
+Windows, Android; 8 seats, 2 polluters; vote kick-out; poison hits; free dump + witness; humans
+chat by phrases or typed text and bots use phrases; 60 s talk + 30 s vote.
 
-## 12. Calls made by the designer of this doc (check these)
+Open, most important first:
+1. **What an out player does.** Today: a waiting screen until the round ends (the owner said an
+   out player "can't play"). Recommended alternative: out players keep doing tasks and cleaning
+   as invisible volunteers. It keeps judges playing and removes task reassignment.
+2. **Round length.** With 60 s + 30 s meetings a round lasts 6 to 10 minutes. For about 6
+   minutes in total, shorten meetings or speed up the meter.
+3. Confirm the proposed rules in `04-game-rules.md` (covert poison, meter as the clock, Ready
+   button, bot vote weights, emergency cap, task bar at meetings only).
+4. Core and stretch AI feature.
+5. Map setting and layout (campus, souk, beach, neighbourhood...).
+6. Default language (EN or FR).
+7. Server host (Fly.io, Render, Railway, VPS) and web host (itch.io or GitHub Pages).
+8. Should at least one polluter always be a human when two or more humans play? (Default: random.)
 
-- Client-authoritative movement (simpler, matches the reference game).
+## 12. Calls made in this design (check these)
+
+- Client-authoritative movement with a lenient server check.
 - JSON over WebSocket, not binary or UDP, for the event.
 - AI runs inside the game server, not a separate proxy.
-- `Sim` is vendored (copied) into this repo, not referenced across repos, so teammates only clone one repo.
+- Only the needed parts of `sim` are vendored (copied) into this repo, so teammates clone one
+  repo and rename less.
+- The match engine and the per-seat view live in `Sim` (engine-free), not in the server project.
 - Bots replace disconnected humans without marking the seat disconnected; humans can reclaim it.
-- Interactions are checked for range and line of sight on the server's walkable grid.
-- 1 world unit = 1 tile = 32 px on both sides.
+- 1 world unit = 1 tile = 32 px on both sides; map collision fills whole tiles.
 - One server instance, in-memory rooms; plan B2 starts a fresh round instead of moving state.
-- Dumps and reporting a dump move into P2 (a report needs something to report); greybox map at
-  final scale in P1 so art in P5 does not change distances.
-- Godot version pinned to 4.7 unless a newer stable 4.x is out when installing (the `gamedev`
-  Godot skills target 4.7).
-- Poison details: the victim sees their own poison bar; others do not. Poison does not heal.
-  A poisoned-out citizen becomes a spectator and leaves a reportable pollution pile.
-- Hits and dumps both create witnesses; win check order as in section 5.
-- Each polluter has a secret "signature" waste type; piles carry it, so matching piles link to
-  the same polluter.
-- Cleaning a dump pile is an optional 3 s action that lowers the meter (-2.5%); the meter also
-  rises slowly by itself (+0.08%/s of active play); a landfill fire that expires adds +20%
-  instead of ending the round; a 10:00 match deadline means polluters win.
-- Confirm ejects is on (the ejection screen says if the player was a polluter).
-- Match engine lives in `Sim` (engine-free), not in the server project.
-- Server targets **.NET 10 LTS** (.NET 9 support ended Nov 10, 2026); the lead PC only has the
-  .NET 9 SDK, so installing the .NET 10 SDK is a P0 step.
+- Godot **4.7** (latest stable line), standard edition, pinned for the whole team.
+- Server on **.NET 10 LTS** (.NET 9 support ended on Nov 10, 2026).
+- Bots are shown as bots in the player list.
+- Joining is by a typed 4-letter code; a single QR code points to the web build.
 
-## 13. Design review: challenges and resolutions (2026-11-13)
+## 13. Review 1: challenges and resolutions (2026-11-13)
 
-An adversarial review of this doc and `docs/architecture/` raised 25 issues. All are resolved in
-the architecture docs; the main changes:
+An adversarial review of the first draft raised 25 issues. The main ones and how they ended:
 
 | Issue | Resolution |
 |---|---|
-| Meter filled in ~2.5 min | Rebalanced: dump +5% / 40 s, clean -2.5%, passive +0.08%/s: ~5 min of active play without cleaning, ~8 min with |
-| Meetings could eat the whole demo and chain | 60/30 s kept (owner's choice for in-room talk); all fresh piles reported at meeting start; emergencies capped at 2 per match; 10:00 deadline |
-| Two polluters could stack poison | 34% per hit (3 hits), 25 s hit cooldown, **25 s per-victim immunity** |
-| Victim accusations | Kept on purpose: poison is private, so "X poisoned me" is an unverifiable claim |
-| Humans could not see what bots witnessed | Hit and dump cues go to every seat with vision + LOS; bots use the same rule |
-| Movement check allowed ~8 tiles/s and wall clipping | Distance budget refilled by server time + swept segment on the grid |
-| Snapshots leaked players through walls | Server filters by vision **and** LOS; last visible position kept 0.3 s, never updated |
+| The meter filled in about 2.5 min | Rebalanced (see review 2 for the final numbers) |
+| Meetings could chain | All fresh piles are reported at meeting start; emergencies capped at 2 per match |
+| Two polluters could stack poison | 34% per hit (3 hits), 25 s hit cooldown, 25 s per-victim immunity |
+| Movement check allowed about 8 tiles/s and wall clipping | Distance budget refilled by server time + swept segment on the grid |
+| Snapshots leaked players through walls | The server filters by vision **and** line of sight; last visible position kept 0.3 s |
 | Cleaning had no protocol | `clean_start` / `clean_cancel` / `clean_done`, server-timed |
-| Reconnect state undefined | `welcome.state` schema covers every phase; client routes by phase; reconnect is MUST |
-| Ejecting an idle citizen could win by tasks | Task totals fixed in steps; orphaned tasks reassigned (`task_added`) |
+| Reconnect state undefined | `welcome.state` covers every phase; reconnect is a MUST |
+| Ejecting an idle citizen could win by tasks | Task totals fixed in steps; orphaned tasks reassigned |
 | Timed-out votes let 2 polluters decide | Timed-out votes count as skip |
-| Task bar exposed fake tasks | Task bar published only at meetings |
+| The task bar exposed fake tasks | Task bar published only at meetings |
 | Spectators could scout and talk | Spectators receive no positions until game over |
-| `Sim` round clock resets at meetings | Three clocks: MatchTime, ActiveTime, SinceMeeting |
-| Smog switches, fire holders, sabotage cooldown semantics | Timed smog repair; holders revalidated each tick; cooldown counts from sabotage end |
-| Send/receive queues unbounded, frames vs messages | Latest-snapshot slot + capped event queue; bounded inbox; 4 KB per whole message |
+| `Sim`'s round clock resets at meetings | Three clocks: MatchTime, ActiveTime, SinceMeeting |
+| Fire holders, sabotage cooldown semantics | Holders revalidated each tick; cooldown counts from sabotage end |
+| Queues unbounded, frames vs messages | Latest-snapshot slot + capped event queue; bounded inbox; 4 KB per whole message |
 | .NET 9 out of support | .NET 10 LTS |
-| Scope too big | MUST / SHOULD / COULD tiers in `docs/architecture/04-game-rules.md` section 11; all 3 exports stay MUST |
+| Scope too big | MUST / SHOULD / COULD tiers |
+
+## 14. Review 2: a full re-read of every file (2026-11-14)
+
+A second pass read all the docs against each other and against the `sim` source. It found
+contradictions between docs, claims about `sim` that the code does not support, and design
+holes the first review missed.
+
+| Finding | Fix |
+|---|---|
+| A 10-minute deadline counted meetings, so honest play (three meetings) often lost on time, and the meter could not fill before it. Cleaning piles became pointless | The **meter is the clock**: it rises by itself only during play. A 15-minute cap remains as a safety net |
+| A hit told the victim who the attacker was, so every hit meant an accusation; polluters would never use poison | **Covert poison:** the hit shows nothing and lands 5 s later; the victim only knows who was nearby |
+| Bots hold most votes but could not hear humans, and heard evidence could never reach their vote threshold. Three humans who saw a dump could not get the polluter ejected | Humans tap accusation phrases; bots score them; one eyewitness phrase is enough to move a bot |
+| Remote players would move in a stop-go pattern (moves at 10 Hz, snapshots at 20 Hz) | Moves at 20 Hz |
+| Merging queued moves after a lag spike would cut corners and snap honest players back | Moves applied in order; a more generous distance budget |
+| Hit range of 1.0 tile was too tight with network delay | 1.8 tiles on the server (the reference default), button enabled at 1.5 on the client |
+| Bots had a separate "perception" and a server-side witness list: two filters to keep in sync | One per-seat view (`MatchEngine.ViewFor`) for humans and bots; bot memory replaces the witness list |
+| "Reuse `sim` as-is": the task assigner de-duplicates by type (2 mini-games would give 2 tasks), `ReportValidator` has no line-of-sight check, `WinChecker` was listed as reused and not reused | Task catalog of **entries**; `PileReport`; `UncycledWin`; an explicit vendor list (about a third of `sim`) |
+| Design spec still said 15 moves/s, ping every 10 s, `task_complete`, witness names in clues, engine in the server project | Spec rewritten; it now points to the sources of truth instead of repeating them |
+| Protocol gaps: no roster, no host migration, no Ready, the hit cue named the attacker, mismatched field names between docs | Protocol updated; sequences use its exact names |
+| 60 s discussions with nothing to say | Ready button ends the discussion early |
+| Only citizens could hold fire consoles (a tell for polluters) | Any active player may hold |
+| AI lines "in the player's language" although one line is shown to all; a 3 s timeout would drop most LLM answers | Room language; deadlines per request kind, offline line always ready first |
+| Map collision could differ between Godot and the server grid | Collision must fill whole tiles; the export tool reads the same layer |
+| The freshness check for map JSON relied on file dates | SHA-1 of the scene stored in the JSON |
+| No one checked the event's rules on pre-existing code | Added to P0 |
+| Poison (a MUST) was missing from every phase; cleaning was optional although it is the theme | Both are in P2 and in the MUST tier |
+| Nothing said who builds what first | Parallel tracks and a cut rule (section 8) |

@@ -30,7 +30,10 @@ embedder = ClipEmbedder(T["clip_model"]) if os.environ.get("ECO_DISABLE_CLIP") !
 TACO_PATH = Path(__file__).parent / T["taco_model"]
 taco = Detector(str(TACO_PATH)) if TACO_PATH.exists() and os.environ.get("ECO_DISABLE_TACO") != "1" else None
 verifier = Verifier(store, detector, embedder, taco=taco)
-TESTER_HTML = (Path(__file__).parent / "ecoverify" / "tester.html").read_text(encoding="utf-8")
+# Server-side switch for local tests only (browser webcam shots carry no EXIF);
+# clients can never turn the freshness check off.
+SKIP_EXIF = os.environ.get("UNCYCLED_DEV_SKIP_EXIF") == "1"
+TESTER_HTML =(Path(__file__).parent / "ecoverify" / "tester.html").read_text(encoding="utf-8")
 
 
 def _player_id(value: str | None) -> str:
@@ -63,6 +66,7 @@ async def health():
         "model": detector.loaded_name,
         "taco_model": Path(taco.loaded_name).name if taco is not None and taco.loaded_name else None,
         "taco_classes": len(config.TACO) if taco is not None else 0,
+        "dev_skip_exif": SKIP_EXIF,
         "clip": embedder is not None and embedder.available,
         "clip_error": embedder.error if embedder is not None else "disabled",
     }
@@ -71,7 +75,6 @@ async def health():
 @app.post("/verify-daily-photo")
 async def verify_photo(
     file: UploadFile = File(...),
-    skip_exif: bool = False,
     x_player_id: str | None = Header(default=None),
     x_tz_offset_minutes: int | None = Header(default=None),
 ):
@@ -81,7 +84,7 @@ async def verify_photo(
     data = await file.read(T["max_upload_bytes"] + 1)
     if len(data) > T["max_upload_bytes"]:
         raise HTTPException(status_code=413, detail="Image too large (max 10 MB).")
-    return await run_in_threadpool(verifier.verify, data, pid, _now(), x_tz_offset_minutes, skip_exif)
+    return await run_in_threadpool(verifier.verify, data, pid, _now(), x_tz_offset_minutes, SKIP_EXIF)
 
 
 @app.get("/players/{player_id}")

@@ -94,8 +94,11 @@ namespace Uncycled.Bots.Neural
             internal override Choice Choose(SeatView view, bool[] mask)
             {
                 ObservationBuilder.Build(view, Mem, Mem.Map, Engine!.Config, view.MatchTime, _obs);
-                int action = _policy.Act(_obs, mask, _temperature, Rng);
-                if (action < 0 || action >= mask.Length || !mask[action])
+                // the network knows the first ActionCatalogue.Count actions only; the v2 actions are scripted-only
+                var known = new bool[ActionCatalogue.Count];
+                Array.Copy(mask, known, ActionCatalogue.Count);
+                int action = _policy.Act(_obs, known, _temperature, Rng);
+                if (action < 0 || action >= known.Length || !known[action])
                 {
                     throw new InvalidOperationException("the policy chose invalid action " + action);
                 }

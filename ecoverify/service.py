@@ -62,7 +62,7 @@ class Verifier:
         except Exception:
             return _fail("no_object", "Could not read that image.")
 
-        if not (skip_exif and t["allow_skip_exif"]):
+        if not skip_exif:  # set only by the server (UNCYCLED_DEV_SKIP_EXIF), never by a request
             ok, why = check_live(raw, now_utc, t["max_photo_age_seconds"], tz_offset_minutes)
             if not ok:
                 return _fail("exif", f"Live-capture check failed: {why}")

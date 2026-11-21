@@ -59,6 +59,7 @@ namespace Sim.World
         private readonly List<ConsoleDef> _consoles;
         private readonly List<ZoneDef> _zones;
         private readonly List<ZoneDef> _dark;
+        private readonly List<ZoneDef> _gasRooms;
         private readonly List<Vec2> _spawns;
 
         public MapData(
@@ -71,7 +72,8 @@ namespace Sim.World
             IReadOnlyList<Vec2> spawns,
             string id = "",
             string version = "",
-            IReadOnlyList<ZoneDef>? dark = null)
+            IReadOnlyList<ZoneDef>? dark = null,
+            IReadOnlyList<ZoneDef>? gasRooms = null)
         {
             if (width <= 0 || height <= 0)
             {
@@ -99,6 +101,7 @@ namespace Sim.World
             Version = version ?? "";
             _zones = new List<ZoneDef>(zones ?? Array.Empty<ZoneDef>());
             _dark = new List<ZoneDef>(dark ?? Array.Empty<ZoneDef>());
+            _gasRooms = new List<ZoneDef>(gasRooms ?? Array.Empty<ZoneDef>());
             _consoles = new List<ConsoleDef>(consoles ?? Array.Empty<ConsoleDef>());
             _spawns = new List<Vec2>(spawns);
 
@@ -131,6 +134,9 @@ namespace Sim.World
 
         /// <summary>Dark rooms: rects where a citizen sees less (vision.dark_mult). Empty when the map has none.</summary>
         public IReadOnlyList<ZoneDef> Dark => _dark;
+
+        /// <summary>Rooms the Toxic Gas can fill (map gas_rooms). Empty when the map has none.</summary>
+        public IReadOnlyList<ZoneDef> GasRooms => _gasRooms;
 
         public IReadOnlyList<ConsoleDef> Consoles => _consoles;
 

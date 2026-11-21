@@ -1,6 +1,6 @@
 {
 	"id": "greybox_01",
-	"version": "sha1-95edb819984f",
+	"version": "sha1-1b5303eed2f3",
 	"tile_px": 32,
 	"width": 42,
 	"height": 24,
@@ -77,6 +77,44 @@
 			"rect": [
 				1.0,
 				17.0,
+				8,
+				6
+			]
+		}
+	],
+	"gas_rooms": [
+		{
+			"id": "gas_dark",
+			"rect": [
+				33.0,
+				17.0,
+				8,
+				6
+			]
+		},
+		{
+			"id": "gas_depot",
+			"rect": [
+				21.0,
+				17.0,
+				6,
+				6
+			]
+		},
+		{
+			"id": "gas_garden",
+			"rect": [
+				15.0,
+				1.0,
+				6,
+				6
+			]
+		},
+		{
+			"id": "gas_market",
+			"rect": [
+				1.0,
+				1.0,
 				8,
 				6
 			]
@@ -185,20 +223,11 @@
 	],
 	"special": [
 		{
-			"id": "fire_a",
-			"kind": "fire_fix",
+			"id": "machine",
+			"kind": "machine",
 			"pos": [
-				2.5,
-				9.5
-			],
-			"range": 1.2
-		},
-		{
-			"id": "fire_b",
-			"kind": "fire_fix",
-			"pos": [
-				39.5,
-				9.5
+				1.5,
+				10.5
 			],
 			"range": 1.2
 		},
@@ -253,6 +282,14 @@
 		[
 			21.5,
 			13.5
+		],
+		[
+			17.5,
+			12.5
+		],
+		[
+			22.5,
+			12.5
 		]
 	]
 }

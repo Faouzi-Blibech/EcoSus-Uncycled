@@ -55,6 +55,19 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
+        public void Log_IgnoresGhostLinesAndTypedLines()
+        {
+            TestMatch m = TestMatch.Create();
+            MeetingLog log = NewLog(m);
+            var outSeats = new byte[] { 1, 2 };
+            log.Add(new ChatEvent(1, "sus", new[] { ChatArg.ForSeat(3) }, null, true, outSeats), 5f);
+            log.Add(new ChatEvent(4, null, new ChatArg[0], "bot 3 is sus", false, null), 6f);
+            Assert.Empty(log.Acts);
+            log.Add(Say(4, "sus", ChatArg.ForSeat(3)), 7f);
+            Assert.Single(log.Acts);
+        }
+
+        [Fact]
         public void Log_ParsesSlotsIntoActs()
         {
             TestMatch m = TestMatch.Create();
@@ -90,7 +103,7 @@ namespace Uncycled.Bots.Tests
             byte target = OtherSeat(seen);
             MeetingLog log = NewLog(m);
             log.Add(Say(seen, "sus", ChatArg.ForSeat(target)), 5f);
-            log.Add(Say(seen, "saw_hit", ChatArg.ForSeat(target), ChatArg.ForZone("depot")), 6f);
+            log.Add(Say(seen, "sus", ChatArg.ForSeat(target)), 6f); // a vague line: one accuser counts once
 
             model.ApplyChat(log, mem, Self);
 

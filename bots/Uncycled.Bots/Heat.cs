@@ -89,7 +89,7 @@ namespace Uncycled.Bots
                 {
                     Log?.Clear();
                 }
-                else if (e is ChatEvent chat)
+                else if (e is ChatEvent chat && !chat.Ghost) // ghost chat never reaches the living bots
                 {
                     Log?.Add(chat, matchTime);
                 }

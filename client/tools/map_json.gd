@@ -3,14 +3,14 @@ extends RefCounted
 ## Map scene -> the JSON the server's ContentLoader reads. Pure functions, no autoloads.
 
 const TILE_PX: int = 32
-const SPAWN_COUNT: int = 8
+const SPAWN_COUNT: int = 10
 const REQUIRED_SPECIALS: Dictionary = {
 	"meeting_button": "emergency",
-	"fire_a": "fire_fix",
-	"fire_b": "fire_fix",
 	"smog_panel": "smog_fix",
+	"machine": "machine",
 }
-const SPECIAL_KINDS: PackedStringArray = ["emergency", "fire_fix", "smog_fix"]
+## fire_fix stays allowed (not required) until the server and bots drop fire (Hedi, Task 5).
+const SPECIAL_KINDS: PackedStringArray = ["emergency", "fire_fix", "smog_fix", "machine"]
 
 
 static func _tiles(v: float) -> float:
@@ -70,11 +70,11 @@ static func build(root: MapRoot) -> Dictionary:
 				consoles.append(_entry(m))
 			"spawn":
 				spawns.append([_tiles(m.position.x), _tiles(m.position.y)])
-			"dark":
-				pass  # written from dark_of (sorted by id) below
+			"dark", "gas_room":
+				pass  # written from dark_of / gas_rooms_of (sorted by id) below
 			_:
 				special.append(_entry(m))
-	return {
+	var d: Dictionary = {
 		"id": root.map_id,
 		"tile_px": TILE_PX,
 		"width": rect.end.x,
@@ -82,20 +82,37 @@ static func build(root: MapRoot) -> Dictionary:
 		"walk": walk,
 		"zones": zones,
 		"dark": dark_of(root),
+		"gas_rooms": gas_rooms_of(root),
 		"consoles": consoles,
 		"special": special,
 		"spawns": spawns,
 	}
+	# A layout map separates furniture (blocks walking) from walls (block sight too): the server
+	# reads the optional "sight" grid for line of sight.
+	if root.has_method("sight_rows"):
+		var sight: Array[String] = root.call("sight_rows")
+		if not sight.is_empty():
+			d["sight"] = sight
+	return d
 
 
 ## The dark rooms of a map scene as [{"id", "rect": [x, y, w, h]}] in tiles, sorted by id. They go to
 ## the server JSON (build) and the client's .meta.json (meta_text); the server reads them to cut a citizen's vision.
 static func dark_of(root: MapRoot) -> Array:
+	return _rects_of(root, "dark")
+
+
+## The toxic gas rooms of a map scene, same shape as dark_of. They go to the server JSON only.
+static func gas_rooms_of(root: MapRoot) -> Array:
+	return _rects_of(root, "gas_room")
+
+
+static func _rects_of(root: MapRoot, kind: String) -> Array:
 	var ms: Array[MapMarker] = root.markers()
 	ms.sort_custom(_by_id)
 	var out: Array = []
 	for m in ms:
-		if m.kind == "dark":
+		if m.kind == kind:
 			out.append({"id": m.marker_id, "rect": [_tiles(m.position.x), _tiles(m.position.y), m.zone_size_tiles.x, m.zone_size_tiles.y]})
 	return out
 
@@ -104,29 +121,38 @@ static func dark_of(root: MapRoot) -> Array:
 ## a rect needs an id, a size of at least 1x1, to lie inside the map, to cover a walkable cell, and
 ## to hold no spawn.
 static func dark_errors(d: Dictionary, dark: Array) -> PackedStringArray:
+	return _rect_errors(d, dark, "dark")
+
+
+## Same rules as dark_errors for the gas rooms of `gas_rooms_of`.
+static func gas_errors(d: Dictionary, gas: Array) -> PackedStringArray:
+	return _rect_errors(d, gas, "gas room")
+
+
+static func _rect_errors(d: Dictionary, rects: Array, label: String) -> PackedStringArray:
 	var errors := PackedStringArray()
 	var walk: Array = d.get("walk", [])
 	var width: int = int(d.get("width", 0))
 	var height: int = int(d.get("height", 0))
 	var seen: Dictionary = {}
 	var placed: Dictionary = {}  # id -> Rect2 of the valid rects so far
-	for e in dark:
+	for e in rects:
 		var id: String = String(e.get("id", "")) if e is Dictionary else ""
 		if id.is_empty():
-			errors.append("dark rect without an id")
+			errors.append("%s rect without an id" % label)
 			continue
 		if seen.has(id):
-			errors.append("duplicate dark id %s" % id)
+			errors.append("duplicate %s id %s" % [label, id])
 		seen[id] = true
 		var r: Variant = e.get("rect")
 		if not (r is Array and r.size() == 4 and _is_num(r[0]) and _is_num(r[1]) and _is_num(r[2]) and _is_num(r[3])):
-			errors.append("dark %s rect must be [x, y, w, h]" % id)
+			errors.append("%s %s rect must be [x, y, w, h]" % [label, id])
 			continue
 		var rect := Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3]))
 		if rect.size.x < 1.0 or rect.size.y < 1.0:
-			errors.append("dark %s rect %s must be at least 1x1 tiles" % [id, str(r)])
+			errors.append("%s %s rect %s must be at least 1x1 tiles" % [label, id, str(r)])
 		elif rect.position.x < 0.0 or rect.position.y < 0.0 or rect.end.x > width or rect.end.y > height:
-			errors.append("dark %s rect %s is outside the map" % [id, str(r)])
+			errors.append("%s %s rect %s is outside the map" % [label, id, str(r)])
 		else:
 			var walkable: bool = false
 			for y in range(int(rect.position.y), int(rect.end.y)):
@@ -134,15 +160,15 @@ static func dark_errors(d: Dictionary, dark: Array) -> PackedStringArray:
 					if not _is_wall(walk, Vector2i(x, y)):
 						walkable = true
 			if not walkable:
-				errors.append("dark %s rect %s covers no walkable cell" % [id, str(r)])
+				errors.append("%s %s rect %s covers no walkable cell" % [label, id, str(r)])
 			for s in d.get("spawns", []):
 				if rect.has_point(Vector2(float(s[0]), float(s[1]))):
-					errors.append("dark %s rect %s contains the spawn %s" % [id, str(r), str(s)])
+					errors.append("%s %s rect %s contains the spawn %s" % [label, id, str(r), str(s)])
 			# Two lights would take the ambient away twice there: black even inside the player's light.
 			# Rects that only share an edge are fine.
 			for other in placed:
 				if rect.intersects(placed[other], false):
-					errors.append("dark %s overlaps dark %s" % [id, other])
+					errors.append("%s %s overlaps %s %s" % [label, id, label, other])
 			placed[id] = rect
 	return errors
 
@@ -170,6 +196,15 @@ static func root_errors(root: MapRoot) -> PackedStringArray:
 	if rect.position != Vector2i.ZERO:
 		errors.append("used tile rect starts at %s, it must start at (0, 0)" % str(rect.position))
 	return errors
+
+
+## True when a 4-neighbour of `c` is on the map's outer ring (the recycling machine stands at the map edge).
+static func _next_to_edge(c: Vector2i, width: int, height: int) -> bool:
+	for step in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var n: Vector2i = c + step
+		if n.x == 0 or n.y == 0 or n.x == width - 1 or n.y == height - 1:
+			return true
+	return false
 
 
 static func _is_num(v: Variant) -> bool:
@@ -232,6 +267,9 @@ static func validate(d: Dictionary) -> PackedStringArray:
 				errors.append("%s pos must be [x, y]" % id)
 			elif _is_wall(walk, _cell(c["pos"])):
 				errors.append("%s at %s is on a wall or outside the map" % [id, str(c["pos"])])
+	for c in (d["special"] if d.get("special") is Array else []):
+		if c is Dictionary and c.get("kind") == "machine" and _is_pair(c.get("pos")) and not _next_to_edge(_cell(c["pos"]), width, height):
+			errors.append("%s at %s must be next to the map edge" % [String(c.get("id", "")), str(c["pos"])])
 	for id in REQUIRED_SPECIALS:
 		if not special_kinds.has(id):
 			errors.append("missing special marker %s" % id)

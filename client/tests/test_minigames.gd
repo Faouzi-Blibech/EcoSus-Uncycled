@@ -690,3 +690,73 @@ func test_closing_by_hand_or_meeting_shows_no_toast() -> bool:
 	layer.close_all()
 	assert_eq(_toast_text(layer), "", "close button")
 	return true
+
+
+var _sent_spots: Array[String] = []
+
+
+func _count_spot(spot: String) -> void:
+	_sent_spots.append(spot)
+
+
+func _spot_layer() -> Node:
+	var layer: Node = track(load("res://minigames/minigame_layer.tscn").instantiate())
+	_now = 0.0
+	_sent_ids.clear()
+	_sent_spots.clear()
+	layer.clock = _now_s
+	layer.send_step = _count_send
+	layer.send_spot = _count_spot
+	return layer
+
+
+## v2: use_ok kind "spot" opens the console's mini-game; finishing it sends spot_done for that spot.
+func test_spot_use_ok_opens_the_game_and_sends_spot_done() -> bool:
+	Session.task_types["sort_waste"] = {"min_s": 4.0, "consoles": ["bins_a", "bins_b"]}
+	var layer: Node = _spot_layer()
+	layer._on_use_ok({"kind": "spot", "type": "sort_waste", "console": "bins_b"})
+	assert_true(layer.is_open(), "use_ok kind spot opens the game")
+	var m: Minigame = layer._current
+	assert_eq(m.step, 1, "the step of its console")
+	assert_eq(layer._console_id, "bins_b", "walk-away check on the spot")
+	m.finish_step()
+	_now = 3.9
+	m.poll()
+	assert_eq(_sent_spots.size(), 0, "nothing before min_s")
+	_now = 4.1
+	m.poll()
+	assert_eq(_sent_spots, ["bins_b"] as Array[String], "spot_done for the spot")
+	assert_eq(_sent_ids.size(), 0, "no task_step in v2")
+	assert_true(not layer.is_open(), "closed after the send")
+	layer._on_use_ok({"kind": "spot", "type": "sort_waste", "console": "bins_a", "step": 1})
+	assert_eq((layer._current as Minigame).step, 1, "the server's step wins")
+	layer.close_all()
+	Session.task_types.erase("sort_waste")
+	return true
+
+
+## With the Cleaning Tool the server wants min_s * tool_time_mult, so the client waits that long only.
+func test_spot_game_with_the_tool_waits_the_shorter_time() -> bool:
+	var old_tuning: Dictionary = Session.tuning
+	Session.task_types["sort_waste"] = {"min_s": 4.0, "consoles": ["bins_a"]}
+	Session.tuning = {"spots": {"tool_time_mult": 0.5}}
+	Session.has_tool = true
+	var layer: Node = _spot_layer()
+	layer._on_use_ok({"kind": "spot", "type": "sort_waste", "console": "bins_a"})
+	var m: Minigame = layer._current
+	m.finish_step()
+	_now = 2.1
+	m.poll()
+	assert_eq(_sent_spots, ["bins_a"] as Array[String], "sent after 4 s x 0.5")
+	Session.has_tool = false
+	Session.tuning = old_tuning
+	Session.task_types.erase("sort_waste")
+	return true
+
+
+func test_registry_base_type_names_the_spot_art() -> bool:
+	assert_eq(MinigameRegistry.base_type("sort_waste"), "sort_waste", "exact")
+	assert_eq(MinigameRegistry.base_type("sort_waste_depot"), "sort_waste", "variant")
+	assert_eq(MinigameRegistry.base_type("rinse_bottles_market"), "rinse_bottles", "variant")
+	assert_eq(MinigameRegistry.base_type("nothing"), "", "unknown")
+	return true
