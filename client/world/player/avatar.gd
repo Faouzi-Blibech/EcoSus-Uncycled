@@ -69,7 +69,7 @@ func set_poison_tint(level: int) -> void:
 
 func _apply() -> void:
 	_label.text = _name
-	var tex: Texture2D = Assets.texture(ICON_PATH % _icon_index)
+	var tex: Texture2D = Assets.texture(ICON_PATH % _icon_index, _color)
 	_icon.texture = tex
 	var biggest: float = maxf(tex.get_width(), tex.get_height())
 	_icon.scale = Vector2.ONE * (ICON_PX / biggest)
