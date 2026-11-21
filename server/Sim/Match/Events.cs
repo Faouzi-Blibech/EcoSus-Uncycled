@@ -155,6 +155,72 @@ namespace Sim.Match
         public int? Step { get; }
     }
 
+    /// <summary>delivered {bags, meter}. To the deliverer: bags dropped in this delivery, meter after it.</summary>
+    public sealed class DeliveredEvent : GameEvent
+    {
+        public DeliveredEvent(byte seat, int bags, float meter)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Bags = bags;
+            Meter = meter;
+        }
+
+        public byte Seat { get; }
+
+        public int Bags { get; }
+
+        public float Meter { get; }
+    }
+
+    /// <summary>upgrade_offer {items}. To the deliverer.</summary>
+    public sealed class UpgradeOfferEvent : GameEvent
+    {
+        public UpgradeOfferEvent(byte seat, IReadOnlyList<UpgradeKind> items)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Items = items;
+        }
+
+        public byte Seat { get; }
+
+        public IReadOnlyList<UpgradeKind> Items { get; }
+    }
+
+    /// <summary>upgrade_ok {item}. To the picker.</summary>
+    public sealed class UpgradeOkEvent : GameEvent
+    {
+        public UpgradeOkEvent(byte seat, UpgradeKind item)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Item = item;
+        }
+
+        public byte Seat { get; }
+
+        public UpgradeKind Item { get; }
+    }
+
+    /// <summary>spot_cleaned. To the cleaner: the spot is clean and Bags is the new bag count.</summary>
+    public sealed class SpotCleanedEvent : GameEvent
+    {
+        public SpotCleanedEvent(byte seat, string spot, int bags)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Spot = spot;
+            Bags = bags;
+        }
+
+        public byte Seat { get; }
+
+        public string Spot { get; }
+
+        public int Bags { get; }
+    }
+
     /// <summary>task_progress. To the owner.</summary>
     public sealed class TaskProgressEvent : GameEvent
     {
@@ -255,6 +321,51 @@ namespace Sim.Match
         public byte Actor { get; }
 
         public Vec2 Position { get; }
+    }
+
+    /// <summary>repollute_ok {cooldown, count}. To the Trasher: Count is the re-pollutes so far.</summary>
+    public sealed class RepolluteOkEvent : GameEvent
+    {
+        public RepolluteOkEvent(byte seat, float cooldown, int count)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Cooldown = cooldown;
+            Count = count;
+        }
+
+        public byte Seat { get; }
+
+        public float Cooldown { get; }
+
+        public int Count { get; }
+    }
+
+    /// <summary>ability_unlocked {choices}. To the Trasher at the unlock_after-th re-pollute; the choices are virus and gas.</summary>
+    public sealed class AbilityUnlockedEvent : GameEvent
+    {
+        public AbilityUnlockedEvent(byte seat)
+            : base(Only(seat))
+        {
+            Seat = seat;
+        }
+
+        public byte Seat { get; }
+    }
+
+    /// <summary>ability_ok {ability}. To the Trasher that picked.</summary>
+    public sealed class AbilityOkEvent : GameEvent
+    {
+        public AbilityOkEvent(byte seat, TrasherAbility ability)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Ability = ability;
+        }
+
+        public byte Seat { get; }
+
+        public TrasherAbility Ability { get; }
     }
 
     /// <summary>hit_ok {cooldown}. To the hitter.</summary>
@@ -543,5 +654,89 @@ namespace Sim.Match
         public IReadOnlyList<TimelineEntry> Timeline { get; }
 
         public float MatchTime { get; }
+    }
+
+    /// <summary>gas_warning {room, in_s}. To everyone.</summary>
+    public sealed class GasWarningEvent : GameEvent
+    {
+        public GasWarningEvent(string room, float inS)
+            : base(null)
+        {
+            Room = room;
+            InS = inS;
+        }
+
+        public string Room { get; }
+
+        public float InS { get; }
+    }
+
+    /// <summary>gas_done {room}. To everyone, when the warning ends.</summary>
+    public sealed class GasDoneEvent : GameEvent
+    {
+        public GasDoneEvent(string room)
+            : base(null)
+        {
+            Room = room;
+        }
+
+        public string Room { get; }
+    }
+
+    /// <summary>mask_used. To the masked seat that the gas did not kill.</summary>
+    public sealed class MaskUsedEvent : GameEvent
+    {
+        public MaskUsedEvent(byte seat)
+            : base(Only(seat))
+        {
+            Seat = seat;
+        }
+
+        public byte Seat { get; }
+    }
+
+    /// <summary>infected {countdown}. To the victim only: seconds until the virus puts them out.</summary>
+    public sealed class InfectedEvent : GameEvent
+    {
+        public InfectedEvent(byte seat, float countdown)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Countdown = countdown;
+        }
+
+        public byte Seat { get; }
+
+        public float Countdown { get; }
+    }
+
+    /// <summary>healed {by}. To the cured seat.</summary>
+    public sealed class HealedEvent : GameEvent
+    {
+        public HealedEvent(byte seat, byte by)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            By = by;
+        }
+
+        public byte Seat { get; }
+
+        public byte By { get; }
+    }
+
+    /// <summary>virus_planted {spot}. To the planting Trasher only.</summary>
+    public sealed class VirusPlantedEvent : GameEvent
+    {
+        public VirusPlantedEvent(byte seat, string spot)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Spot = spot;
+        }
+
+        public byte Seat { get; }
+
+        public string Spot { get; }
     }
 }

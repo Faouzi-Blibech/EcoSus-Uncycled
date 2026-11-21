@@ -452,8 +452,7 @@ namespace Uncycled.Bots.Tests
                 SeatView pv = _m.Engine.ViewFor(polluter);
                 PlayerView witness = pv.Players.First(p => Vec2.Distance(p.Position, pv.Me.Position) <= 1.0f && !pv.Me.Partners.Contains(p.Seat));
                 Reporter = witness.Seat;
-                Assert.True(_m.Engine.Apply(polluter, new DumpCommand()).IsOk);
-                int pile = _m.Engine.Piles.All[0].Id;
+                int pile = _m.SeedDump(polluter).Id;
                 Assert.True(_m.Engine.Apply(Reporter, new ReportCommand(pile)).IsOk);
                 Assert.Equal(MatchPhase.Meeting, _m.Engine.Phase);
                 _log = new MeetingLog(_m.Content.Phrases!);

@@ -32,11 +32,12 @@ namespace Sim.Tests
         public static readonly Vec2 FireAPos = new Vec2(2.5f, 1.5f);
         public static readonly Vec2 FireBPos = new Vec2(17.5f, 1.5f);
         public static readonly Vec2 SmogPos = new Vec2(12.5f, 8.5f);
+        public static readonly Vec2 MachinePos = new Vec2(1.5f, 5.5f);
 
         /// <summary>A far corner used to park seats that should not matter.</summary>
         public static readonly Vec2 Corner = new Vec2(18.5f, 8.5f);
 
-        public static MapData FromAscii(string[] rows, IReadOnlyList<ConsoleDef> consoles, IReadOnlyList<ZoneDef> zones, IReadOnlyList<Vec2> spawns, IReadOnlyList<ZoneDef>? dark = null)
+        public static MapData FromAscii(string[] rows, IReadOnlyList<ConsoleDef> consoles, IReadOnlyList<ZoneDef> zones, IReadOnlyList<Vec2> spawns, IReadOnlyList<ZoneDef>? dark = null, IReadOnlyList<ZoneDef>? gasRooms = null)
         {
             int h = rows.Length;
             int w = rows[0].Length;
@@ -52,8 +53,15 @@ namespace Sim.Tests
                 }
             }
 
-            return new MapData(w, h, walk, sight, zones, consoles, spawns, "test_map", "v1", dark);
+            return new MapData(w, h, walk, sight, zones, consoles, spawns, "test_map", "v1", dark, gasRooms);
         }
+
+        /// <summary>Two gas rooms: gas_w (x 1..5, y 1..4) and gas_e (x 14..18, y 1..4), clear of the spawns, the button and the corner.</summary>
+        public static readonly IReadOnlyList<ZoneDef> GasRooms = new List<ZoneDef>
+        {
+            new ZoneDef("gas_w", 1f, 1f, 4f, 3f),
+            new ZoneDef("gas_e", 14f, 1f, 4f, 3f),
+        };
 
         public static MapData Map(IReadOnlyList<ZoneDef>? dark = null)
         {
@@ -66,6 +74,7 @@ namespace Sim.Tests
                 new ConsoleDef("fire_a", ConsoleKind.FireFix, FireAPos, 1.2f),
                 new ConsoleDef("fire_b", ConsoleKind.FireFix, FireBPos, 1.2f),
                 new ConsoleDef("smog_panel", ConsoleKind.SmogFix, SmogPos, 1.2f),
+                new ConsoleDef("machine", ConsoleKind.Machine, MachinePos, 1.2f),
             };
             var zones = new List<ZoneDef>
             {
@@ -77,7 +86,7 @@ namespace Sim.Tests
                 new Vec2(9.5f, 4.5f), new Vec2(10.5f, 4.5f), new Vec2(11.5f, 4.5f), new Vec2(9.5f, 5.5f),
                 new Vec2(11.5f, 5.5f), new Vec2(9.5f, 6.5f), new Vec2(10.5f, 6.5f), new Vec2(11.5f, 6.5f),
             };
-            return FromAscii(Rows, consoles, zones, spawns, dark);
+            return FromAscii(Rows, consoles, zones, spawns, dark, GasRooms);
         }
 
         public static List<TaskTypeDef> TaskTypes()
@@ -209,5 +218,16 @@ namespace Sim.Tests
         }
 
         public static PlayerState P(MatchEngine e, byte seat) => e.Find(seat) ?? throw new InvalidOperationException("no seat");
+
+        /// <summary>Puts a dump pile (the Trasher's signature) at a point without the v1 dump action.</summary>
+        public static Pile SeedDump(MatchEngine e, byte by, Vec2 at) =>
+            e.Piles.AddDump(at, e.Map.ZoneAt(at), e.MatchTime, P(e, by).Signature!.Value, by);
+
+        /// <summary>Moves a seat onto a console (its exact position).</summary>
+        public static void StandAt(MatchEngine e, byte seat, string consoleId)
+        {
+            ConsoleDef console = e.Map.FindConsole(consoleId) ?? throw new InvalidOperationException("no console " + consoleId);
+            e.TestTeleport(seat, console.Position);
+        }
     }
 }

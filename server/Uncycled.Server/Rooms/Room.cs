@@ -61,7 +61,8 @@ public sealed class Room
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
         });
-        int n = content.Config.Seats;
+        int n = content.Config.RoomSizes.Max();
+        Size = content.Config.DefaultSize;
         _seats = new Seat[n];
         for (int i = 0; i < n; i++)
         {
@@ -72,6 +73,12 @@ public sealed class Room
     }
 
     public string Code { get; }
+
+    /// <summary>Seats in play for the next match: the host picks it in the lobby (rooms.sizes). The room holds the largest size.</summary>
+    public int Size { get; private set; }
+
+    /// <summary>Testing only: "polluter" or "citizen" gives the host that role at match start. Off (null) unless the env var UNCYCLED_DEV_HOST_ROLE is set.</summary>
+    internal string? DevHostRole { get; set; } = Environment.GetEnvironmentVariable("UNCYCLED_DEV_HOST_ROLE");
 
     // ---------- thread-safe surface ----------
 
@@ -290,12 +297,15 @@ public sealed class Room
                 return;
             }
 
-            foreach (Seat s in _seats)
+            if (HumanCount < Size)
             {
-                if (s.Control == SeatControl.Empty)
+                foreach (Seat s in _seats)
                 {
-                    seat = s;
-                    break;
+                    if (s.Control == SeatControl.Empty)
+                    {
+                        seat = s;
+                        break;
+                    }
                 }
             }
 
@@ -338,7 +348,18 @@ public sealed class Room
 
         SeatView? state = rejoin && _engine != null ? _engine.ViewFor(seat.Id) : null;
         string phase = _engine == null ? "lobby" : Wire.Snake(_engine.Phase);
-        conn.Enqueue(Wire.Welcome(Code, seat.Id, seat.Token ?? "", _hostSeat, _content, phase, state, _seats, SeatIsOut));
+        conn.Enqueue(Wire.Welcome(Code, seat.Id, seat.Token ?? "", _hostSeat, _content, phase, state, _seats, SeatIsOut, Size));
+        IReadOnlyList<UpgradeKind>? openOffer = rejoin ? _engine?.OpenUpgradeOffer(seat.Id) : null;
+        if (openOffer != null)
+        {
+            // an open Recycling Machine offer is not in the welcome: send it again right after it
+            string? offerJson = Wire.Event(new UpgradeOfferEvent(seat.Id, openOffer));
+            if (offerJson != null)
+            {
+                conn.Enqueue(offerJson);
+            }
+        }
+
         if (_engine == null)
         {
             BroadcastLobby();
@@ -471,6 +492,9 @@ public sealed class Room
             case "set_color":
                 HandleSetColor(seat, conn, msg);
                 return;
+            case "set_size":
+                HandleSetSize(seat, conn, msg);
+                return;
             case "start":
                 HandleStart(seat, conn);
                 return;
@@ -536,6 +560,36 @@ public sealed class Room
         BroadcastLobby();
     }
 
+    private void HandleSetSize(Seat seat, Connection conn, ClientMessage msg)
+    {
+        if (_engine != null)
+        {
+            conn.Enqueue(Codec.Rejected("set_size", "wrong_phase"));
+            return;
+        }
+
+        if (seat.Id != _hostSeat)
+        {
+            conn.Enqueue(Codec.Rejected("set_size", "not_allowed"));
+            return;
+        }
+
+        if (!Codec.TryGetInt(msg.Root, "size", out int size))
+        {
+            conn.Enqueue(Codec.Error("bad_field", "set_size"));
+            return;
+        }
+
+        if (Array.IndexOf(_content.Config.RoomSizes, size) < 0 || size < HumanCount)
+        {
+            conn.Enqueue(Codec.Rejected("set_size", "target_invalid"));
+            return;
+        }
+
+        Size = size;
+        BroadcastLobby();
+    }
+
     private void HandleStart(Seat seat, Connection conn)
     {
         if (_engine != null)
@@ -552,23 +606,31 @@ public sealed class Room
 
         var added = new List<Seat>();
         var setups = new List<SeatSetup>();
+        int active = _seats.Count(s => s.Control != SeatControl.Empty);
         foreach (Seat s in _seats)
         {
-            if (s.Control == SeatControl.Empty)
+            if (s.Control == SeatControl.Empty && active < Size)
             {
                 s.Control = SeatControl.Bot;
                 s.Name = NameRules.Unique("Bot " + (s.Id + 1), TakenNames());
                 s.Color = FreeColor();
                 added.Add(s);
+                active++;
             }
 
-            setups.Add(new SeatSetup(s.Id, s.Name, s.Color));
+            if (s.Control != SeatControl.Empty)
+            {
+                setups.Add(new SeatSetup(s.Id, s.Name, s.Color));
+            }
         }
+
+        byte? forcedPolluter = DevHostRole == "polluter" && _hostSeat >= 0 ? (byte)_hostSeat : null;
+        byte? forcedCitizen = DevHostRole == "citizen" && _hostSeat >= 0 ? (byte)_hostSeat : null;
 
         try
         {
             var rng = new XorShiftRandom((ulong)Random.Shared.NextInt64());
-            _engine = new MatchEngine(_content.Config, _content.Map, setups, _content.Tasks, rng, _content.Phrases, _content.Filter);
+            _engine = new MatchEngine(_content.Config.ForSize(Size), _content.Map, setups, _content.Tasks, rng, _content.Phrases, _content.Filter, forcedPolluter, forcedCitizen);
         }
         catch (Exception ex)
         {
@@ -701,7 +763,7 @@ public sealed class Room
 
     private void BroadcastLobby()
     {
-        string json = Wire.Lobby(_seats, _hostSeat);
+        string json = Wire.Lobby(_seats, _hostSeat, Size, _content.Config.RoomSizes);
         foreach (Seat s in _seats)
         {
             if (s.Control == SeatControl.Human && s.Conn != null)

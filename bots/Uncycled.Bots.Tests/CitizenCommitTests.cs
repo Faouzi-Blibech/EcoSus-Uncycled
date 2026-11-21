@@ -268,7 +268,7 @@ namespace Uncycled.Bots.Tests
             return rig;
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void ScriptedCitizens_FailChanceOne_NeverCompleteAStep_ButZeroDoes()
         {
             TestMatch failing = TestMatch.Create(5);
@@ -316,7 +316,7 @@ namespace Uncycled.Bots.Tests
             public void Think(MatchEngine engine, byte seat, float dt, Action<ICommand> send) { }
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void NeuralBrain_IsNotAskedWhileCommitted_AndTheStepCompletes()
         {
             TestMatch m = TestMatch.Create(6);
@@ -357,7 +357,7 @@ namespace Uncycled.Bots.Tests
             return new MatchRunner(o, 0, content, HostBrains.Scripted(BotsSettings.Load("none"), content));
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Host_SendsNoDecisionFrameWhileCommitted_AndTheRewardReachesTheNextFrame()
         {
             MatchRunner r = TaskRewardRunner();

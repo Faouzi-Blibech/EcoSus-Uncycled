@@ -11,7 +11,7 @@ namespace Sim.Tests
         /// <summary>The sabotage opening lock is not what these tests are about: they sabotage at once.</summary>
         private static MatchConfig NoOpeningLock()
         {
-            return new MatchConfig { SabotageStartCooldownS = 0f };
+            return new MatchConfig { TrasherStartCooldownS = 0f };
         }
 
         private static MatchConfig ShortMeetings(float emergencyMin = 15f)
@@ -24,7 +24,7 @@ namespace Sim.Tests
         [Theory]
         [InlineData("early", RejectReason.OnCooldown)]
         [InlineData("far", RejectReason.OutOfRange)]
-        [InlineData("fire", RejectReason.FireActive)]
+        [InlineData("fire", RejectReason.FireActive, Skip = "v1 rule, out of play in v2")]
         [InlineData("none_left", RejectReason.NoEmergenciesLeft)]
         [InlineData("out", RejectReason.NotAllowed)]
         [InlineData("ok", null)]
@@ -183,7 +183,7 @@ namespace Sim.Tests
 
         // ---------- fire ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Fire_is_fixed_by_two_holders_and_cooldown_starts_at_the_end()
         {
             MatchEngine e = Playing(NoOpeningLock());
@@ -217,7 +217,7 @@ namespace Sim.Tests
             Assert.True(e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).IsOk);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Fire_expiry_adds_20_and_does_not_end_the_match()
         {
             MatchEngine e = Playing(NoOpeningLock());
@@ -231,7 +231,7 @@ namespace Sim.Tests
             Assert.Equal(MatchPhase.Playing, e.Phase);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Meeting_clears_an_active_fire()
         {
             MatchEngine e = Playing(ShortMeetings(0f));
@@ -249,12 +249,12 @@ namespace Sim.Tests
         }
 
         [Fact]
-        public void Sabotage_is_locked_for_the_opening_seconds_like_hit_and_dump()
+        public void Sabotage_is_locked_for_the_opening_seconds()
         {
             MatchEngine e = Playing();
             byte pol = Polluter(e);
 
-            Assert.Equal(RejectReason.OnCooldown, e.Apply(pol, new SabotageCommand(SabotageKind.Fire)).Reason);
+            Assert.Equal(RejectReason.OnCooldown, e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).Reason);
             Assert.Equal(10f, e.ViewFor(pol).Me.Cooldowns!.Sabotage, 2);
             Advance(e, 9.8f);
             Assert.Equal(RejectReason.OnCooldown, e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).Reason);
@@ -266,8 +266,8 @@ namespace Sim.Tests
         [Fact]
         public void Sabotage_opening_lock_comes_from_the_config()
         {
-            MatchEngine e = Playing(new MatchConfig { SabotageStartCooldownS = 0f });
-            Assert.True(e.Apply(Polluter(e), new SabotageCommand(SabotageKind.Fire)).IsOk);
+            MatchEngine e = Playing(new MatchConfig { TrasherStartCooldownS = 0f });
+            Assert.True(e.Apply(Polluter(e), new SabotageCommand(SabotageKind.Smog)).IsOk);
         }
 
         // ---------- smog ----------
@@ -490,9 +490,7 @@ namespace Sim.Tests
             byte pol = Polluter(e);
             byte cit = Citizen(e);
             ParkOthers(e, pol, cit);
-            e.TestTeleport(pol, new Vec2(3.5f, 6.5f));
-            Advance(e, 10.2f);
-            Assert.True(e.Apply(pol, new DumpCommand()).IsOk);
+            SeedDump(e, pol, new Vec2(3.5f, 6.5f));
             e.TestTeleport(pol, Corner);
             e.TestTeleport(cit, new Vec2(6.5f, 6.5f));
             Assert.Single(e.ViewFor(cit).Piles);

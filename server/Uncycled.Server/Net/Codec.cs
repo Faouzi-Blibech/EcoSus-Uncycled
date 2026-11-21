@@ -21,7 +21,7 @@ public sealed class ClientMessage
 /// <summary>Client message parsing and the small server messages that do not need room state.</summary>
 public static class Codec
 {
-    public const int ProtocolVersion = 1;
+    public const int ProtocolVersion = 2;
     public const string ServerBuild = "0.1.0";
     public const int MaxMessageBytes = 4096;
     public const int MaxNameLength = 16;
@@ -199,6 +199,95 @@ public static class Codec
                 return true;
             }
 
+            case "spot_done":
+            {
+                string? spot = GetString(r, "spot");
+                if (string.IsNullOrEmpty(spot) || spot.Length > 64)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new SpotDoneCommand(spot);
+                return true;
+            }
+
+            case "repollute":
+            {
+                string? spot = GetString(r, "spot");
+                if (string.IsNullOrEmpty(spot) || spot.Length > 64)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new RepolluteCommand(spot);
+                return true;
+            }
+
+            case "plant_virus":
+            {
+                string? spot = GetString(r, "spot");
+                if (string.IsNullOrEmpty(spot) || spot.Length > 64)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new PlantVirusCommand(spot);
+                return true;
+            }
+
+            case "heal":
+            {
+                if (!TryByte(r, "target", out byte target))
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new HealCommand(target);
+                return true;
+            }
+
+            case "pick_ability":
+            {
+                string? ability = GetString(r, "ability");
+                if (ability == "virus")
+                {
+                    cmd = new PickAbilityCommand(TrasherAbility.Virus);
+                    return true;
+                }
+
+                if (ability == "gas")
+                {
+                    cmd = new PickAbilityCommand(TrasherAbility.Gas);
+                    return true;
+                }
+
+                error = "bad_field";
+                return false;
+            }
+
+            case "pick_upgrade":
+            {
+                string? item = GetString(r, "item");
+                UpgradeKind kind;
+                switch (item)
+                {
+                    case "backpack": kind = UpgradeKind.Backpack; break;
+                    case "tool": kind = UpgradeKind.Tool; break;
+                    case "heal": kind = UpgradeKind.Heal; break;
+                    case "mask": kind = UpgradeKind.Mask; break;
+                    default:
+                        error = "bad_field";
+                        return false;
+                }
+
+                cmd = new PickUpgradeCommand(kind);
+                return true;
+            }
+
             case "task_step":
             {
                 if (!TryGetInt(r, "task", out int taskId))
@@ -263,6 +352,12 @@ public static class Codec
                 if (kind == "smog")
                 {
                     cmd = new SabotageCommand(SabotageKind.Smog);
+                    return true;
+                }
+
+                if (kind == "machine")
+                {
+                    cmd = new SabotageCommand(SabotageKind.Machine);
                     return true;
                 }
 
@@ -365,6 +460,19 @@ public static class Codec
                 }
 
                 cmd = new ChatTextCommand(text);
+                return true;
+            }
+
+            case "gas":
+            {
+                string? room = GetString(r, "room");
+                if (string.IsNullOrEmpty(room) || room.Length > 64)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new GasCommand(room);
                 return true;
             }
 

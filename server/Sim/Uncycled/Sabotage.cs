@@ -5,7 +5,7 @@ namespace Sim.Uncycled
 {
     /// <summary>
     /// One shared sabotage cooldown, counted on ActiveTime from the END of the previous sabotage;
-    /// the first sabotage is locked for the opening seconds of the match (sabotage.start_cooldown_s).
+    /// the first sabotage is locked for the opening seconds of the match (trasher.start_cooldown_s).
     /// Frozen (shown as full) while a sabotage is running.
     /// </summary>
     public sealed class SabotageCooldown
@@ -154,6 +154,57 @@ namespace Sim.Uncycled
             {
                 _holders[i] = null;
             }
+        }
+    }
+
+    /// <summary>
+    /// Recycling Machine jam: deliveries are refused while Jammed. One Cleaner fixes it by holding fix at the
+    /// machine for machine.fix_s; leaving range drops the repair (same shape as SmogSystem).
+    /// </summary>
+    public sealed class MachineSystem
+    {
+        public MachineSystem(string? consoleId)
+        {
+            ConsoleId = consoleId;
+        }
+
+        public string? ConsoleId { get; }
+
+        public bool Available => ConsoleId != null;
+
+        public bool Jammed { get; private set; }
+
+        public byte? RepairSeat { get; private set; }
+
+        public float RepairElapsed { get; private set; }
+
+        internal void Jam()
+        {
+            Jammed = true;
+            CancelRepair();
+        }
+
+        internal void Clear()
+        {
+            Jammed = false;
+            CancelRepair();
+        }
+
+        internal void BeginRepair(byte seat)
+        {
+            RepairSeat = seat;
+            RepairElapsed = 0f;
+        }
+
+        internal void AdvanceRepair(float dt)
+        {
+            RepairElapsed += dt;
+        }
+
+        internal void CancelRepair()
+        {
+            RepairSeat = null;
+            RepairElapsed = 0f;
         }
     }
 

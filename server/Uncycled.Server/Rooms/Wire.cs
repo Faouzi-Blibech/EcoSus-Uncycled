@@ -51,11 +51,24 @@ public static class Wire
 
     // ---------- lobby / welcome ----------
 
-    public static string Lobby(IReadOnlyList<Seat> seats, int hostSeat) =>
+    private static void WriteSizes(Utf8JsonWriter w, int size, IReadOnlyList<int> sizes)
+    {
+        w.WriteNumber("size", size);
+        w.WriteStartArray("sizes");
+        foreach (int n in sizes)
+        {
+            w.WriteNumberValue(n);
+        }
+
+        w.WriteEndArray();
+    }
+
+    public static string Lobby(IReadOnlyList<Seat> seats, int hostSeat, int size, IReadOnlyList<int> sizes) =>
         JsonOut.Build(w =>
         {
             w.WriteString("t", "lobby");
             w.WriteNumber("host_seat", hostSeat);
+            WriteSizes(w, size, sizes);
             w.WriteStartArray("seats");
             foreach (Seat s in seats)
             {
@@ -76,7 +89,7 @@ public static class Wire
             w.WriteEndArray();
         });
 
-    public static string Welcome(string code, int seat, string token, int hostSeat, ContentBundle content, string phase, SeatView? state, IReadOnlyList<Seat> seats, Func<byte, bool> isOut) =>
+    public static string Welcome(string code, int seat, string token, int hostSeat, ContentBundle content, string phase, SeatView? state, IReadOnlyList<Seat> seats, Func<byte, bool> isOut, int size = 0) =>
         JsonOut.Build(w =>
         {
             w.WriteString("t", "welcome");
@@ -84,6 +97,7 @@ public static class Wire
             w.WriteNumber("seat", seat);
             w.WriteString("token", token);
             w.WriteNumber("host_seat", hostSeat);
+            WriteSizes(w, size > 0 ? size : content.Config.DefaultSize, content.Config.RoomSizes);
             w.WritePropertyName("tuning");
             w.WriteRawValue(content.TuningJson);
             w.WritePropertyName("tasks");
@@ -188,14 +202,7 @@ public static class Wire
         }
 
         w.WriteString("status", Snake(me.Status));
-        if (me.Poison.HasValue && me.Role == Role.Citizen)
-        {
-            w.WriteNumber("poison", me.Poison.Value);
-        }
-        else
-        {
-            w.WriteNull("poison");
-        }
+        w.WriteNull("poison"); // poison is gone in v2: always null
 
         w.WriteStartArray("tasks");
         foreach (TaskInfo t in me.Tasks)
@@ -204,6 +211,9 @@ public static class Wire
         }
 
         w.WriteEndArray();
+        WriteBags(w, me);
+        WriteTrasherFields(w, me);
+        WriteInfected(w, me);
         if (me.Cooldowns != null)
         {
             WriteCooldowns(w, "cooldowns", me.Cooldowns);
@@ -317,11 +327,9 @@ public static class Wire
             w.F("vision", me.Vision);
             w.F("smog_level", extras?.SmogLevel ?? 0f);
             w.WriteString("status", Snake(me.Status));
-            if (me.Role == Role.Citizen && me.Poison.HasValue)
-            {
-                w.WriteNumber("poison", me.Poison.Value);
-            }
-
+            WriteBags(w, me);
+            WriteTrasherFields(w, me);
+            WriteInfected(w, me);
             if (me.Cooldowns != null)
             {
                 WriteCooldowns(w, "cd", me.Cooldowns);
@@ -329,6 +337,38 @@ public static class Wire
 
             w.WriteNumber("emergencies_left", v.EmergenciesLeft);
             w.WriteEndObject();
+
+            w.WriteStartObject("machine");
+            w.WriteBoolean("jammed", extras?.MachineJammed ?? false);
+            if (extras?.MachineRepairElapsed != null)
+            {
+                w.F("repair_t", extras.MachineRepairElapsed.Value);
+            }
+
+            w.WriteEndObject();
+
+            if (extras?.GasRoom != null)
+            {
+                w.WriteStartObject("gas");
+                w.WriteString("room", extras.GasRoom);
+                w.F("in_s", extras.GasInS);
+                w.WriteEndObject();
+            }
+            else
+            {
+                w.WriteNull("gas");
+            }
+
+            w.WriteStartArray("spots");
+            foreach (SpotView s in v.Spots)
+            {
+                w.WriteStartObject();
+                w.WriteString("id", s.Id);
+                w.WriteString("state", Snake(s.State));
+                w.WriteEndObject();
+            }
+
+            w.WriteEndArray();
 
             if (me.Status != PlayerStatus.Out)
             {
@@ -361,11 +401,55 @@ public static class Wire
             WriteSabotage(w, "sabotage", v.Sabotage, extras?.RepairElapsed);
         });
 
+    /// <summary>bags, cap, tool, heals and masks: Cleaners only (a Trasher never carries bags).</summary>
+    private static void WriteBags(Utf8JsonWriter w, MyView me)
+    {
+        if (me.Role != Role.Citizen)
+        {
+            return;
+        }
+
+        w.WriteNumber("bags", me.Bags);
+        w.WriteNumber("cap", me.BagCap);
+        w.WriteBoolean("tool", me.HasTool);
+        w.WriteNumber("heals", me.Heals);
+        w.WriteNumber("masks", me.Masks);
+    }
+
+    /// <summary>repollutes and ability: Trashers only (a Cleaner's message never mentions them).</summary>
+    private static void WriteTrasherFields(Utf8JsonWriter w, MyView me)
+    {
+        if (me.Role != Role.Polluter)
+        {
+            return;
+        }
+
+        w.WriteNumber("repollutes", me.Repollutes);
+        if (me.Ability == TrasherAbility.None)
+        {
+            w.WriteNull("ability");
+        }
+        else
+        {
+            w.WriteString("ability", Snake(me.Ability));
+        }
+    }
+
+    /// <summary>infected_s: only while the viewer is infected (the engine leaves it null for every other seat).</summary>
+    private static void WriteInfected(Utf8JsonWriter w, MyView me)
+    {
+        if (me.InfectedS.HasValue)
+        {
+            w.F("infected_s", me.InfectedS.Value);
+        }
+    }
+
     private static void WriteCooldowns(Utf8JsonWriter w, string name, CooldownView cd)
     {
         w.WriteStartObject(name);
-        w.F("hit", cd.Hit);
-        w.F("dump", cd.Dump);
+        w.F("repollute", cd.Repollute);
+        w.F("virus", cd.Virus);
+        w.F("gas", cd.Gas);
         w.F("sabotage", cd.Sabotage);
         w.WriteEndObject();
     }
@@ -543,7 +627,7 @@ public static class Wire
                 {
                     w.WriteString("t", "use_ok");
                     w.WriteString("console", e.ConsoleId);
-                    w.WriteString("kind", Snake(e.Kind));
+                    w.WriteString("kind", e.Kind == ConsoleKind.Task ? "spot" : Snake(e.Kind));
                     if (e.TaskId.HasValue)
                     {
                         w.WriteNumber("task", e.TaskId.Value);
@@ -558,6 +642,63 @@ public static class Wire
                     {
                         w.WriteNumber("step", e.Step.Value);
                     }
+                });
+
+            case SpotCleanedEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "spot_cleaned");
+                    w.WriteString("spot", e.Spot);
+                    w.WriteNumber("bags", e.Bags);
+                });
+
+            case DeliveredEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "delivered");
+                    w.WriteNumber("bags", e.Bags);
+                    w.F("meter", e.Meter);
+                });
+
+            case UpgradeOfferEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "upgrade_offer");
+                    w.WriteStartArray("items");
+                    foreach (UpgradeKind item in e.Items)
+                    {
+                        w.WriteStringValue(Snake(item));
+                    }
+
+                    w.WriteEndArray();
+                });
+
+            case UpgradeOkEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "upgrade_ok");
+                    w.WriteString("item", Snake(e.Item));
+                });
+
+            case InfectedEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "infected");
+                    w.F("countdown", e.Countdown);
+                });
+
+            case HealedEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "healed");
+                    w.WriteNumber("by", (int)e.By);
+                });
+
+            case VirusPlantedEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "virus_planted");
+                    w.WriteString("spot", e.Spot);
                 });
 
             case TaskProgressEvent e:
@@ -605,6 +746,31 @@ public static class Wire
                     w.WriteString("kind", Snake(e.Kind));
                     w.WriteNumber("seat", (int)e.Actor);
                     w.Pos("pos", e.Position);
+                });
+
+            case RepolluteOkEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "repollute_ok");
+                    w.F("cooldown", e.Cooldown);
+                    w.WriteNumber("count", e.Count);
+                });
+
+            case AbilityUnlockedEvent _:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "ability_unlocked");
+                    w.WriteStartArray("choices");
+                    w.WriteStringValue("virus");
+                    w.WriteStringValue("gas");
+                    w.WriteEndArray();
+                });
+
+            case AbilityOkEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "ability_ok");
+                    w.WriteString("ability", Snake(e.Ability));
                 });
 
             case HitOkEvent e:
@@ -744,6 +910,24 @@ public static class Wire
                     w.WriteString("t", "game_over");
                     WriteGameOverBody(w, e);
                 });
+
+            case GasWarningEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "gas_warning");
+                    w.WriteString("room", e.Room);
+                    w.F("in_s", e.InS);
+                });
+
+            case GasDoneEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "gas_done");
+                    w.WriteString("room", e.Room);
+                });
+
+            case MaskUsedEvent _:
+                return JsonOut.Build(w => w.WriteString("t", "mask_used"));
 
             default:
                 return null;

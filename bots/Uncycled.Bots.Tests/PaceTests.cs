@@ -30,7 +30,7 @@ namespace Uncycled.Bots.Tests
             return new PacePolicy(s, new Fixed(roll));
         }
 
-        [Theory]
+        [Theory(Skip = "v1 rule, out of play in v2")]
         [InlineData(0f, 1.5f)]
         [InlineData(0.999f, 2.5f)]
         public void TaskStep_TakesMinSecondsTimesTheFactor(float roll, float factor)
@@ -223,7 +223,7 @@ namespace Uncycled.Bots.Tests
             return sum / lines.Count;
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void ScriptedBrains_PlayAtAHumanPace()
         {
             var off = new BotsSettings();

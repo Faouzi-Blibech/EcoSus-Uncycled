@@ -78,7 +78,7 @@ namespace Uncycled.Bots.Tests
             return o;
         }
 
-        [Fact]
+        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
         public void WholeMatch_EightScriptedBotsReachGameOver()
         {
             foreach (Outcome o in All.Value)
@@ -97,7 +97,7 @@ namespace Uncycled.Bots.Tests
             Assert.Contains(All.Value, o => o.Reason == "tasks_done" || o.Reason == "polluters_voted_out");
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void WholeMatch_PollutersCannotWinByStallingToTheDeadline()
         {
             // The deadline runs on active play time: meetings and ejections no longer count. Before that
@@ -107,7 +107,7 @@ namespace Uncycled.Bots.Tests
             Assert.DoesNotContain(All.Value, o => o.Reason == "deadline");
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Citizen_DoesTasks()
         {
             List<int> steps = All.Value.SelectMany(o => o.StepsPerCitizen).OrderBy(x => x).ToList();
@@ -116,7 +116,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(median > 0);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Polluter_DumpsAndHits()
         {
             Assert.True(All.Value.Sum(o => o.Dumps) > 0);

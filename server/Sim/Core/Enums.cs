@@ -16,6 +16,8 @@ namespace Sim.Core
     {
         Poison,
         Vote,
+        Gas,
+        Virus,
     }
 
     public enum MatchPhase
@@ -69,6 +71,7 @@ namespace Sim.Core
     {
         Smog,
         Fire,
+        Machine,
     }
 
     public enum SabotageEndResult
@@ -100,6 +103,7 @@ namespace Sim.Core
     {
         Hit,
         Dump,
+        Repollute,
     }
 
     public enum ActKind
@@ -122,6 +126,7 @@ namespace Sim.Core
         PollutionFull,
         Deadline,
         Parity,
+        MeterFull,
     }
 
     /// <summary>Same names as protocol.md section 7 (action_rejected.reason).</summary>
@@ -142,6 +147,37 @@ namespace Sim.Core
         TooLong,
         TextLimit,
         PhraseLimit,
+        BagsFull,
+        SpotClean,
+        SpotDirty,
+        NotUnlocked,
+        NoBags,
+        MachineJammed,
+        NoItem,
+    }
+
+    /// <summary>Recycling Machine upgrades (spec section 5). Same names as protocol 2 (pick_upgrade.item).</summary>
+    public enum UpgradeKind
+    {
+        Backpack,
+        Tool,
+        Heal,
+        Mask,
+    }
+
+    /// <summary>A cleaning spot: every task console is one (spec section 5).</summary>
+    public enum SpotState
+    {
+        Dirty,
+        Clean,
+    }
+
+    /// <summary>The lethal ability a Trasher picks after the third re-pollute (spec section 6).</summary>
+    public enum TrasherAbility
+    {
+        None,
+        Virus,
+        Gas,
     }
 
     public enum DeadlineClock
@@ -158,6 +194,7 @@ namespace Sim.Core
         Report,
         Meeting,
         Ejection,
+        Infected,
     }
 
     public enum ChatArgKind
@@ -188,6 +225,13 @@ namespace Sim.Core
                 case RejectReason.TooLong: return "too_long";
                 case RejectReason.TextLimit: return "text_limit";
                 case RejectReason.PhraseLimit: return "phrase_limit";
+                case RejectReason.BagsFull: return "bags_full";
+                case RejectReason.SpotClean: return "spot_clean";
+                case RejectReason.SpotDirty: return "spot_dirty";
+                case RejectReason.NotUnlocked: return "not_unlocked";
+                case RejectReason.NoBags: return "no_bags";
+                case RejectReason.MachineJammed: return "machine_jammed";
+                case RejectReason.NoItem: return "no_item";
                 default: return "not_allowed";
             }
         }
@@ -201,6 +245,7 @@ namespace Sim.Core
                 case GameOverReason.PollutionFull: return "pollution_full";
                 case GameOverReason.Deadline: return "deadline";
                 case GameOverReason.Parity: return "parity";
+                case GameOverReason.MeterFull: return "meter_full";
                 default: return "deadline";
             }
         }
