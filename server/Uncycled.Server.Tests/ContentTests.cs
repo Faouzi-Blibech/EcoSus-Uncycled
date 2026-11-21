@@ -147,6 +147,18 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void The_play_map_loads_with_its_sight_grid_and_gas_rooms()
+        {
+            ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null), ContentLoader.PlayMapId);
+
+            Assert.Equal(ContentLoader.PlayMapId, content.MapId);
+            Assert.Equal(
+                new[] { "gas_amphi", "gas_club", "gas_lounge", "gas_office" },
+                content.Map.GasRooms.Select(z => z.Id).OrderBy(x => x, System.StringComparer.Ordinal).ToArray());
+            Assert.Equal(10, content.Map.Spawns.Count);
+        }
+
+        [Fact]
         public void Map_without_a_dark_key_has_no_dark_rooms()
         {
             using JsonDocument doc = JsonDocument.Parse(TinyMap + "}");

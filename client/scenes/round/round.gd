@@ -54,6 +54,11 @@ var _spot_views: Dictionary = {}
 var _gas_overlay: GasOverlay = null
 var _avatars_holder: Node2D = null
 var _fx_holder: Node2D = null
+## Y-sorted layer for depth: players and the map's occluders (art drawn in front of a player who
+## stands above its base line, such as a tree top).
+var _depth: Node2D = null
+const OCCLUDER_BEHIND_ALPHA: float = 0.55
+var _occluders: Node2D = null
 var _world_shown: bool = true
 var _avatars: Dictionary = {}
 var _piles: Dictionary = {}
@@ -130,14 +135,21 @@ func _ready() -> void:
 	add_child(_gas_overlay)
 	_piles_holder = Node2D.new()
 	add_child(_piles_holder)
+	_depth = Node2D.new()
+	_depth.y_sort_enabled = true
+	add_child(_depth)
 	_avatars_holder = Node2D.new()
-	add_child(_avatars_holder)
+	_avatars_holder.y_sort_enabled = true
+	_depth.add_child(_avatars_holder)
+	_occluders = _map.occluders()
+	if _occluders != null:
+		_occluders.reparent(_depth)
 	_fx_holder = Node2D.new()
 	add_child(_fx_holder)
 
 	_player = LocalPlayerScene.instantiate() as LocalPlayer
 	_player.avatar.setup(Session.seat_id, _own_name(), Session.seat_color(Session.seat_id), maxi(Session.seat_id, 0))
-	add_child(_player)
+	_depth.add_child(_player)
 	_camera = CameraScript.new() as FollowCamera
 	_player.add_child(_camera)
 	var used: Rect2i = _map.floor_layer().get_used_rect()
@@ -275,6 +287,7 @@ func _process(delta: float) -> void:
 		_clean_elapsed += delta
 	_player.avatar.set_out(Session.is_out)
 	_player.avatar.set_poison_tint(Session.poison)
+	_fade_occluders()
 
 	_player.avatar.set_display_name(_own_name())
 	_update_remote(Session.sample(Net.server_time() - RENDER_DELAY_S))
@@ -802,10 +815,27 @@ func _show_world(on: bool) -> void:
 		return
 	_world_shown = on
 	_map.visible = on
+	if _occluders != null:
+		_occluders.visible = on
 	_piles_holder.visible = on
 	_avatars_holder.visible = on
 	_fx_holder.visible = on
 	_player.visible = on and not _awaiting_pos
+
+
+## An occluder the local player stands behind turns see-through, so the player never loses sight
+## of themselves behind a tree.
+func _fade_occluders() -> void:
+	if _occluders == null:
+		return
+	var p: Vector2 = _player.global_position
+	for child in _occluders.get_children():
+		var piece: CanvasItem = child as CanvasItem
+		if piece == null or not piece.has_meta("rect"):
+			continue
+		var rect: Rect2 = piece.get_meta("rect")
+		var behind: bool = rect.has_point(p) and p.y < (piece as Node2D).position.y
+		piece.modulate.a = OCCLUDER_BEHIND_ALPHA if behind else 1.0
 
 
 ## The map is missing or older/newer than the server's: this build cannot play the round.

@@ -12,6 +12,10 @@ coloured placeholder.
 | Consoles | `client/assets/consoles/` | 32x32 | bins, compost heap, tap, meeting button, fire point, smog panel |
 | HUD buttons | `client/assets/ui/` | 48x48 | use, report, hit, dump, sabotage |
 | Home page | `client/assets/ui/home/` | from the 1920x1080 mockup | `background.jpg` (paper, no buttons), `logo.png`, `create.png`, `join.png`, `user.png`, `tasks.png`, `settings.png`; placed by `scenes/menu/menu.gd` at 1/3 of the mockup |
+| UI kit | `client/assets/ui/kit/` | 3 texture px per screen px | buttons, round icons, paper panel, player slot, avatar card, input field from the designers' kit; drawn by `ui/widgets/paper_kit.gd` |
+| Map cards | `client/assets/ui/maps/` | ~300 px | create page; only `tbs` is playable for now |
+| TBS map rooms | `client/assets/maps/tbs/` | 1024 px rooms (office 720x1456, parking 848x1264), drawn at 0.5 | the Figma "Maps" close-ups; walls, obstacles and depth pieces are in `world/maps/tbs_01.layout.json` (re-export with `tools/export_map.gd --map tbs_01`) |
+| Characters | `client/assets/characters/<id>/walk_<n>.png` | 300 px tall | walk cycles exported from the designers' GIFs; frame times in `ui/widgets/characters.gd`; `sprout` is white and tinted by seat colour |
 | Handwritten font | `client/assets/fonts/caroni_regular.otf` | | home page captions |
 | Loading screen | `client/assets/ui/loading_screen.jpg` | 16:9 (1376x768) | boot screen art, covers the window; keep the top centre clear for the status text |
 | Mini-game items | `client/assets/minigames/<type>/` | 32x32 | waste items and bins for `sort_waste` |
