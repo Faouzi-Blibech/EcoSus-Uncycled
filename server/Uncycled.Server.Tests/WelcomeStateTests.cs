@@ -118,6 +118,37 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void V2_wire_carries_no_poison_and_no_hit_or_dump_cooldowns()
+        {
+            MatchEngine engine = SnapshotLeakTests.BuildEngine(3UL);
+            engine.Tick(engine.Config.IntroS);
+            foreach (Sim.Core.PlayerState p in engine.Players)
+            {
+                SeatView view = engine.ViewFor(p.Seat);
+                string welcome = Wire.Welcome("BCDF", p.Seat, "tok", 0, SnapshotLeakTests.MinimalBundle(), "playing", view, new List<Seat>(), _ => false);
+                string snapshot = Wire.Snapshot(view, 1, 1.0);
+
+                using JsonDocument w = JsonDocument.Parse(welcome);
+                Assert.Equal(JsonValueKind.Null, w.RootElement.GetProperty("state").GetProperty("poison").ValueKind);
+                using JsonDocument s = JsonDocument.Parse(snapshot);
+                JsonElement me = s.RootElement.GetProperty("me");
+                Assert.False(me.TryGetProperty("poison", out _));
+                foreach (JsonElement cd in new[] { me, w.RootElement.GetProperty("state") })
+                {
+                    if (cd.TryGetProperty("cd", out JsonElement a) || cd.TryGetProperty("cooldowns", out a))
+                    {
+                        if (a.ValueKind == JsonValueKind.Object)
+                        {
+                            Assert.False(a.TryGetProperty("hit", out _));
+                            Assert.False(a.TryGetProperty("dump", out _));
+                            Assert.True(a.TryGetProperty("sabotage", out _));
+                        }
+                    }
+                }
+            }
+        }
+
+        [Fact]
         public void Trasher_welcome_and_snapshot_carry_no_bag_fields()
         {
             MatchEngine engine = SnapshotLeakTests.BuildEngine(3UL);

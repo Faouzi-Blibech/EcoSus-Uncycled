@@ -294,7 +294,7 @@ namespace Sim.Match
                 case SabotageCommand c: return ApplySabotage(p, c);
                 case FixCommand c: return ApplyFix(p, c);
                 case CleanStartCommand _: return Reject(RejectReason.NotAllowed);
-                case CleanCancelCommand c: return ApplyCleanCancel(p, c);
+                case CleanCancelCommand _: return Reject(RejectReason.NotAllowed);
                 case ChatPhraseCommand c: return ApplyChat(p, c);
                 case ChatTextCommand c: return ApplyChatText(p, c);
                 default: return CommandResult.Rejected(RejectReason.NotAllowed);

@@ -188,14 +188,7 @@ public static class Wire
         }
 
         w.WriteString("status", Snake(me.Status));
-        if (me.Poison.HasValue && me.Role == Role.Citizen)
-        {
-            w.WriteNumber("poison", me.Poison.Value);
-        }
-        else
-        {
-            w.WriteNull("poison");
-        }
+        w.WriteNull("poison"); // poison is gone in v2: always null
 
         w.WriteStartArray("tasks");
         foreach (TaskInfo t in me.Tasks)
@@ -318,11 +311,6 @@ public static class Wire
             w.F("vision", me.Vision);
             w.F("smog_level", extras?.SmogLevel ?? 0f);
             w.WriteString("status", Snake(me.Status));
-            if (me.Role == Role.Citizen && me.Poison.HasValue)
-            {
-                w.WriteNumber("poison", me.Poison.Value);
-            }
-
             WriteBags(w, me);
             if (me.Cooldowns != null)
             {
@@ -390,8 +378,6 @@ public static class Wire
     private static void WriteCooldowns(Utf8JsonWriter w, string name, CooldownView cd)
     {
         w.WriteStartObject(name);
-        w.F("hit", cd.Hit);
-        w.F("dump", cd.Dump);
         w.F("sabotage", cd.Sabotage);
         w.WriteEndObject();
     }

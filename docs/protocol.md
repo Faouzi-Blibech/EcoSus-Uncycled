@@ -80,7 +80,7 @@ follows on the next tick.
 | S->C | `snapshot` | see 4.1 | 20 Hz, filtered per seat |
 | S->C | `phase_changed` | `phase` ("playing"/"meeting"/"ejection"/"ended"), `stage?` ("discussion"/"voting"/"results") | to everyone, once per phase or meeting-stage change; `stage` only in a meeting. Snapshots also carry `phase` |
 | C->S | `use` | `console` | |
-| S->C | `use_ok` | `console`, `kind` ("task"/"emergency"/"fire_fix"/"smog_fix"), `task?`, `type?`, `step?` | opens the minigame or action |
+| S->C | `use_ok` | `console`, `kind` ("task"/"spot"/"emergency"/"fire_fix"/"smog_fix"), `task?`, `type?`, `step?` | opens the minigame or action. v2: kind `"spot"` (a Cleaner at a dirty spot) carries `type` and `step` (the console's index in its task type's `consoles`, which picks the minigame variant) and no `task` |
 | C->S | `task_step` | `task` | after the minigame step |
 | S->C | `task_progress` | `task`, `steps_done` | |
 | S->C | `task_added` | `task: {id, type, steps, steps_done, console}` | orphaned task reassigned to you |

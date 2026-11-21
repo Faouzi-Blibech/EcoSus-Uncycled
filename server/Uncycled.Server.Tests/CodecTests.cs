@@ -226,12 +226,13 @@ namespace Uncycled.Server.Tests
         [Fact]
         public void SpotEvents_UseKindSpotAndSpotCleaned()
         {
-            var useOk = new UseOkEvent(2, "market_bins", ConsoleKind.Task, null, "sort_waste", null);
+            var useOk = new UseOkEvent(2, "market_bins", ConsoleKind.Task, null, "sort_waste", 1);
             using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(useOk)!))
             {
                 Assert.Equal("use_ok", d.RootElement.GetProperty("t").GetString());
                 Assert.Equal("spot", d.RootElement.GetProperty("kind").GetString());
                 Assert.Equal("sort_waste", d.RootElement.GetProperty("type").GetString());
+                Assert.Equal(1, d.RootElement.GetProperty("step").GetInt32());
                 Assert.False(d.RootElement.TryGetProperty("task", out _));
             }
 

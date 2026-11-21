@@ -8,8 +8,9 @@ namespace Sim.Uncycled
     /// <summary>One cleaning spot: a task console that starts dirty (spec section 5).</summary>
     public sealed class Spot
     {
-        public Spot(string id, Vec2 position, float range, string taskType, float minSeconds)
+        public Spot(string id, Vec2 position, float range, string taskType, float minSeconds, int step = 0)
         {
+            Step = step;
             Id = id;
             Position = position;
             Range = range;
@@ -25,6 +26,9 @@ namespace Sim.Uncycled
 
         /// <summary>The mini-game the client plays here (the task type that lists the console).</summary>
         public string TaskType { get; }
+
+        /// <summary>Index of this console in its task type's console list: with the type it picks the mini-game (use_ok step).</summary>
+        public int Step { get; }
 
         /// <summary>Least seconds between use and spot_done, before the tool multiplier.</summary>
         public float MinSeconds { get; }
@@ -63,33 +67,36 @@ namespace Sim.Uncycled
             {
                 string type = "";
                 float minSeconds = 0f;
+                int step = 0;
                 foreach (TaskTypeDef t in types)
                 {
-                    if (Lists(t, console.Id))
+                    int index = IndexIn(t, console.Id);
+                    if (index >= 0)
                     {
                         type = t.Id;
                         minSeconds = t.MinSeconds;
+                        step = index;
                         break;
                     }
                 }
 
-                spots.Add(new Spot(console.Id, console.Position, console.Range, type, minSeconds));
+                spots.Add(new Spot(console.Id, console.Position, console.Range, type, minSeconds, step));
             }
 
             return new SpotBoard(spots);
         }
 
-        private static bool Lists(TaskTypeDef type, string consoleId)
+        private static int IndexIn(TaskTypeDef type, string consoleId)
         {
-            foreach (string id in type.ConsoleIds)
+            for (int i = 0; i < type.ConsoleIds.Count; i++)
             {
-                if (id == consoleId)
+                if (type.ConsoleIds[i] == consoleId)
                 {
-                    return true;
+                    return i;
                 }
             }
 
-            return false;
+            return -1;
         }
 
         public Spot? Find(string id)
