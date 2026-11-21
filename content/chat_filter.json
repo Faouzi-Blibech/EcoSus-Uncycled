@@ -1,18 +1,23 @@
 {
   "version": 1,
-  "note": "Editable list of words hidden in typed chat (each hit becomes ***). Whole-word matching is used, case-insensitive: a listed word never matches inside a longer word, so keep the entries full words and never add a word that is also part of an innocent word. Add other languages as new keys under words.",
+  "note": "Editable list of words hidden in typed chat (each hit becomes ***). Matching is whole-word, case-insensitive and accent-folded, with repeated letters and digit look-alikes (0 1 3 4 5 7) also caught: an entry never matches inside a longer word, so an entry may be part of an innocent word (crap in scrap) but must never itself be an ordinary word in a language players use (the game is English and French: retard and douche are ordinary French words, so they are not listed). Inflections are not guessed: list each form (fuck, fucks, fucked, fucking, fuckin). Every language key under words applies to every chat line, so add other languages as new keys only after checking them against the words of the other languages.",
   "words": {
     "en": [
-      "fuck", "fucks", "fucked", "fucker", "fucking", "motherfucker", "mf",
-      "shit", "shitty", "bullshit", "bitch", "bitches", "bastard", "bastards",
-      "asshole", "assholes", "dick", "dickhead", "cock", "cunt", "pussy", "twat", "wanker", "wankers", "prick", "pricks",
-      "slut", "sluts", "whore", "whores", "douche", "douchebag",
-      "piss", "pissed", "damn", "goddamn", "crap",
-      "retard", "retards", "retarded", "spastic",
+      "fuck", "fucks", "fucked", "fucker", "fuckers", "fucking", "fuckin", "fuckwit", "fuckface", "fuckhead",
+      "motherfucker", "motherfuckers", "motherfucking", "mf", "fck", "fcking", "fuk", "fuking", "fukin", "fuker", "fk",
+      "shit", "shits", "shitty", "shitting", "shithead", "shitheads", "bullshit", "bullshitting",
+      "bitch", "bitches", "bitching", "bitchy", "bastard", "bastards",
+      "asshole", "assholes", "asswipe", "dumbass", "jackass", "dick", "dicks", "dickhead", "dickheads",
+      "cock", "cocks", "cocksucker", "cocksuckers", "cunt", "cunts",
+      "pussy", "pussies", "twat", "twats", "wank", "wanker", "wankers", "wanking", "prick", "pricks",
+      "slut", "sluts", "whore", "whores", "douchebag", "douchebags",
+      "piss", "pissed", "pissing", "damn", "damned", "goddamn", "crap",
+      "retarded", "spastic",
       "nigger", "niggers", "nigga", "niggas",
       "faggot", "faggots", "fag", "fags", "tranny",
       "chink", "chinks", "gook", "spic", "spics", "kike", "kikes", "wetback", "coon", "paki",
-      "rapist", "kys", "nazi", "nazis"
+      "rapist", "kys", "nazi", "nazis",
+      "wtf", "stfu"
     ]
   }
 }

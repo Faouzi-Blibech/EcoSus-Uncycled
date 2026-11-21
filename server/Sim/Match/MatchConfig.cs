@@ -103,8 +103,14 @@ namespace Sim.Match
         /// <summary>Minimum seconds between two chat lines of one seat (typed, phrase or ghost).</summary>
         public float ChatMinGapS { get; set; } = 2f;
 
-        /// <summary>Ghost chat lines kept for the welcome of out seats (oldest dropped first).</summary>
+        /// <summary>Ghost chat lines kept for the welcome of out seats (oldest dropped first; tuning.json meeting.ghost_chat_keep).</summary>
         public int GhostChatKeep { get; set; } = 100;
+
+        /// <summary>Most ghost lines one welcome carries, the newest kept (tuning.json meeting.ghost_welcome_max_lines).</summary>
+        public int GhostWelcomeMaxLines { get; set; } = 50;
+
+        /// <summary>Most bytes of encoded JSON the ghost lines of one welcome may take (tuning.json meeting.ghost_welcome_max_bytes).</summary>
+        public int GhostWelcomeMaxBytes { get; set; } = 16384;
 
         /// <summary>Max arguments in one chat phrase (engine choice; not in tuning.json).</summary>
         public int PhraseMaxArgs { get; set; } = 3;

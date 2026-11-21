@@ -283,7 +283,7 @@ namespace Uncycled.Server.Tests
 
             string aliveWelcome = aliveBack.Socket.AllSent().First(s => s.Contains("\"t\":\"welcome\""));
             Assert.DoesNotContain("ghost secret", aliveWelcome);
-            Assert.DoesNotContain("ghost_chat", aliveWelcome);
+            Assert.False(Json(aliveWelcome).TryGetProperty("ghost_chat", out _));
 
             JsonElement deadWelcome = Json(deadBack.Socket.AllSent().First(s => s.Contains("\"t\":\"welcome\"")));
             JsonElement lines = deadWelcome.GetProperty("ghost_chat");

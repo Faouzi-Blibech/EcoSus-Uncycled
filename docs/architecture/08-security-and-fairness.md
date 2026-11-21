@@ -28,6 +28,8 @@ same view as humans.
 | Own cooldowns | yes (polluters) | - |
 | Pile clues (zone, time, waste type or victim) | at meeting start, to everyone | same |
 | Phrases said in meetings | everyone | everyone |
+| Typed chat lines in meetings (filtered, 120 characters) | everyone | everyone |
+| Ghost chat (lines typed or phrases said by out seats, any time of the match) | never | yes (out seats only; the newest kept lines also come in an out seat's rejoin welcome) |
 | Vote targets during voting | only "has voted" | same |
 | All roles + timeline (dumps, hits) | at `game_over`, to everyone | same |
 
@@ -46,7 +48,7 @@ could be said out loud.
 | `dump` | polluter, active, cooldown, phase `Playing` |
 | `report` | active; pile fresh; in range + line of sight; phase `Playing` (allowed during fire; the meeting clears it) |
 | `call_meeting` | active; at the emergency console; match-wide emergencies left; 15 s since the last meeting; no fire |
-| `chat_phrase` | discussion stage (out seats: any time, as ghost chat); phrase id exists; args are seat ids / zone ids only; 5 per meeting per seat |
+| `chat_phrase` | discussion stage (out seats: any time, as ghost chat); phrase id exists; args are seat ids / zone ids only; 5 per meeting per seat (`phrase_limit`); 2 s between chat lines (`rate_limited`) |
 | `chat_text` | raw text at most 1024 characters, else `bad_field`; discussion stage (out seats: any time, as ghost chat); normalised, 120 characters at most (`too_long`), 5 per meeting per seat (`text_limit`), 2 s between chat lines (`rate_limited`); listed words replaced by `***` |
 | `ready` | discussion stage; seat active |
 | `vote` | voting stage; seat active; not voted yet; target active or skip |

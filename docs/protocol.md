@@ -58,7 +58,7 @@ In `meeting`, `my_chat` is how many chat phrases this seat has sent in the curre
 rejoining client shows the right "lines left". `living` is the seat ids active at meeting start (same as in
 `meeting_started`): the only seats a chat phrase may name.
 
-`welcome.ghost_chat` (top level of `welcome`, next to `state`) is present only for a seat that is out: the ghost lines said so far, oldest first (at most 100), each shaped like the `chat` event, `ghost: true` included. A living seat's welcome never has it.
+`welcome.ghost_chat` (top level of `welcome`, next to `state`) is present only for a seat that is out: the newest ghost lines said so far, oldest first, each shaped like the `chat` event, `ghost: true` included. The server keeps `tuning.meeting.ghost_chat_keep` (100) lines, but a welcome carries at most `ghost_welcome_max_lines` (50) of them and at most `ghost_welcome_max_bytes` (16384) bytes of encoded JSON, so a welcome stays far below 64 KB. A living seat's welcome never has it.
 
 `clock_t` is the deadline clock exactly as in the snapshot (4.1), so a rejoining client shows the right time left at once (`deadline_t` follows with the next snapshot; until then `tuning.match.deadline_s`).
 
@@ -136,7 +136,7 @@ when none.
 | Dir | `t` | Fields | Notes |
 |---|---|---|---|
 | S->C | `meeting_started` | `by`, `cause` ("report"/"emergency"), `clues: [{pile, zone, t, waste?, victim?}]`, `task_bar`, `discussion_s`, `living` (seat ids active at meeting start) | `clues` = every pile that became reported at this meeting start |
-| C->S | `chat_phrase` | `id`, `args` | `id` must be in `content/phrases.json`; `args` match its slots in order (seat ids, zone ids of living seats and map zones), else `target_invalid`; max 5 per seat per meeting (`phrase_limit`); discussion stage only, else `wrong_phase`; a living seat only. An out seat may send one at any time as a ghost line |
+| C->S | `chat_phrase` | `id`, `args` | `id` must be in `content/phrases.json`; `args` match its slots in order (seat ids, zone ids of living seats and map zones), else `target_invalid`; max 5 per seat per meeting (`phrase_limit`); a living seat only in the discussion stage, else `wrong_phase`; at least 2 s between two chat lines of a seat, else `rate_limited`. An out seat may send one at any time as a ghost line (no per-meeting cap) |
 | C->S | `chat_text` | `text` | a typed line. The server trims, collapses whitespace and strips control and invisible characters, then rejects an empty line (`target_invalid`), one over 120 characters (`too_long`, never truncated) or a 6th line in the meeting (`text_limit`); discussion stage only, else `wrong_phase`. At least 2 s between two chat lines (typed or phrase) of a seat, else `rate_limited`. Raw `text` over 1024 characters or not a string: `error` `bad_field`. Listed words (`content/chat_filter.json`) are replaced by `***`. An out seat may send one at any time as a ghost line (no per-meeting cap) |
 | S->C | `chat` | `seat`, then `id`, `args` (a phrase) or `text` (a typed human line, filtered, plain text: never parse markup), `ghost?` | `ghost: true` marks a ghost line: sent only to the seats that are out when it is said, never to a living seat. Bots do not type, so `text` is always a human line |
 | S->C | `voting_started` | `voting_s` | |

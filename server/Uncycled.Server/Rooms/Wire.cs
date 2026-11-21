@@ -102,17 +102,42 @@ public static class Wire
                 {
                     // ghost chat so far: only an out seat's view holds any (the engine never gives it to a living seat)
                     w.WriteStartArray("ghost_chat");
-                    foreach (ChatEvent line in state.GhostChat)
+                    foreach (string line in NewestGhostLines(state.GhostChat, content.Config))
                     {
-                        w.WriteStartObject();
-                        WriteChat(w, line);
-                        w.WriteEndObject();
+                        w.WriteRawValue(line);
                     }
 
                     w.WriteEndArray();
                 }
             }
         });
+
+    /// <summary>
+    /// The newest ghost lines that fit the welcome budget (at most GhostWelcomeMaxLines lines and
+    /// GhostWelcomeMaxBytes bytes of encoded JSON), encoded, oldest first. Keeps a welcome under the
+    /// client's inbound buffer however much was said.
+    /// </summary>
+    private static List<string> NewestGhostLines(IReadOnlyList<ChatEvent> lines, MatchConfig config)
+    {
+        var kept = new List<string>();
+        int bytes = 0;
+        for (int i = lines.Count - 1; i >= 0 && kept.Count < config.GhostWelcomeMaxLines; i--)
+        {
+            ChatEvent line = lines[i];
+            string json = JsonOut.Build(w => WriteChat(w, line));
+            int size = Encoding.UTF8.GetByteCount(json) + 1; // the comma
+            if (bytes + size > config.GhostWelcomeMaxBytes)
+            {
+                break;
+            }
+
+            bytes += size;
+            kept.Add(json);
+        }
+
+        kept.Reverse();
+        return kept;
+    }
 
     /// <summary>The "seats" array shared by welcome and match_started: every occupied seat.</summary>
     private static void WriteSeats(Utf8JsonWriter w, IReadOnlyList<Seat> seats, Func<byte, bool> isOut)
