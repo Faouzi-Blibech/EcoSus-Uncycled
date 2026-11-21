@@ -11,7 +11,7 @@ namespace Uncycled.Bots
     /// <summary>
     /// The v2 observation for the bot networks. Map-independent: no absolute position, no map-order zone or spot index.
     /// Targets are relative offsets (dx, dy over RelScale) and walking distances over DistScale, picked nearest first by
-    /// path; a slot with nothing in it is all 0 (present 0). Every value is in [-1, 1]. Input is only the seat's SeatView,
+    /// path; a slot with nothing in it is all 0 (present 0), and so is a seat slot beyond the room size. Every value is in [-1, 1]. Input is only the seat's SeatView,
     /// its BotMemory and the map: nothing a human in that seat could not know. The layout is in <see cref="Names"/>;
     /// a change to it or to a scale changes <see cref="SchemaText"/>.
     /// </summary>
@@ -31,7 +31,6 @@ namespace Uncycled.Bots
         private const float MeterMax = 100f;
         private const float SuspicionMax = 100f;
         private const float CountScale = 4f;
-        private const float BagMeterAdd = 10f;
         private const float BagsToWinScale = 10f;
         private const float MinDivisor = 1e-6f;
 
@@ -69,7 +68,7 @@ namespace Uncycled.Bots
 
             var sus = new SuspicionModel();
             sus.Update(mem, view);
-            List<PlayerView> visible = playing ? ActionQuery.Slots(view) : new List<PlayerView>();
+            List<PlayerView> visible = playing ? NearestByPath(view, dist, me) : new List<PlayerView>();
 
             // self
             w.Put(trasher ? 1f : 0f);
@@ -106,14 +105,14 @@ namespace Uncycled.Bots
             w.Put(Offers(offer, UpgradeKind.Mask));
 
             // machine
-            ConsoleDef? machine = ActionQuery.MachineConsole(map);
+            ConsoleDef? machine = NearestOfKind(map, dist, me, ConsoleKind.Machine);
             w.Put(view.MachineJammed ? 1f : 0f);
             PutTarget(w, dist, me, machine?.Position);
             w.Put(playing && machine != null && ActionQuery.InRange(map, me, machine) ? 1f : 0f);
 
             // meter
             w.Put(Unit(view.Meter / MeterMax));
-            w.Put(Unit((MeterMax - view.Meter) / BagMeterAdd / BagsToWinScale));
+            w.Put(Unit(Ratio(MeterMax - view.Meter, cfg.BagMeterAdd) / BagsToWinScale));
 
             // spots
             int dirty = 0;
@@ -215,7 +214,7 @@ namespace Uncycled.Bots
             for (int s = 0; s < SeatSlots; s++)
             {
                 byte seat = (byte)s;
-                if (seat == my.Seat)
+                if (seat == my.Seat || s >= cfg.Seats)
                 {
                     w.Skip(5);
                     continue;
@@ -390,6 +389,24 @@ namespace Uncycled.Bots
             return best;
         }
 
+        /// <summary>Visible players (not out) nearest first by walking distance (unreachable last), ties by seat.</summary>
+        private static List<PlayerView> NearestByPath(SeatView view, MapDistances dist, Vec2 me)
+        {
+            List<PlayerView> list = ActionQuery.Slots(view);
+            var keys = new Dictionary<byte, int>();
+            foreach (PlayerView p in list)
+            {
+                keys[p.Seat] = PathKey(dist, me, p.Position);
+            }
+
+            list.Sort((a, b) =>
+            {
+                int c = keys[a.Seat].CompareTo(keys[b.Seat]);
+                return c != 0 ? c : a.Seat.CompareTo(b.Seat);
+            });
+            return list;
+        }
+
         /// <summary>Citizen sight range, shrunk by smog (the range ActionQuery.Watchers uses).</summary>
         private static float WatchRange(SeatView view, MatchConfig cfg)
         {
@@ -484,7 +501,7 @@ namespace Uncycled.Bots
             }
 
             AddAll(n, "trasher.", "unlock_progress", "ability_none", "ability_virus", "ability_gas", "cd_repollute", "cd_virus", "cd_gas", "cd_sabotage", "watchers_now");
-            AddAll(n, "gas.", "warning", "in_s", "i_am_in_warned_room", "warned.dx", "warned.dy", "warned.dist", "in_any_gas_room", "best_room.dist", "best_room.players");
+            AddAll(n, "gas.", "warning", "in_s", "i_am_in_warned_room", "warned.dx", "warned.dy", "warned.dist", "in_any_gas_room", "best_gas_room.dist", "best_gas_room.players");
             for (int i = 0; i < PlayerSlots; i++)
             {
                 AddAll(n, "player" + i + ".", "present", "dx", "dy", "dist", "partner", "suspicion", "heat");
@@ -534,11 +551,11 @@ namespace Uncycled.Bots
             Const(sb, "MeterMax", MeterMax);
             Const(sb, "SuspicionMax", SuspicionMax);
             Const(sb, "CountScale", CountScale);
-            Const(sb, "BagMeterAdd", BagMeterAdd);
             Const(sb, "BagsToWinScale", BagsToWinScale);
             Const(sb, "DirectWeight", SuspicionModel.DirectWeight);
             Const(sb, "NearPileWeight", SuspicionModel.NearPileWeight);
             Const(sb, "NearPileWindowS", SuspicionModel.NearPileWindowS);
+            Const(sb, "FakeCleanWeight", SuspicionModel.FakeCleanWeight);
             sb.Append("slots:players=").Append(PlayerSlots).Append(",seats=").Append(SeatSlots).Append(",bodies=").Append(BodySlots)
                 .Append(",zones=").Append(ZoneSlots).Append(",dirty=").Append(DirtySlots).Append(",clean=").Append(CleanSlots).Append('\n');
             return sb.ToString();

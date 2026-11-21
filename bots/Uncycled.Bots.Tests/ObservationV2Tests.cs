@@ -127,10 +127,10 @@ namespace Uncycled.Bots.Tests
 
         private static PlayerView Pl(float shift, byte seat, float x, float y, bool isOut = false) => new PlayerView(seat, P(shift, x, y), seat, isOut);
 
-        private static float[] BuildFor(MapData map, SeatView view, BotMemory mem, float now)
+        private static float[] BuildFor(MapData map, SeatView view, BotMemory mem, float now, MatchConfig? cfg = null)
         {
             var into = new float[ObservationBuilderV2.Size];
-            ObservationBuilderV2.Build(view, mem, map, Cfg, now, into);
+            ObservationBuilderV2.Build(view, mem, map, cfg ?? Cfg, now, into);
             return into;
         }
 
@@ -145,6 +145,11 @@ namespace Uncycled.Bots.Tests
             Assert.Contains("size=199", ObservationBuilderV2.SchemaText);
             Assert.Contains("const:RelScale=8", ObservationBuilderV2.SchemaText);
             Assert.DoesNotContain("action:", ObservationBuilderV2.SchemaText);
+            // every constant that feeds a field is in the text, so a change to it changes the schema hash; BagMeterAdd comes from the tuning, not from a constant
+            Assert.Contains("const:FakeCleanWeight=" + SuspicionModel.FakeCleanWeight.ToString("R", System.Globalization.CultureInfo.InvariantCulture), ObservationBuilderV2.SchemaText);
+            Assert.DoesNotContain("BagMeterAdd", ObservationBuilderV2.SchemaText);
+            Assert.Contains("gas.best_gas_room.dist", ObservationBuilderV2.Names);
+            Assert.Contains("gas.best_gas_room.players", ObservationBuilderV2.Names);
         }
 
         // ---------- ranges over real matches ----------
@@ -187,9 +192,11 @@ namespace Uncycled.Bots.Tests
         [Fact]
         public void Build_TenSeats_DoesNotThrow()
         {
+            // ten scripted brains play a real 10-seat match for a minute: players move, see each other, clean, and the observation stays in range
             string dir = ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));
             ContentBundle content = ContentLoader.Load(dir);
             MatchConfig cfg = content.Config.ForSize(10);
+            Assert.Equal(10, cfg.Seats);
             var seats = new List<SeatSetup>();
             for (int i = 0; i < 10; i++)
             {
@@ -197,17 +204,38 @@ namespace Uncycled.Bots.Tests
             }
 
             var engine = new MatchEngine(cfg, content.Map, seats, content.Tasks, new XorShiftRandom(7), content.Phrases);
+            var brains = new IBotBrain[10];
             var mems = new BotMemory[10];
+            var start = new Vec2[10];
             for (int s = 0; s < 10; s++)
             {
+                brains[s] = BrainFactory.Scripted(engine.Find((byte)s)!.Role, new BotsSettings(), new XorShiftRandom(100UL + (ulong)s));
                 mems[s] = new BotMemory(content.Map, cfg);
             }
 
             var obs = new float[ObservationBuilderV2.Size];
-            for (int i = 0; i < (int)(30f / TestMatch.Dt); i++)
+            bool sawPlayer = false;
+            float moved = 0f;
+            int sampleEvery = (int)Math.Round(0.5f / TestMatch.Dt);
+            int steps = (int)(60f / TestMatch.Dt);
+            for (int i = 0; i < steps && engine.Phase != MatchPhase.Ended; i++)
             {
+                for (int s = 0; s < 10; s++)
+                {
+                    byte seat = (byte)s;
+                    brains[s].Think(engine, seat, TestMatch.Dt, cmd => engine.Apply(seat, cmd));
+                }
+
                 engine.Tick(TestMatch.Dt);
-                if (i % 10 != 0)
+                if (i == 0)
+                {
+                    for (int s = 0; s < 10; s++)
+                    {
+                        start[s] = engine.ViewFor((byte)s).Me.Position;
+                    }
+                }
+
+                if (i % sampleEvery != 0)
                 {
                     continue;
                 }
@@ -218,8 +246,13 @@ namespace Uncycled.Bots.Tests
                     mems[seat].Observe(view, engine.MatchTime, engine.Witnesses.SeenBy(seat));
                     ObservationBuilderV2.Build(view, mems[seat], content.Map, cfg, engine.MatchTime, obs);
                     AssertInRange(obs, "10 seats, seat " + seat);
+                    sawPlayer |= Get(obs, "player0.present") == 1f;
+                    moved = Math.Max(moved, Vec2.Distance(view.Me.Position, start[seat]));
                 }
             }
+
+            Assert.True(moved > 2f, "the bots must have walked (max " + moved + " tiles)");
+            Assert.True(sawPlayer, "someone must have seen another player");
         }
 
         // ---------- map independence ----------
@@ -255,15 +288,19 @@ namespace Uncycled.Bots.Tests
         [Fact]
         public void Build_SyntheticMapWithoutGasRooms_StaysInRange()
         {
-            // four zones, no gas rooms, no smog panel, no machine, no emergency button
-            MapData map = RoomMap(0f, new List<ConsoleDef>
+            // four zones, 15 spots (more than greybox_01), no gas rooms, no smog panel, no machine, no emergency button; a 10-seat room
+            MatchConfig ten = Cfg.ForSize(10);
+            var consoles = new List<ConsoleDef>();
+            var spots = new List<SpotView>();
+            for (int i = 0; i < 15; i++)
             {
-                Console(0f, "s1", ConsoleKind.Task, 6.5f, 3.5f), Console(0f, "s2", ConsoleKind.Task, 14.5f, 3.5f),
-                Console(0f, "s3", ConsoleKind.Task, 3.5f, 10.5f), Console(0f, "s4", ConsoleKind.Task, 9.5f, 10.5f),
-                Console(0f, "s5", ConsoleKind.Task, 18.5f, 7.5f), Console(0f, "s6", ConsoleKind.Task, 5.5f, 6.5f),
-                Console(0f, "s7", ConsoleKind.Task, 20.5f, 8.5f),
-            }, RoomZones(0f));
-            var me = new MeSpec { Seat = 9, Pos = P(0f, 3.5f, 3.5f) };
+                float x = 2.5f + (i % 5) * 4f + (i % 5 >= 3 ? 1f : 0f);
+                float y = 2.5f + (i / 5) * 4f;
+                consoles.Add(Console(0f, "k" + i, ConsoleKind.Task, x, y));
+                spots.Add(new SpotView("k" + i, i % 3 == 0 ? SpotState.Clean : SpotState.Dirty));
+            }
+
+            MapData map = RoomMap(0f, consoles, RoomZones(0f));
             var players = new List<PlayerView>();
             for (byte i = 0; i < 9; i++)
             {
@@ -272,18 +309,112 @@ namespace Uncycled.Bots.Tests
 
             foreach (SabotageView? sab in new SabotageView?[] { null, new SabotageView(SabotageKind.Smog, null, new List<string>(), 1f) })
             {
-                SeatView view = MakeView(me, players, new List<PileView>(), RoomSpots(), sab);
-                var mem = new BotMemory(map, Cfg);
-                mem.Observe(view, 12f, new List<WitnessRecord>());
-                float[] obs = BuildFor(map, view, mem, 12f);
-                AssertInRange(obs, "synthetic map");
-                foreach (string name in ObservationBuilderV2.Names.Where(n => n.StartsWith("gas.", StringComparison.Ordinal)))
+                foreach (Vec2 at in new[] { P(0f, 3.5f, 3.5f), P(0f, 15.5f, 3.5f), P(0f, 20.5f, 11.5f) })
                 {
-                    Assert.Equal(0f, Get(obs, name));
-                }
+                    var me = new MeSpec { Seat = 9, Pos = at };
+                    SeatView view = MakeView(me, players, new List<PileView>(), spots, sab);
+                    var mem = new BotMemory(map, ten);
+                    mem.Observe(view, 12f, new List<WitnessRecord>());
+                    float[] obs = BuildFor(map, view, mem, 12f, ten);
+                    AssertInRange(obs, "synthetic map");
+                    foreach (string name in ObservationBuilderV2.Names.Where(n => n.StartsWith("gas.", StringComparison.Ordinal)))
+                    {
+                        Assert.Equal(0f, Get(obs, name));
+                    }
 
-                Assert.Equal(0f, Get(obs, "machine.reach"));
-                Assert.Equal(1f, Get(obs, "world.smog_panel.dist"));
+                    Assert.Equal(0f, Get(obs, "machine.reach"));
+                    Assert.Equal(1f, Get(obs, "world.smog_panel.dist"));
+                    Assert.Equal(1f, Get(obs, "dirty2.present"));
+                    Assert.Equal(1f, Get(obs, "clean2.present"));
+                    Assert.Equal(10f / 15f, Get(obs, "spots.dirty_frac"), 4);
+                }
+            }
+        }
+
+        [Fact]
+        public void Build_PlayerSlotsAreNearestFirstByPath()
+        {
+            // a wall column at x = 6 with its only gap at y = 8: "behind" stands 2 tiles away in a straight line but about 17 steps by path
+            MapData map = RoomMap(0f, new List<ConsoleDef>(), new List<ZoneDef>(), null, wallColumn: 6, gapRow: 8);
+            var me = new MeSpec { Seat = 0, Pos = P(0f, 4.5f, 2.5f) };
+            var players = new List<PlayerView> { Pl(0f, 1, 7.5f, 2.5f), Pl(0f, 2, 4.5f, 6.5f), Pl(0f, 3, 4.5f, 4.5f) };
+            float[] obs = BuildFor(map, MakeView(me, players, new List<PileView>(), new List<SpotView>()), new BotMemory(map, Cfg), 10f);
+            Assert.True(Get(obs, "player0.dy") > 0f && Get(obs, "player0.dx") == 0f, "player0 is the nearest by path (seat 3, straight below)");
+            Assert.True(Get(obs, "player1.dy") > Get(obs, "player0.dy"), "player1 is seat 2, farther below");
+            Assert.True(Get(obs, "player2.dx") > 0f, "player2 is the one behind the wall");
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.True(Get(obs, "player" + i + ".dist") <= Get(obs, "player" + (i + 1) + ".dist"));
+            }
+        }
+
+        [Fact]
+        public void Build_SeatsOutsideTheRoomAreAllZero_AndDifferFromAnUnseenPlayer()
+        {
+            MapData map = RoomMap(0f, RoomConsoles(0f), RoomZones(0f), RoomGas(0f));
+            var me = new MeSpec { Seat = 0, Pos = P(0f, 3.5f, 3.5f) };
+            float[] obs = BuildFor(map, MakeView(me, new List<PlayerView>(), new List<PileView>(), RoomSpots()), new BotMemory(map, Cfg), 10f);
+            Assert.Equal(8, Cfg.Seats);
+            foreach (string field in new[] { "age", "dx", "dy", "suspicion", "out" })
+            {
+                Assert.Equal(0f, Get(obs, "seat0." + field));
+                Assert.Equal(0f, Get(obs, "seat8." + field));
+                Assert.Equal(0f, Get(obs, "seat9." + field));
+            }
+
+            Assert.Equal(1f, Get(obs, "seat7.age")); // a real seat nobody has seen yet
+
+            // the same view in a 10-seat room: seats 8 and 9 are real and unseen
+            float[] ten = BuildFor(map, MakeView(me, new List<PlayerView>(), new List<PileView>(), RoomSpots()), new BotMemory(map, Cfg.ForSize(10)), 10f, Cfg.ForSize(10));
+            Assert.Equal(1f, Get(ten, "seat8.age"));
+            Assert.Equal(1f, Get(ten, "seat9.age"));
+        }
+
+        [Fact]
+        public void MachineTarget_IsTheNearestByPath()
+        {
+            // two machines: "first" is first in map order and nearest in a straight line, behind the wall; "second" is nearer by path
+            var consoles = new List<ConsoleDef>
+            {
+                Console(0f, "first", ConsoleKind.Machine, 8.5f, 2.5f), Console(0f, "second", ConsoleKind.Machine, 3.5f, 8.5f),
+            };
+            MapData map = RoomMap(0f, consoles, new List<ZoneDef>(), null, wallColumn: 6, gapRow: 8);
+            var me = new MeSpec { Seat = 0, Pos = P(0f, 3.5f, 2.5f) };
+            float[] obs = BuildFor(map, MakeView(me, new List<PlayerView>(), new List<PileView>(), new List<SpotView>()), new BotMemory(map, Cfg), 10f);
+            Assert.Equal(0f, Get(obs, "machine.dx"));
+            Assert.Equal(6f / 8f, Get(obs, "machine.dy"), 4);
+        }
+
+        [Fact]
+        public void MapDistances_CacheStaysBounded_AndAnswersStayRight()
+        {
+            // an open 50 x 50 room: every walkable cell is a possible target (players and bodies move), so an unbounded cache grows to 48 x 48 fields
+            const int n = 50;
+            var walk = new bool[n * n];
+            var sight = new bool[n * n];
+            for (int y = 0; y < n; y++)
+            {
+                for (int x = 0; x < n; x++)
+                {
+                    bool wall = x == 0 || y == 0 || x == n - 1 || y == n - 1;
+                    walk[y * n + x] = !wall;
+                    sight[y * n + x] = wall;
+                }
+            }
+
+            var map = new MapData(n, n, walk, sight, new List<ZoneDef>(), new List<ConsoleDef>(), new List<Vec2> { new Vec2(1.5f, 1.5f) }, "open", "v2");
+            MapDistances dist = MapDistances.For(map);
+            var from = new Vec2(1.5f, 1.5f);
+            for (int round = 0; round < 2; round++)
+            {
+                for (int y = 1; y < n - 1; y++)
+                {
+                    for (int x = 1; x < n - 1; x++)
+                    {
+                        Assert.Equal(x - 1 + (y - 1), dist.Path(from, new Vec2(x + 0.5f, y + 0.5f)));
+                        Assert.True(dist.CachedFieldCount <= MapDistances.MaxCachedFields, "cache holds " + dist.CachedFieldCount);
+                    }
+                }
             }
         }
 
@@ -352,6 +483,12 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(0.7f, Get(obs, "meter.cleanliness"), 4);
             Assert.Equal(0.3f, Get(obs, "meter.bags_to_win"), 4);
             Assert.Equal(4f / 7f, Get(obs, "spots.dirty_frac"), 4);
+
+            // the bags to win follow the tuning: at 5 meter points a bag, meter 70 needs 6 bags (6 / 10)
+            MatchConfig five = Cfg.ForSize(8);
+            five.BagMeterAdd = 5f;
+            float[] obs5 = BuildFor(map, MakeView(cleaner, new List<PlayerView>(), new List<PileView>(), RoomSpots(), meter: 70f), new BotMemory(map, five), 10f, five);
+            Assert.Equal(0.6f, Get(obs5, "meter.bags_to_win"), 4);
             mem.InfectedCallUsed = true;
             Assert.Equal(0f, Get(BuildFor(map, MakeView(cleaner, new List<PlayerView>(), new List<PileView>(), RoomSpots()), mem, 10f), "kit.infected_call_unused"));
         }
@@ -440,13 +577,13 @@ namespace Uncycled.Bots.Tests
             var players = new List<PlayerView> { Pl(0f, 1, 16.5f, 3.5f), Pl(0f, 2, 17.5f, 4.5f) };
             float[] obs = BuildFor(map, MakeView(inside, players, new List<PileView>(), RoomSpots()), new BotMemory(map, Cfg), 10f);
             Assert.Equal(1f, Get(obs, "gas.in_any_gas_room"));
-            Assert.Equal(0.5f, Get(obs, "gas.best_room.players"));
-            Assert.True(Get(obs, "gas.best_room.dist") > 0f);
+            Assert.Equal(0.5f, Get(obs, "gas.best_gas_room.players"));
+            Assert.True(Get(obs, "gas.best_gas_room.dist") > 0f);
 
             var outside = new MeSpec { Seat = 0, Pos = P(0f, 3.5f, 3.5f) };
             float[] o2 = BuildFor(map, MakeView(outside, new List<PlayerView>(), new List<PileView>(), RoomSpots()), new BotMemory(map, Cfg), 10f);
             Assert.Equal(0f, Get(o2, "gas.in_any_gas_room"));
-            Assert.Equal(0f, Get(o2, "gas.best_room.players"));
+            Assert.Equal(0f, Get(o2, "gas.best_gas_room.players"));
             Assert.Equal(0f, Get(o2, "gas.warning"));
         }
     }
