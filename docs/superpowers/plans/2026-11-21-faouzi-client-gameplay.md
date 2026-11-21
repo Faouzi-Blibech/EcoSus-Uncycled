@@ -89,6 +89,11 @@ results scene. Louay owns `menu.gd`, `lobby.gd`, `settings_panel.gd` and the new
 
 ### Task F2: spots and cleaning through mini-games (1 h 30)
 
+Done on `gameplay/spots`, simpler than planned: the existing USE button cleans (no `clean_spot` action);
+`SpotView` is a script-only Sprite2D (`client/world/spot/spot_view.gd`, no .tscn); the mini-game layer opens
+on `use_ok` kind `spot` and sends `spot_done` (`Net.send_spot_done`); `Session.clean_min_s` applies the tool
+multiplier; `MinigameRegistry.base_type` names the spot art. The original plan follows for reference.
+
 **Files:**
 - Create: `client/world/spot/spot.gd`, `client/world/spot/spot.tscn` (sprite dirty/clean, from map consoles of
   kind `task`)
@@ -119,6 +124,13 @@ results scene. Louay owns `menu.gd`, `lobby.gd`, `settings_panel.gd` and the new
 
 ### Task F3: machine, delivery, upgrades, jam (1 h)
 
+Done on `gameplay/machine` (stacked on F2). USE at the machine delivers; FIX at a jammed machine is a
+hold (`fix machine true/false`, ring from `machine.repair_t`); the jam banner comes from
+`Session.machine_jammed` (snapshots carry only smog in `sabotage`); `Session.upgrade_offer` +
+`UpgradePicker` (built in parallel by a worker) -> `RoundScene.pick_upgrade` -> `pick_upgrade`; owned items
+line under the bag counter; toasts for `delivered` and `upgrade_ok`. A Trasher is offered nothing at the
+machine (no fake delivery). The original plan follows for reference.
+
 **Files:**
 - Create: `client/ui/hud/upgrade_picker.gd` (4 cards, 48 px min, icons `res://assets/icons/upgrade_<item>.png`)
 - Modify: `round.gd` (`deliver`, `fix_machine` hold reuses the fire-hold code), `action_rules.gd`, `hud.gd`,
@@ -142,6 +154,13 @@ results scene. Louay owns `menu.gd`, `lobby.gd`, `settings_panel.gd` and the new
   `gameplay/machine`.
 
 ### Task F4: Trasher kit (1 h 30)
+
+Done on `gameplay/trasher-kit` (stacked on F3). The v1 HIT and DUMP buttons became RE-POLLUTE (key of
+HIT) and the ability button (VIRUS or GAS, key of DUMP); `hit`/`dump` code and tests are gone. Pickers share
+a `CardPicker` base (worker, in parallel): `UpgradePicker`, `AbilityPicker`, `RoomPicker` (cancelable). The
+ability choice comes from `ability_unlocked`, and after a rejoin from the snapshot (no ability, re-pollutes >=
+`trasher.unlock_after`), since the server does not re-send it. Sabotage choices are machine and smog; a
+witnessed re-pollute plays the old dump splat. The original plan follows for reference.
 
 **Files:**
 - Create: `client/ui/hud/ability_picker.gd` (2 cards), `client/ui/hud/room_picker.gd` (gas room list from map
@@ -168,6 +187,14 @@ results scene. Louay owns `menu.gd`, `lobby.gd`, `settings_panel.gd` and the new
   `gameplay/trasher-kit`.
 
 ### Task F5: virus, heal, gas, death, end screens (1 h)
+
+Done on `gameplay/virus-gas` (stacked on F4), with languages: `VirusTimer` (red countdown, pulses under 10 s)
+and `GasOverlay` (green room tint growing to the landing) built by a parallel worker; a Cleaner's HEAL and ALERT
+take the Trasher slots and keys (heal self when infected, else the nearest player in `virus.heal_range`; one
+ALERT meeting per infection); toasts for healed, mask used, gas warning; spectator and results texts for virus,
+gas and `meter_full`. Languages: English by default (no longer the computer's language), French and Arabic in
+Settings; `strings.csv` has an `ar` column (worker), Noto Sans Arabic is a fallback of the default font. The
+original plan follows for reference.
 
 **Files:**
 - Create: `client/ui/hud/virus_timer.gd` (big red countdown, only when `Session.infected_s >= 0`)

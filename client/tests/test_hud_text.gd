@@ -22,9 +22,12 @@ func test_key_hint_is_shown_without_a_touchscreen_only() -> bool:
 	return true
 
 
-func test_hit_button_says_poison_like_the_rest_of_the_game() -> bool:
+func test_trasher_buttons_are_repollute_and_the_ability() -> bool:
 	var hud: Hud = _hud()
-	assert_true((hud._buttons["hit"] as Button).text.begins_with("Poison"), "HIT is called Poison")
+	var label: String = str(TranslationServer.translate(&"ACT_REPOLLUTE"))
+	assert_true((hud._buttons["repollute"] as Button).text.begins_with(label), "RE-POLLUTE label")
+	assert_true(hud._buttons.has("ability"), "ability slot")
+	assert_true(not hud._buttons.has("hit") and not hud._buttons.has("dump"), "no v1 buttons")
 	return true
 
 
@@ -147,4 +150,11 @@ func test_spectator_time_left_uses_the_deadline_clock() -> bool:
 	Session.deadline_t = saved[2]
 	Session.is_out = saved[3]
 	assert_eq(shown, "8:20", "600 s minus 100 s of active play, not minus 400 s of match time")
+	return true
+
+
+func test_machine_jam_banner_and_repair_percent() -> bool:
+	var jam: Dictionary = {"kind": "machine"}
+	assert_eq(SabotageBanner.text_for(jam, 0, false), str(TranslationServer.translate(&"SABOTAGE_BANNER_MACHINE")), "jam line")
+	assert_true(SabotageBanner.text_for(jam, 0, true, 0.5).ends_with(" 50%"), "repair percent")
 	return true

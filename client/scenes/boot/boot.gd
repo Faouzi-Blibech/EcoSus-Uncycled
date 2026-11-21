@@ -5,6 +5,7 @@ extends Control
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const SettingsPanel := preload("res://ui/widgets/settings_panel.gd")
+const LOADING_ART: String = "res://assets/ui/loading_screen.jpg"
 
 var _status: Label
 var _buttons: HBoxContainer
@@ -16,19 +17,34 @@ func _ready() -> void:
 	theme = UIKit.theme()
 	UIKit.fill(self)
 	UIKit.background(self)
+	var has_art: bool = ResourceLoader.exists(LOADING_ART)
+	if has_art:
+		var art: TextureRect = TextureRect.new()
+		art.texture = Assets.texture(LOADING_ART)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(art)
+		UIKit.fill(art)
 
+	# The art carries the logo at the bottom, so the status sits in the clear sky at the top.
 	var center: CenterContainer = CenterContainer.new()
 	add_child(center)
 	UIKit.fill(center)
+	if has_art:
+		center.anchor_bottom = 0.0
+		center.offset_top = 12.0
+		center.offset_bottom = 12.0
 
 	var box: VBoxContainer = UIKit.make_vbox(12, 400.0)
 	center.add_child(box)
 
-	var title: Label = UIKit.make_label(tr("BOOT_TITLE"), 36)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
+	if not has_art:
+		var title: Label = UIKit.make_label(tr("BOOT_TITLE"), 36)
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(title)
 
-	_status = UIKit.make_label("", 16)
+	_status = UIKit.make_hud_label(16)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_status)

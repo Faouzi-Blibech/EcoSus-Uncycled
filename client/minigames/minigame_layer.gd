@@ -5,6 +5,8 @@ extends CanvasLayer
 
 ## Sends a finished step to the server; tests replace it with a counter.
 var send_step: Callable = Net.send_task_step
+## v2: what a finished spot game sends (spot_done); tests replace it.
+var send_spot: Callable = Net.send_spot_done
 ## Returns seconds for the open game's min_s gate; tests replace it (invalid = real time).
 var clock: Callable = Callable()
 const TOAST_S: float = 2.0
@@ -14,6 +16,8 @@ var _current: Minigame = null
 var _toast: Label = null
 var _toast_left: float = 0.0
 var _console_id: String = ""
+## The spot being cleaned ("" for a v1 task game or a fake): its game sends spot_done, not task_step.
+var _spot_id: String = ""
 var _player_pos: Callable = Callable()
 var _console_lookup: Callable = Callable()
 
@@ -52,6 +56,7 @@ func close_all() -> void:
 		m.set_process(false)
 		m.queue_free()
 	_console_id = ""
+	_spot_id = ""
 	_show_chrome(false)
 
 
@@ -102,7 +107,7 @@ func _out_of_reach() -> bool:
 	return pos.distance_to(console_pos) > float(info.get("range_px", 0.0))
 
 
-func _open(task: Dictionary, step_index: int, is_fake: bool) -> void:
+func _open(task: Dictionary, step_index: int, is_fake: bool, min_seconds: float = -1.0) -> void:
 	close_all()
 	var path: String = MinigameRegistry.scene_for(str(task.get("type", "")))
 	if path.is_empty():
@@ -110,7 +115,8 @@ func _open(task: Dictionary, step_index: int, is_fake: bool) -> void:
 		return
 	var m: Minigame = (load(path) as PackedScene).instantiate() as Minigame
 	m.clock = clock
-	m.begin(task, step_index, is_fake, Session.min_s_for(str(task.get("type", ""))))
+	var wait: float = min_seconds if min_seconds >= 0.0 else Session.min_s_for(str(task.get("type", "")))
+	m.begin(task, step_index, is_fake, wait)
 	m.step_done.connect(_on_step_done)
 	m.closed.connect(close_all)
 	_current = m
@@ -125,6 +131,9 @@ func _show_chrome(on: bool) -> void:
 
 
 func _on_use_ok(data: Dictionary) -> void:
+	if str(data.get("kind", "")) == "spot":
+		_open_spot(str(data.get("type", "")), str(data.get("console", "")), int(data.get("step", -1)))
+		return
 	if str(data.get("kind", "")) != "task":
 		return
 	var id: int = int(data.get("task", -1))
@@ -136,11 +145,26 @@ func _on_use_ok(data: Dictionary) -> void:
 	_console_id = str(data.get("console", ""))
 
 
+## v2: the server opened a clean session on `spot_id`: play the step of its console, then spot_done.
+## `step` is the server's use_ok.step (the console's index in its type's consoles, which picks the
+## mini-game variant); -1 when missing, then the client finds the same index itself.
+func _open_spot(task_type: String, spot_id: String, step: int = -1) -> void:
+	if step < 0:
+		var consoles: Array = Net.as_array(Net.as_dict(Session.task_types.get(task_type)).get("consoles"))
+		step = maxi(consoles.find(spot_id), 0)
+	_open({"id": -1, "type": task_type}, step, false, Session.clean_min_s(task_type))
+	_console_id = spot_id
+	_spot_id = spot_id
+
+
 func _on_step_done(task_id: int, _step: int) -> void:
 	if _out_of_reach():
 		_close_too_far()
 		return
-	send_step.call(task_id)
+	if _spot_id.is_empty():
+		send_step.call(task_id)
+	else:
+		send_spot.call(_spot_id)
 	close_all()
 
 

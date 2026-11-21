@@ -132,7 +132,7 @@ follows on the next tick.
 | S->C | `mask_used` | - | the masked seat |
 | C->S | `gas` | `room` | Trasher with `gas`, room id from the map `gas_rooms`, off cooldown |
 | S->C | `gas_warning` | `room`, `in_s` | everyone |
-| S->C | `gas_done` | `room` | everyone |
+| S->C | `gas_done` | `room` | everyone; a meeting cancels a running warning: gas_done is sent and the Trasher's gas cooldown is refunded |
 
 ### 4.1 `snapshot`
 

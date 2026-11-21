@@ -26,6 +26,7 @@ namespace Sim.Match
             }
 
             Machine.CancelRepair(); // the jam stays; the repair has to start again
+            CancelGas();
             if (Fire.Active)
             {
                 EndSabotage(SabotageKind.Fire, SabotageEndResult.Cleared);

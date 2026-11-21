@@ -38,7 +38,8 @@ static func text_for(sabotage: Dictionary, fire_total: int, repairing: bool, rep
 		return "%s\n%s" % [
 			TranslationServer.translate(&"SABOTAGE_BANNER_FIRE") % ("%d:%02d" % [left / 60, left % 60]),
 			TranslationServer.translate(&"SABOTAGE_BANNER_FIRE_HELD") % [held, fire_total]]
-	var line: String = TranslationServer.translate(&"SABOTAGE_BANNER_SMOG")
+	var machine: bool = str(sabotage.get("kind", "")) == "machine"
+	var line: String = TranslationServer.translate(&"SABOTAGE_BANNER_MACHINE" if machine else &"SABOTAGE_BANNER_SMOG")
 	if repairing:
 		line += "\n" + TranslationServer.translate(&"SABOTAGE_REPAIRING")
 		if repair_fraction >= 0.0:

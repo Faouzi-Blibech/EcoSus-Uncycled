@@ -11,6 +11,7 @@ coloured placeholder.
 | Dump pile, body pile | `client/assets/piles/` | 32x32 | dump piles per waste type: plastic, glass, paper, organic, metal |
 | Consoles | `client/assets/consoles/` | 32x32 | bins, compost heap, tap, meeting button, fire point, smog panel |
 | HUD buttons | `client/assets/ui/` | 48x48 | use, report, hit, dump, sabotage |
+| Loading screen | `client/assets/ui/loading_screen.jpg` | 16:9 (1376x768) | boot screen art, covers the window; keep the top centre clear for the status text |
 | Mini-game items | `client/assets/minigames/<type>/` | 32x32 | waste items and bins for `sort_waste` |
 | Audio | `client/assets/audio/` | OGG | starts after the first tap on web |
 
