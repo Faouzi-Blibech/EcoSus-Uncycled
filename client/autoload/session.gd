@@ -94,6 +94,23 @@ var partner_seat: int = -1
 var signature: Variant = null
 
 var meter: float = 0.0
+## v2 (protocol 2). Spot id -> "dirty" or "clean", from every snapshot.
+var spots: Dictionary = {}
+var machine_jammed: bool = false
+## The room a toxic gas warning runs in ("" when none) and the seconds before it lands.
+var gas_room: String = ""
+var gas_in_s: float = 0.0
+## Cleaner-only private fields. bag_cap 0 means this seat has no bags (a Trasher): no bag counter.
+var bags: int = 0
+var bag_cap: int = 0
+var has_tool: bool = false
+var heals: int = 0
+var masks: int = 0
+## Seconds before the virus takes me out; -1 when not infected.
+var infected_s: float = -1.0
+## Trasher-only: re-pollutes so far and the unlocked ability ("", "virus" or "gas").
+var repollutes: int = 0
+var ability: String = ""
 var match_t: float = 0.0
 var me_pos: Vector2 = Vector2.ZERO
 var has_me_pos: bool = false
@@ -398,6 +415,11 @@ func _reset_match_state() -> void:
 	last_chat_t = -1.0e9
 	ghost_chat = []
 	last_game_over = {}
+	spots = {}
+	machine_jammed = false
+	gas_room = ""
+	gas_in_s = 0.0
+	_read_private({})
 
 
 func _mark_out_from_seats() -> void:
@@ -462,6 +484,7 @@ func _on_welcome(data: Dictionary) -> void:
 		cooldowns = Net.as_dict(st.get("cooldowns")).duplicate()
 		sabotage = Net.as_dict(st.get("sabotage")).duplicate(true)
 		emergencies_left = int(st.get("emergencies_left", 0))
+		_read_private(st)
 		var mt: Dictionary = Net.as_dict(st.get("meeting")).duplicate()
 		if not mt.is_empty():
 			mt["ends_at"] = Net.local_time() + float(mt.get("ends_in", 0.0))
@@ -531,6 +554,18 @@ func _on_snapshot(data: Dictionary) -> void:
 		poison = int(me["poison"])
 	if me.has("cd"):
 		cooldowns = Net.as_dict(me["cd"]).duplicate()
+	if data.has("me"):
+		_read_private(me)
+	if data.has("spots"):
+		spots = {}
+		for e in Net.as_array(data["spots"]):
+			var spot: Dictionary = Net.as_dict(e)
+			if spot.has("id"):
+				spots[str(spot["id"])] = str(spot.get("state", "dirty"))
+	machine_jammed = Net.as_dict(data.get("machine")).get("jammed") == true
+	var gas: Dictionary = Net.as_dict(data.get("gas"))
+	gas_room = str(gas.get("room", ""))
+	gas_in_s = _num(gas.get("in_s"), 0.0)
 	if me.has("status"):
 		is_out = str(me["status"]) == "out"
 		if is_out:
@@ -541,6 +576,25 @@ func _on_snapshot(data: Dictionary) -> void:
 		piles = []
 	sabotage = Net.as_dict(data.get("sabotage")).duplicate(true)
 	push_snapshot(data)
+
+
+## The v2 private fields of a snapshot's `me` or a rejoin's `welcome.state`. The server sends each only
+## to the seats it belongs to, so a missing (or null) key means "not mine", never an error.
+func _read_private(me: Dictionary) -> void:
+	bags = int(_num(me.get("bags"), 0.0))
+	bag_cap = int(_num(me.get("cap"), 0.0))
+	has_tool = me.get("tool") == true
+	heals = int(_num(me.get("heals"), 0.0))
+	masks = int(_num(me.get("masks"), 0.0))
+	infected_s = _num(me.get("infected_s"), -1.0)
+	repollutes = int(_num(me.get("repollutes"), 0.0))
+	ability = str(me["ability"]) if me.get("ability") is String else ""
+
+
+static func _num(v: Variant, fallback: float) -> float:
+	if typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT:
+		return float(v)
+	return fallback
 
 
 func _on_event(data: Dictionary) -> void:

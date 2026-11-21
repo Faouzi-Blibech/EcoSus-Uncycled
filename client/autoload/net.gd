@@ -71,7 +71,7 @@ const TYPED_MESSAGES: Array[String] = [
 	"sabotage_ended",
 ]
 
-const PROTOCOL_VERSION: int = 1
+const PROTOCOL_VERSION: int = 2
 const TILE_PX: float = 32.0
 const DEFAULT_SPEED_TILES_PER_S: float = 2.5
 const CONNECT_TIMEOUT_S: float = 6.0
