@@ -42,6 +42,9 @@ var _timer_label: Label
 var _meter_label: Label
 var _meter_bar: ProgressBar
 var _bags_label: Label
+## Upgrades owned (backpack, tool, heal, mask), Cleaners only.
+var _items_label: Label
+var _picker: UpgradePicker
 var _ping_label: Label
 var _buttons: Dictionary = {}
 var _fix_button: ActionButton
@@ -103,6 +106,11 @@ func _build() -> void:
 	# phone); it hides itself while the local player is in.
 	_root.add_child(GhostChatPanel.new())
 
+	# The upgrade cards after a delivery, under the role reveal; hidden until upgrade_offer.
+	_picker = UpgradePicker.new()
+	_picker.picked.connect(_on_upgrade_picked)
+	_root.add_child(_picker)
+
 	_reveal = RoleRevealScene.instantiate() as RoleReveal
 	_reveal.visible = false
 	_root.add_child(_reveal)
@@ -153,9 +161,12 @@ func _build_top_right() -> void:
 	_meter_bar = _make_bar(METER_COLOR)
 	_bags_label = UIKit.make_hud_label(SMALL_FONT)
 	_bags_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_items_label = UIKit.make_hud_label(SMALL_FONT)
+	_items_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_items_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_ping_label = UIKit.make_hud_label(SMALL_FONT)
 	_ping_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	for n in [_timer_label, _meter_label, _meter_bar, _bags_label, _ping_label]:
+	for n in [_timer_label, _meter_label, _meter_bar, _bags_label, _items_label, _ping_label]:
 		box.add_child(n)
 
 
@@ -365,6 +376,9 @@ func _update_header() -> void:
 	# Only a Cleaner has bags (cap > 0); the server never sends a Trasher's.
 	_bags_label.visible = Session.bag_cap > 0
 	_bags_label.text = tr("HUD_BAGS") % [Session.bags, Session.bag_cap] if Session.bag_cap > 0 else ""
+	var items: String = owned_items_text(Session.bag_cap, Session.has_tool, Session.heals, Session.masks)
+	_items_label.visible = not items.is_empty()
+	_items_label.text = items
 	# v2 has no per-player task list (spots replace it): no empty "Tasks" header.
 	_tasks_header.visible = not Session.my_tasks.is_empty()
 	_ping_label.text = tr("HUD_PING") if Net.ping_ms > WEAK_PING_MS else ""
@@ -419,13 +433,18 @@ func _update_buttons() -> void:
 	_choices.visible = _choices.visible and bool(Net.as_dict(states["sabotage"]).get("ready", false))
 
 
-## FIX: a hold button for the fire ("Hold"), a tap for the smog panel ("Fix").
+## FIX: a hold button for the fire and the jammed machine ("Hold"), a tap for the smog panel ("Fix").
 func _update_fix(fix: Dictionary) -> void:
 	_fix_button.visible = bool(fix["visible"])
-	var fire: bool = str(fix["kind"]) == "fire"
-	var label: String = tr("ACT_FIX_HOLD" if fire else "ACT_FIX")
+	var kind: String = str(fix["kind"])
+	var hold: bool = kind == "fire" or kind == "machine"
+	var label: String = tr("ACT_FIX_HOLD" if hold else "ACT_FIX")
 	_fix_button.text = action_text(label, _key_text("act_use"), DisplayServer.is_touchscreen_available())
-	var repair: Dictionary = _round.repair_progress() if _round != null and not fire else {}
+	var repair: Dictionary = {}
+	if _round != null and kind == "machine":
+		repair = _round.machine_repair_progress()
+	elif _round != null and kind != "fire":
+		repair = _round.repair_progress()
 	if bool(repair.get("active", false)):
 		_fix_button.set_ring(float(repair["elapsed"]), float(repair["duration"]))
 	else:
@@ -443,9 +462,16 @@ func _update_clean(offered: bool) -> void:
 
 
 func _update_banner() -> void:
-	var repair: Dictionary = _round.repair_progress() if _round != null else {}
+	# The machine jam is not in Session.sabotage (that object is smog); it shows when no smog runs.
+	var jam: bool = Session.sabotage.is_empty() and Session.machine_jammed
+	var sabotage: Dictionary = {"kind": "machine"} if jam else Session.sabotage
+	var repair: Dictionary = {}
+	var repairing: bool = false
+	if _round != null:
+		repair = _round.machine_repair_progress() if jam else _round.repair_progress()
+		repairing = _round.is_holding_machine() if jam else _round.is_repairing()
 	var fraction: float = float(repair["elapsed"]) / float(repair["duration"]) if bool(repair.get("active", false)) and float(repair["duration"]) > 0.0 else -1.0
-	_banner.show_sabotage(Session.sabotage, _count_fire_consoles(), _round != null and _round.is_repairing(), fraction)
+	_banner.show_sabotage(sabotage, _count_fire_consoles(), repairing, fraction)
 
 
 ## How many fire consoles the map has (the "held x/y" total); counted once.
@@ -491,8 +517,40 @@ func _update_spectator() -> void:
 
 
 func _on_event(data: Dictionary) -> void:
-	if str(data.get("t", "")) == "spot_cleaned":
-		_toast.show_text(tr("HUD_SPOT_CLEANED"))
+	match str(data.get("t", "")):
+		"spot_cleaned":
+			_toast.show_text(tr("HUD_SPOT_CLEANED"))
+		"delivered":
+			_toast.show_text(tr("HUD_DELIVERED") % [int(data.get("bags", 0)), float(data.get("meter", Session.meter))])
+		"upgrade_offer":
+			var items: Array[String] = []
+			for i in Net.as_array(data.get("items")):
+				items.append(str(i))
+			_picker.open(items)
+		"upgrade_ok":
+			_toast.show_text(tr("UPGRADE_OK") % tr("UPGRADE_" + str(data.get("item", "")).to_upper()))
+
+
+func _on_upgrade_picked(item: String) -> void:
+	if _round != null:
+		_round.pick_upgrade(item)
+
+
+## "Items: Backpack, Tool, ..." for the upgrades a Cleaner owns; "" when none (and for Trashers:
+## the server sends them no cap, tool, heals or masks).
+static func owned_items_text(bag_cap: int, has_tool: bool, heals: int, masks: int) -> String:
+	var names: PackedStringArray = []
+	if bag_cap > 1:
+		names.append(TranslationServer.translate(&"UPGRADE_BACKPACK"))
+	if has_tool:
+		names.append(TranslationServer.translate(&"UPGRADE_TOOL"))
+	if heals > 0:
+		names.append(TranslationServer.translate(&"UPGRADE_HEAL"))
+	if masks > 0:
+		names.append(TranslationServer.translate(&"UPGRADE_MASK"))
+	if names.is_empty():
+		return ""
+	return TranslationServer.translate(&"HUD_ITEMS") % ", ".join(names)
 
 
 func _on_sabotage_ended(data: Dictionary) -> void:

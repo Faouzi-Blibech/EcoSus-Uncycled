@@ -259,3 +259,15 @@ HUD_SPOT_CLEANED,Spot cleaned. Take the bag to the Recycling Machine.,Endroit ne
 REJECT_BAGS_FULL,Your bags are full. Recycle them first.,Tes sacs sont pleins. Recycle-les d'abord.
 REJECT_SPOT_CLEAN,This spot is already clean.,Cet endroit est déjà propre.
 REJECT_SPOT_DIRTY,This spot is still dirty.,Cet endroit est encore sale.
+UPGRADE_TITLE,Pick an upgrade,Choisis une amélioration
+UPGRADE_BACKPACK,Backpack (3 bags),Sac à dos (3 sacs)
+UPGRADE_TOOL,Cleaning Tool (faster),Outil de nettoyage (plus rapide)
+UPGRADE_HEAL,Healing Kit,Kit de soin
+UPGRADE_MASK,Gas Mask,Masque à gaz
+UPGRADE_OK,You got: %s,Obtenu : %s
+HUD_ITEMS,Items: %s,Objets : %s
+HUD_DELIVERED,Recycled %d bag(s)! Cleanliness %.0f%%,%d sac(s) recyclé(s) ! Propreté %.0f%%
+SABOTAGE_BANNER_MACHINE,The Recycling Machine is jammed! Hold FIX at the machine.,La machine de recyclage est bloquée ! Maintiens RÉPARER à la machine.
+REJECT_NO_BAGS,You carry no bags.,Tu ne portes aucun sac.
+REJECT_MACHINE_JAMMED,The machine is jammed. Fix it first.,La machine est bloquée. Répare-la d'abord.
+REJECT_NO_ITEM,That item is not available.,Cet objet n'est pas disponible.

@@ -124,6 +124,13 @@ multiplier; `MinigameRegistry.base_type` names the spot art. The original plan f
 
 ### Task F3: machine, delivery, upgrades, jam (1 h)
 
+Done on `gameplay/machine` (stacked on F2). USE at the machine delivers; FIX at a jammed machine is a
+hold (`fix machine true/false`, ring from `machine.repair_t`); the jam banner comes from
+`Session.machine_jammed` (snapshots carry only smog in `sabotage`); `Session.upgrade_offer` +
+`UpgradePicker` (built in parallel by a worker) -> `RoundScene.pick_upgrade` -> `pick_upgrade`; owned items
+line under the bag counter; toasts for `delivered` and `upgrade_ok`. A Trasher is offered nothing at the
+machine (no fake delivery). The original plan follows for reference.
+
 **Files:**
 - Create: `client/ui/hud/upgrade_picker.gd` (4 cards, 48 px min, icons `res://assets/icons/upgrade_<item>.png`)
 - Modify: `round.gd` (`deliver`, `fix_machine` hold reuses the fire-hold code), `action_rules.gd`, `hud.gd`,

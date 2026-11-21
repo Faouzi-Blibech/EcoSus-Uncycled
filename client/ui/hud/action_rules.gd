@@ -5,11 +5,11 @@ extends RefCounted
 ##
 ## ctx keys: phase, role, is_out, near_console ({id, kind} or {}; kind task, emergency, fire_fix,
 ## smog_fix), held_console (the fire console I hold or ""), near_spot_state ("dirty", "clean" or "" for the
-## task console in near_console: a v2 cleaning spot), bags_full, fresh_pile (pile id or -1), hit_target (seat or -1), cd ({hit, dump,
+## task console in near_console: a v2 cleaning spot), bags_full, bags (carried), machine_jammed, fresh_pile (pile id or -1), hit_target (seat or -1), cd ({hit, dump,
 ## sabotage} seconds), emergencies_left, sabotage (Session.sabotage: {} or {kind, ...}), clean_pile (cleanable pile id
 ## in range or -1).
 ## Result: {"use": bool, "report": bool, "hit": {visible, ready, cooldown}, "dump": {...},
-## "sabotage": {...}, "fix": {visible, kind ("fire", "smog" or "")}, "clean": bool}.
+## "sabotage": {...}, "fix": {visible, kind ("fire", "smog", "machine" or "")}, "clean": bool}.
 ## The server still validates every action; these rules only decide what the player is offered.
 
 
@@ -31,6 +31,13 @@ static func button_states(ctx: Dictionary) -> Dictionary:
 			states["use"] = dirty and (polluter or not bool(ctx.get("bags_full", false)))
 		"emergency":
 			states["use"] = int(ctx.get("emergencies_left", 0)) > 0
+		"machine":
+			# The Recycling Machine: a Cleaner delivers the bags carried, or holds FIX while it is jammed.
+			if not polluter:
+				if bool(ctx.get("machine_jammed", false)):
+					states["fix"] = {"visible": true, "kind": "machine"}
+				else:
+					states["use"] = int(ctx.get("bags", 0)) > 0
 		"fire_fix", "smog_fix":
 			# Only an active citizen fixes (the server rejects a polluter), and only the kind that runs.
 			var running: String = str((ctx.get("sabotage", {}) as Dictionary).get("kind", ""))

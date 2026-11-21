@@ -148,3 +148,10 @@ func test_spectator_time_left_uses_the_deadline_clock() -> bool:
 	Session.is_out = saved[3]
 	assert_eq(shown, "8:20", "600 s minus 100 s of active play, not minus 400 s of match time")
 	return true
+
+
+func test_machine_jam_banner_and_repair_percent() -> bool:
+	var jam: Dictionary = {"kind": "machine"}
+	assert_eq(SabotageBanner.text_for(jam, 0, false), str(TranslationServer.translate(&"SABOTAGE_BANNER_MACHINE")), "jam line")
+	assert_true(SabotageBanner.text_for(jam, 0, true, 0.5).ends_with(" 50%"), "repair percent")
+	return true

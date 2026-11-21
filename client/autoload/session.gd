@@ -97,6 +97,10 @@ var meter: float = 0.0
 ## v2 (protocol 2). Spot id -> "dirty" or "clean", from every snapshot.
 var spots: Dictionary = {}
 var machine_jammed: bool = false
+## Seconds of my machine fix the server has counted (snapshot machine.repair_t); -1 when not counting.
+var machine_repair_t: float = -1.0
+## The open upgrade offer after a delivery (items), [] when none. Cleared by a pick or a new match.
+var upgrade_offer: Array = []
 ## The room a toxic gas warning runs in ("" when none) and the seconds before it lands.
 var gas_room: String = ""
 var gas_in_s: float = 0.0
@@ -423,6 +427,8 @@ func _reset_match_state() -> void:
 	last_game_over = {}
 	spots = {}
 	machine_jammed = false
+	machine_repair_t = -1.0
+	upgrade_offer = []
 	gas_room = ""
 	gas_in_s = 0.0
 	_read_private({})
@@ -568,7 +574,9 @@ func _on_snapshot(data: Dictionary) -> void:
 			var spot: Dictionary = Net.as_dict(e)
 			if spot.has("id"):
 				spots[str(spot["id"])] = str(spot.get("state", "dirty"))
-	machine_jammed = Net.as_dict(data.get("machine")).get("jammed") == true
+	var machine: Dictionary = Net.as_dict(data.get("machine"))
+	machine_jammed = machine.get("jammed") == true
+	machine_repair_t = _num(machine.get("repair_t"), -1.0)
 	var gas: Dictionary = Net.as_dict(data.get("gas"))
 	gas_room = str(gas.get("room", ""))
 	gas_in_s = _num(gas.get("in_s"), 0.0)
@@ -618,6 +626,11 @@ func _on_event(data: Dictionary) -> void:
 				my_tasks.append(added)
 		"poisoned":
 			poison = int(data.get("level", poison))
+		"delivered":
+			bags = 0
+			meter = _num(data.get("meter"), meter)
+		"upgrade_offer":
+			upgrade_offer = Net.as_array(data.get("items")).duplicate()
 		"spot_cleaned":
 			bags = int(_num(data.get("bags"), bags))
 			var cleaned: String = str(data.get("spot", ""))
@@ -632,11 +645,19 @@ func _on_event(data: Dictionary) -> void:
 			out_cause = str(data.get("cause", ""))
 			_mark_out(seat_id)
 		"sabotage_started":
-			sabotage = {"kind": str(data.get("kind", "")), "held": []}
-			if data.has("countdown"):
-				sabotage["countdown"] = float(data["countdown"])
+			# A machine jam is not the smog/fire object: snapshots report it as machine.jammed.
+			if str(data.get("kind", "")) == "machine":
+				machine_jammed = true
+			else:
+				sabotage = {"kind": str(data.get("kind", "")), "held": []}
+				if data.has("countdown"):
+					sabotage["countdown"] = float(data["countdown"])
 		"sabotage_ended":
-			sabotage = {}
+			if str(data.get("kind", "")) == "machine":
+				machine_jammed = false
+				machine_repair_t = -1.0
+			else:
+				sabotage = {}
 		"meeting_started":
 			phase = "meeting"
 			phrases_used = 0

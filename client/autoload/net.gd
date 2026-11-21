@@ -256,6 +256,10 @@ func send_use(console_id: String) -> void:
 	send("use", {"console": console_id})
 
 
+func send_pick_upgrade(item: String) -> void:
+	send("pick_upgrade", {"item": item})
+
+
 func send_spot_done(spot_id: String) -> void:
 	send("spot_done", {"spot": spot_id})
 
