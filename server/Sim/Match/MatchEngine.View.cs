@@ -190,7 +190,8 @@ namespace Sim.Match
                 Result,
                 me.IsActive ? null : new List<ChatEvent>(_ghostChat),
                 spots,
-                Machine.Jammed);
+                Machine.Jammed,
+                _gasRoom == null ? null : new GasView(_gasRoom.Id, Math.Max(0f, _gasLeft)));
         }
     }
 }
