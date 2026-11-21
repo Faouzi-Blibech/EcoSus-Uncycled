@@ -94,14 +94,9 @@ namespace Uncycled.Bots.Meeting
                 }
             }
 
-            // a fake clean seen at a spot reads like a dump: a Trasher mark
-            foreach (WitnessRecord r in mem.Inferred)
-            {
-                if (r.Actor != self)
-                {
-                    items.Add(new EvidenceItem(EvidenceItem.SawDump, r.Actor, r.ZoneId, r.At));
-                }
-            }
+            // A fake clean (mem.Inferred) is a tell this bot worked out, not an act it saw: it is no evidence item.
+            // It counts in the suspicion score (SuspicionModel), and when the bot accuses on it the line is the
+            // vague "sus", never a saw_dump line with a zone (which every listener would count as an eyewitness).
 
             if (view.Meeting != null)
             {

@@ -367,6 +367,17 @@ namespace Uncycled.Bots
         /// </summary>
         public static ZoneDef? WarnedGasRoomHere(SeatView view, BotMemory mem, MapData map)
         {
+            ZoneDef? room = WarnedRoomToAvoid(view, mem, map);
+            return room != null && room.Contains(view.Me.Position) ? room : null;
+        }
+
+        /// <summary>
+        /// The gas room whose warning runs, for a Cleaner without a mask (wherever it stands): its spots, consoles and
+        /// walk goals are unavailable until the gas has fired, so a Cleaner that left does not walk back in. Null
+        /// for a mask holder, a Trasher, or when no warning runs.
+        /// </summary>
+        public static ZoneDef? WarnedRoomToAvoid(SeatView view, BotMemory mem, MapData map)
+        {
             if (mem.GasWarnedRoom == null || view.Me.Role != Role.Citizen || view.Me.Masks > 0)
             {
                 return null;
@@ -374,7 +385,7 @@ namespace Uncycled.Bots
 
             foreach (ZoneDef room in map.GasRooms)
             {
-                if (room.Id == mem.GasWarnedRoom && room.Contains(view.Me.Position))
+                if (room.Id == mem.GasWarnedRoom)
                 {
                     return room;
                 }

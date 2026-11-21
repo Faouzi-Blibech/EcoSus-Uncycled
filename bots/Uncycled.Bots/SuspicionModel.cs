@@ -21,6 +21,9 @@ namespace Uncycled.Bots
         public const float VoteThreshold = 40f;
         public const float NearPileWindowS = 20f;
 
+        /// <summary>Own sightings of an accused outside the claimed zone must span this long to contradict an eyewitness line.</summary>
+        public const float AlibiSpanS = 10f;
+
         private readonly Dictionary<byte, float> _scores = new Dictionary<byte, float>();
         private readonly Dictionary<byte, float> _chat = new Dictionary<byte, float>();
         private IReadOnlyList<ClueInfo> _clues = new List<ClueInfo>();
@@ -175,8 +178,9 @@ namespace Uncycled.Bots
         /// An eyewitness line says the accused did an act in a zone. It carries no act time, so the claim can
         /// refer to the last NearPileWindowS seconds before the meeting started (the window the alibi check
         /// uses around a clue pile). It is contradicted when a clue pile time puts the accused elsewhere
-        /// (Contradicts) or when this bot's own sightings in that window saw the accused and never in the
-        /// claimed zone. Only this bot's own memory is read.
+        /// (Contradicts) or when this bot's own sightings in that window saw the accused outside the claimed
+        /// zone at least twice, spanning AlibiSpanS or more, and never in it. A single glimpse elsewhere does not
+        /// discredit a true witness. Only this bot's own memory is read.
         /// </summary>
         private bool ContradictsClaim(BotMemory mem, byte accused, string claimedZone)
         {
@@ -186,8 +190,9 @@ namespace Uncycled.Bots
             }
 
             float end = mem.MeetingStartedAt ?? _now;
-            bool saw = false;
-            bool sawInClaimed = false;
+            int seenElsewhere = 0;
+            float first = float.MaxValue;
+            float last = float.MinValue;
             foreach (Sighting s in mem.SightingsOf(accused))
             {
                 if (s.Time > end || s.Time < end - NearPileWindowS)
@@ -195,11 +200,18 @@ namespace Uncycled.Bots
                     continue;
                 }
 
-                saw = true;
-                sawInClaimed |= s.Zone == claimedZone;
+                if (s.Zone == claimedZone)
+                {
+                    return false;
+                }
+
+                seenElsewhere++;
+                first = System.Math.Min(first, s.Time);
+                last = System.Math.Max(last, s.Time);
             }
 
-            return saw && !sawInClaimed;
+            // a real alibi, not a glimpse: seen elsewhere at least twice, spanning AlibiSpanS or more
+            return seenElsewhere >= 2 && last - first >= AlibiSpanS;
         }
 
         private bool Contradicts(BotMemory mem, byte speaker, string claimedZone)

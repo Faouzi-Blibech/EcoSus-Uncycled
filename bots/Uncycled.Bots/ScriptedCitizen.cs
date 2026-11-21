@@ -42,6 +42,13 @@ namespace Uncycled.Bots
                 return Same(BotAction.LeaveGas, true);
             }
 
+            // 0b. a gas warning runs: do not walk into the warned room (drop a walk that goes there)
+            ZoneDef? warned = ActionQuery.WarnedRoomToAvoid(view, Mem, map);
+            if (warned != null && Exec.WalksInto(warned))
+            {
+                return Choice.Now(BotAction.Stay);
+            }
+
             // 1. infected: heal yourself, else call the one free meeting
             if (mask[(int)BotAction.HealSelf])
             {

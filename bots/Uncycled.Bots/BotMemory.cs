@@ -51,6 +51,8 @@ namespace Uncycled.Bots
         private readonly Dictionary<byte, KeyValuePair<string, float>> _dwell = new Dictionary<byte, KeyValuePair<string, float>>();
         private MatchPhase? _prevPhase;
         private bool _prevAlarm;
+        private bool _prevRepairAlarm;
+        private float _repairAlarmAt;
         private string? _prevGasRoom;
         private float? _lastMeetingEnd;
         private float? _prevMatchTime;
@@ -166,6 +168,13 @@ namespace Uncycled.Bots
                 MachineJamSeenAt = matchTime;
             }
 
+            bool repairAlarm = (view.Sabotage != null && view.Sabotage.Kind == SabotageKind.Smog) || view.MachineJammed;
+            if (repairAlarm && !_prevRepairAlarm)
+            {
+                _repairAlarmAt = matchTime;
+            }
+
+            _prevRepairAlarm = repairAlarm;
             _prevAlarm = alarm;
             _prevGasRoom = GasWarnedRoom;
 
@@ -253,8 +262,9 @@ namespace Uncycled.Bots
                 present.Add(p.Seat);
                 if (_fakeCleans.Count > 0 && AtRepairConsole(view, p.Position))
                 {
-                    // the leaver went to repair the smog or the jam: it left its spot for the alarm, not to fake
-                    _fakeCleans.RemoveAll(r => r.Actor == p.Seat && matchTime - r.At <= RepairDropWindowS);
+                    // the leaver went to repair the smog or the jam: it left its spot for the alarm, not to fake (only a leave made after
+                    // the alarm began: a Trasher cannot wipe an earlier record by jamming and standing at the machine)
+                    _fakeCleans.RemoveAll(r => r.Actor == p.Seat && r.At >= _repairAlarmAt && matchTime - r.At <= RepairDropWindowS);
                 }
 
                 string? spot = null;

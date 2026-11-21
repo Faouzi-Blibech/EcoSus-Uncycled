@@ -195,9 +195,9 @@ namespace Uncycled.Bots
             if (_pending == null)
             {
                 _decisionIn -= dt;
-                if (_decisionIn > 0f && ActionQuery.WarnedGasRoomHere(view, Mem, Mem.Map) == null)
+                if (_decisionIn > 0f && ActionQuery.WarnedRoomToAvoid(view, Mem, Mem.Map) == null)
                 {
-                    return; // a gas warning in my room is not left for the next decision slot: the warning is short
+                    return; // a gas warning is not left for the next decision slot: the warning is short
                 }
 
                 _decisionIn = _settings.DecisionIntervalS;

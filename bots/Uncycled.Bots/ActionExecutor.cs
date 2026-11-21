@@ -1177,10 +1177,12 @@ namespace Uncycled.Bots
         /// </summary>
         private ConsoleDef? ChooseSpot(SeatView view, MapData map, SpotState state, bool inRangeOnly, bool polluter, string? hint)
         {
+            // a Cleaner without a mask keeps out of the room whose gas warning runs
+            ZoneDef? avoid = !polluter && Memory != null ? ActionQuery.WarnedRoomToAvoid(view, Memory, map) : null;
             if (hint != null)
             {
                 ConsoleDef? hinted = map.FindConsole(hint);
-                if (hinted != null && SpotIs(view, hint, state))
+                if (hinted != null && SpotIs(view, hint, state) && (avoid == null || !avoid.Contains(hinted.Position)))
                 {
                     return hinted;
                 }
@@ -1188,10 +1190,16 @@ namespace Uncycled.Bots
 
             if (inRangeOnly)
             {
-                return ActionQuery.SpotInRange(view, map, state);
+                ConsoleDef? inRange = ActionQuery.SpotInRange(view, map, state);
+                return inRange != null && avoid != null && avoid.Contains(inRange.Position) ? null : inRange;
             }
 
             List<ConsoleDef> spots = ActionQuery.SpotsNearestFirst(view, map, state);
+            if (avoid != null)
+            {
+                spots = spots.FindAll(c => !avoid.Contains(c.Position));
+            }
+
             foreach (ConsoleDef c in spots)
             {
                 if (polluter || !ActionQuery.SomeoneNear(view, c.Position, SpotCrowdRadius))
@@ -1202,6 +1210,9 @@ namespace Uncycled.Bots
 
             return spots.Count > 0 ? spots[0] : null;
         }
+
+        /// <summary>True while a walk is under way whose goal lies inside the zone (a Cleaner heading into a warned gas room).</summary>
+        public bool WalksInto(ZoneDef zone) => Busy && _nav.HasGoal && zone.Contains(_nav.Goal);
 
         private void BeginSpotAction(ConsoleDef? spot, SeatView view, MapData map, float now)
         {
