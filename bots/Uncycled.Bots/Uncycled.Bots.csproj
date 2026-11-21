@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Uncycled.Bots</RootNamespace>
+    <AssemblyName>Uncycled.Bots</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- the neural brain overrides the scripted brain's internal Choose hook -->
+    <InternalsVisibleTo Include="Uncycled.Bots.Neural" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\server\Sim\Sim.csproj" />
+  </ItemGroup>
+
+</Project>

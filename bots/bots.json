@@ -1,0 +1,18 @@
+{
+  "brain": "scripted",
+  "decision_interval_s": 0.5,
+  "reaction_min_s": 0.4,
+  "reaction_max_s": 1.2,
+  "skill": 0.6,
+  "follow_cap_s": 4,
+  "meeting": { "daily_call_cap": 5000, "timeout_s": 3 },
+  "pace": {
+    "task_time_factor_min": 1.5,
+    "task_time_factor_max": 2.5,
+    "pause_chance": 0.3,
+    "pause_min_s": 0.5,
+    "pause_max_s": 2,
+    "wrong_zone_chance": 0.1,
+    "group_chance": 0.3
+  }
+}
