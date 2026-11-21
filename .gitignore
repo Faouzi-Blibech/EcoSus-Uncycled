@@ -263,3 +263,6 @@ node_modules/
 ecoverify/train/data/
 ecoverify/train/runs/
 venv-train/
+
+# The trained TACO litter model is shared through git (24 MB) so teammates and Docker builds get it.
+!ecoverify/models/taco-seg.pt
