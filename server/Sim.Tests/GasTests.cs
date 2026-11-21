@@ -16,7 +16,7 @@ namespace Sim.Tests
             return new MatchConfig
             {
                 TrasherStartCooldownS = 0f,
-                SabotageStartCooldownS = 0f,
+                TrasherStartCooldownS = 0f,
                 UnlockAfter = 1,
                 EmergencyMinSinceMeetingS = 0f,
                 DiscussionS = 30f,
