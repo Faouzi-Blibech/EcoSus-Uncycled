@@ -199,6 +199,19 @@ public static class Codec
                 return true;
             }
 
+            case "spot_done":
+            {
+                string? spot = GetString(r, "spot");
+                if (string.IsNullOrEmpty(spot) || spot.Length > 64)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new SpotDoneCommand(spot);
+                return true;
+            }
+
             case "task_step":
             {
                 if (!TryGetInt(r, "task", out int taskId))

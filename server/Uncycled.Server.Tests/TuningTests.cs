@@ -98,6 +98,21 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void The_real_tuning_json_sets_up_the_v2_spots_bags_and_meter()
+        {
+            ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null));
+            MatchConfig c = content.Config;
+            Assert.Equal(1, c.BagCap);
+            Assert.Equal(3, c.BackpackCap);
+            Assert.Equal(0.5f, c.ToolTimeMult);
+            Assert.Equal(10f, c.BagMeterAdd);
+            Assert.Equal(10f, c.RepolluteMeterSub);
+            Assert.Equal(0f, c.MeterPassivePerS);
+            Assert.Equal(420f, c.DeadlineS);
+            Assert.Equal(0, c.TasksCommon + c.TasksShort + c.TasksLong);
+        }
+
+        [Fact]
         public void Report_and_clean_ranges_are_read_and_default_to_the_code_values()
         {
             using JsonDocument set = JsonDocument.Parse("{\"report_range\":2.5,\"dump\":{\"clean_range\":1.75}}");

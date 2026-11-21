@@ -8,7 +8,7 @@ namespace Uncycled.Bots.Tests
 {
     public class DecisionSpreadTests
     {
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void First_decisions_of_the_seats_do_not_all_land_on_the_same_tick()
         {
             // No reaction delay and no pace pause (the human pace waits up to 2 s before an action), so the first

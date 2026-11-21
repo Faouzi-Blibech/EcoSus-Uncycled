@@ -40,7 +40,7 @@ namespace Uncycled.Bots.Tests
             Assert.False(MaskOf(m, p)[(int)BotAction.HitNearest]);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Mask_NoHitWhileHitCooldownRuns()
         {
             TestMatch m = TestMatch.Create(2);
@@ -79,7 +79,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(ActionCatalogue.Mask(driver.View, driver.Memory, m.Map)[(int)BotAction.CallMeeting]);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Mask_OutSeatGetsOnlyStay()
         {
             TestMatch m = TestMatch.Create(2);

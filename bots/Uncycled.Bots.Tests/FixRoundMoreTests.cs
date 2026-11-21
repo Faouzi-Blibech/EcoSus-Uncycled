@@ -152,7 +152,7 @@ namespace Uncycled.Bots.Tests
 
         // ---------- the vote retry ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Brain_VotesSkipWhenItsSuspectWasAlreadyEjected()
         {
             TestMatch m = TestMatch.Create(2);

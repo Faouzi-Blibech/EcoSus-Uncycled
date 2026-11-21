@@ -88,27 +88,90 @@ namespace Sim.Match
 
             if (!p.IsCitizen)
             {
-                // Polluters have no real tasks (they fake them client-side).
+                // Trashers have no spots to clean (they fake it client-side).
                 return Reject(RejectReason.NotAllowed);
             }
 
-            TaskState? task = null;
-            foreach (TaskState t in Tasks.All)
+            Spot? spot = Spots.Find(console.Id);
+            if (spot == null)
             {
-                if (t.Owner == p.Seat && !t.IsDone && t.CurrentConsoleId == console.Id)
-                {
-                    task = t;
-                    break;
-                }
+                return Reject(RejectReason.TargetInvalid);
             }
 
-            if (task == null)
+            if (spot.State == SpotState.Clean)
+            {
+                return Reject(RejectReason.SpotClean);
+            }
+
+            if (p.Bags >= p.BagCap)
+            {
+                return Reject(RejectReason.BagsFull);
+            }
+
+            // One open session per seat; the spot can stay dirty for several seats at once, the first spot_done wins.
+            _sessions[p.Seat] = new TaskSession(-1, 0, spot.Id, ActiveTime);
+            Emit(new UseOkEvent(p.Seat, spot.Id, ConsoleKind.Task, null, spot.TaskType, null));
+            return CommandResult.Ok;
+        }
+
+        /// <summary>
+        /// spot_done: the session opened by use must still be valid (spot dirty, in reach, min time
+        /// passed, bag slot free). The spot turns clean and the cleaner gets one bag.
+        /// </summary>
+        private CommandResult ApplySpotDone(PlayerState p, SpotDoneCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsCitizen)
             {
                 return Reject(RejectReason.NotAllowed);
             }
 
-            _sessions[p.Seat] = new TaskSession(task.Id, task.StepsDone, console.Id, ActiveTime);
-            Emit(new UseOkEvent(p.Seat, console.Id, ConsoleKind.Task, task.Id, task.Type.Id, task.StepsDone));
+            TaskSession? session;
+            if (!_sessions.TryGetValue(p.Seat, out session) || session == null || session.TaskId != -1 || session.ConsoleId != c.SpotId)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            Spot? spot = Spots.Find(c.SpotId);
+            if (spot == null)
+            {
+                _sessions.Remove(p.Seat);
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (spot.State == SpotState.Clean)
+            {
+                _sessions.Remove(p.Seat);
+                return Reject(RejectReason.SpotClean);
+            }
+
+            RejectReason? reach = CheckReach(p.Position, spot.Position, spot.Range);
+            if (reach != null)
+            {
+                _sessions.Remove(p.Seat);
+                return Reject(reach.Value);
+            }
+
+            float needed = spot.MinSeconds * (p.HasTool ? Config.ToolTimeMult : 1f);
+            if (ActiveTime - session.OpenedAt + Epsilon < needed)
+            {
+                return Reject(RejectReason.OnCooldown);
+            }
+
+            if (p.Bags >= p.BagCap)
+            {
+                _sessions.Remove(p.Seat);
+                return Reject(RejectReason.BagsFull);
+            }
+
+            _sessions.Remove(p.Seat);
+            spot.State = SpotState.Clean;
+            p.Bags++;
+            Emit(new SpotCleanedEvent(p.Seat, spot.Id, p.Bags));
             return CommandResult.Ok;
         }
 
@@ -667,6 +730,12 @@ namespace Sim.Match
 
             if (!p.IsActive || !p.IsPolluter)
             {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (c.Kind == SabotageKind.Fire)
+            {
+                // The fire is gone in v2 (the code stays, out of play).
                 return Reject(RejectReason.NotAllowed);
             }
 

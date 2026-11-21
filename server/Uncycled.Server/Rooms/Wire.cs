@@ -218,6 +218,7 @@ public static class Wire
         }
 
         w.WriteEndArray();
+        WriteBags(w, me);
         if (me.Cooldowns != null)
         {
             WriteCooldowns(w, "cooldowns", me.Cooldowns);
@@ -336,6 +337,7 @@ public static class Wire
                 w.WriteNumber("poison", me.Poison.Value);
             }
 
+            WriteBags(w, me);
             if (me.Cooldowns != null)
             {
                 WriteCooldowns(w, "cd", me.Cooldowns);
@@ -343,6 +345,17 @@ public static class Wire
 
             w.WriteNumber("emergencies_left", v.EmergenciesLeft);
             w.WriteEndObject();
+
+            w.WriteStartArray("spots");
+            foreach (SpotView s in v.Spots)
+            {
+                w.WriteStartObject();
+                w.WriteString("id", s.Id);
+                w.WriteString("state", Snake(s.State));
+                w.WriteEndObject();
+            }
+
+            w.WriteEndArray();
 
             if (me.Status != PlayerStatus.Out)
             {
@@ -374,6 +387,19 @@ public static class Wire
 
             WriteSabotage(w, "sabotage", v.Sabotage, extras?.RepairElapsed);
         });
+
+    /// <summary>bags, cap and tool: Cleaners only (a Trasher never carries bags).</summary>
+    private static void WriteBags(Utf8JsonWriter w, MyView me)
+    {
+        if (me.Role != Role.Citizen)
+        {
+            return;
+        }
+
+        w.WriteNumber("bags", me.Bags);
+        w.WriteNumber("cap", me.BagCap);
+        w.WriteBoolean("tool", me.HasTool);
+    }
 
     private static void WriteCooldowns(Utf8JsonWriter w, string name, CooldownView cd)
     {
@@ -557,7 +583,7 @@ public static class Wire
                 {
                     w.WriteString("t", "use_ok");
                     w.WriteString("console", e.ConsoleId);
-                    w.WriteString("kind", Snake(e.Kind));
+                    w.WriteString("kind", e.Kind == ConsoleKind.Task ? "spot" : Snake(e.Kind));
                     if (e.TaskId.HasValue)
                     {
                         w.WriteNumber("task", e.TaskId.Value);
@@ -572,6 +598,14 @@ public static class Wire
                     {
                         w.WriteNumber("step", e.Step.Value);
                     }
+                });
+
+            case SpotCleanedEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "spot_cleaned");
+                    w.WriteString("spot", e.Spot);
+                    w.WriteNumber("bags", e.Bags);
                 });
 
             case TaskProgressEvent e:

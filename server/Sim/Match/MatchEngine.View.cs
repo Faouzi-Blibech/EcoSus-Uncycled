@@ -109,7 +109,16 @@ namespace Sim.Match
                 VisionOf(me),
                 me.IsCitizen ? me.Poison : (int?)null,
                 cooldowns,
-                tasks);
+                tasks,
+                me.Bags,
+                me.BagCap,
+                me.HasTool);
+
+            var spots = new List<SpotView>();
+            foreach (Spot spot in Spots.All)
+            {
+                spots.Add(new SpotView(spot.Id, spot.State));
+            }
 
             SabotageView? sabotage = null;
             if (Fire.Active)
@@ -170,7 +179,8 @@ namespace Sim.Match
                 sabotage,
                 meetingView,
                 Result,
-                me.IsActive ? null : new List<ChatEvent>(_ghostChat));
+                me.IsActive ? null : new List<ChatEvent>(_ghostChat),
+                spots);
         }
     }
 }

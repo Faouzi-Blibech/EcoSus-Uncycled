@@ -352,9 +352,10 @@ namespace Uncycled.Bots
             })
             {
                 // Chat data is for the welcome message and the chat panels; the observation never reads it (networks never see chat):
-                // MeetingView.MyChatCount, .MyText and .Living, and SeatView.GhostChat
+                // MeetingView.MyChatCount, .MyText and .Living, and SeatView.GhostChat.
+                // The v2 spots and bags (SeatView.Spots, MyView.Bags/BagCap/HasTool) are not read yet either: the trained models keep their hash.
                 foreach (PropertyInfo p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(x => !(t == typeof(MeetingView) && (x.Name == "MyChatCount" || x.Name == "MyText" || x.Name == "Living")) && !(t == typeof(SeatView) && x.Name == "GhostChat"))
+                    .Where(x => !(t == typeof(MeetingView) && (x.Name == "MyChatCount" || x.Name == "MyText" || x.Name == "Living")) && !(t == typeof(SeatView) && (x.Name == "GhostChat" || x.Name == "Spots")) && !(t == typeof(MyView) && (x.Name == "Bags" || x.Name == "BagCap" || x.Name == "HasTool")))
                     .OrderBy(x => x.Name, StringComparer.Ordinal))
                 {
                     sb.Append("view:").Append(t.Name).Append('.').Append(p.Name).Append(':').Append(p.PropertyType.ToString()).Append('\n');

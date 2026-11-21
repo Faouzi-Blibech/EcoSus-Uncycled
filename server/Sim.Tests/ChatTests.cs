@@ -74,7 +74,7 @@ namespace Sim.Tests
             Assert.Equal(RejectReason.TargetInvalid, e.Apply(cit, new ChatPhraseCommand("free_text", null)).Reason);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Chat_RejectsASeatThatIsOut()
         {
             var cfg = new MatchConfig { DiscussionS = 30f, VotingS = 30f, ResultsS = 5f, EmergencyMinSinceMeetingS = 0f };

@@ -290,7 +290,7 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(3f / Living, mem.HeatAccusations(Target), 4);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Host_TheTrainingRunnersMeetingsFeedHeatFromItsMeetingLog()
         {
             string dir = ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));

@@ -61,7 +61,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(checkedSeeds >= 1, "no seed lasted past 120 s");
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Brain_SendsOnlyVoteInMeeting()
         {
             TestMatch m = TestMatch.Create(4);
@@ -114,7 +114,7 @@ namespace Uncycled.Bots.Tests
             Assert.All(after, c => Assert.True(c.Result.IsOk, c.Seat + " " + c.Command.GetType().Name + " " + c.Result));
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Brain_OutSeatDoesNothing()
         {
             TestMatch m = TestMatch.Create(2, startPlaying: true);

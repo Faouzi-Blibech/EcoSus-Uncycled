@@ -60,6 +60,20 @@ namespace Sim.Match
         public PileState State { get; }
     }
 
+    /// <summary>A spot's public state: every seat sees every spot (positions come from the map).</summary>
+    public sealed class SpotView
+    {
+        public SpotView(string id, SpotState state)
+        {
+            Id = id;
+            State = state;
+        }
+
+        public string Id { get; }
+
+        public SpotState State { get; }
+    }
+
     /// <summary>Remaining cooldowns of a polluter, in seconds.</summary>
     public sealed class CooldownView
     {
@@ -90,8 +104,14 @@ namespace Sim.Match
             float vision,
             int? poison,
             CooldownView? cooldowns,
-            IReadOnlyList<TaskInfo> tasks)
+            IReadOnlyList<TaskInfo> tasks,
+            int bags = 0,
+            int bagCap = 0,
+            bool hasTool = false)
         {
+            Bags = bags;
+            BagCap = bagCap;
+            HasTool = hasTool;
             Seat = seat;
             Role = role;
             Partners = partners;
@@ -128,6 +148,13 @@ namespace Sim.Match
 
         /// <summary>Own tasks (empty for polluters).</summary>
         public IReadOnlyList<TaskInfo> Tasks { get; }
+
+        /// <summary>Bags carried. Private to the carrier; the wire sends it to citizens only.</summary>
+        public int Bags { get; }
+
+        public int BagCap { get; }
+
+        public bool HasTool { get; }
     }
 
     public sealed class SabotageView
@@ -219,8 +246,10 @@ namespace Sim.Match
             SabotageView? sabotage,
             MeetingView? meeting,
             GameOverEvent? gameOver,
-            IReadOnlyList<ChatEvent>? ghostChat = null)
+            IReadOnlyList<ChatEvent>? ghostChat = null,
+            IReadOnlyList<SpotView>? spots = null)
         {
+            Spots = spots ?? new List<SpotView>();
             GhostChat = ghostChat ?? new List<ChatEvent>();
             Seat = seat;
             Phase = phase;
@@ -273,6 +302,9 @@ namespace Sim.Match
         public MeetingView? Meeting { get; }
 
         public GameOverEvent? GameOver { get; }
+
+        /// <summary>Every spot and whether it is dirty or clean, for every seat.</summary>
+        public IReadOnlyList<SpotView> Spots { get; }
 
         /// <summary>Ghost chat so far, oldest first. Non-empty only in the view of an out seat.</summary>
         public IReadOnlyList<ChatEvent> GhostChat { get; }
