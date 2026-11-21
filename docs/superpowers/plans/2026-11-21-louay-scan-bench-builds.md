@@ -125,7 +125,10 @@ def test_token_expires_after_ttl():
 - [ ] **Step 4:** Run the test runner. Then by hand on Windows (QR flow) and on a phone web build (same-tab
   flow). Commit on `scan/client`.
 
-### Task L3: lobby size picker and skins (1 h)
+### Task L3: lobby skins (45 min)
+
+Seats are locked at 8 with 2 Trashers (team decision, Sat 21 Nov evening): no size picker. Skip every
+`set_size` / `size` / `sizes` item below; build the skin picker only.
 
 **Files:**
 - Modify: `client/scenes/lobby/lobby.gd` (host: 6/8/10 picker sends `set_size`; everyone: skin picker sends
