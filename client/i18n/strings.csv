@@ -41,11 +41,11 @@ LOBBY_WAITING_HOST,Waiting for the host to start the match.,En attente du lancem
 RECONNECT_TITLE,Connection lost,Connexion perdue
 RECONNECT_WAITING,Reconnecting...,Reconnexion...
 RECONNECT_TRYING,Reconnecting...,Reconnexion...
-ROLE_CITIZEN,Citizen,Citoyen
-ROLE_POLLUTER,Polluter,Pollueur
+ROLE_CITIZEN,Cleaner,Nettoyeur
+ROLE_POLLUTER,Trasher,Pollueur
 HUD_ROLE,Role: %s,Rôle : %s
 HUD_PARTNER,Partner: %s,Complice : %s
-HUD_METER,Pollution: %.0f%%,Pollution : %.0f%%
+HUD_METER,Cleanliness: %.0f%%,Propreté : %.0f%%
 HUD_PHASE,Phase: %s,Phase : %s
 HUD_PING,Weak connection,Connexion faible
 PHASE_LOBBY,Lobby,Salon
@@ -154,7 +154,6 @@ HUD_TASKS,Tasks,Tâches
 HUD_TASK_STEPS,%d/%d,%d/%d
 HUD_TASK_ZONE,(%s),(%s)
 HUD_TASK_DONE,done,fait
-HUD_POISON,Poison (out at 100%),Poison (éliminé à 100 %)
 HUD_TIMER,%d:%02d,%d:%02d
 ACT_USE,Use,Agir
 ACT_REPORT,Report,Signaler
@@ -255,3 +254,4 @@ CHAT_HAS_VOTED,%s has voted,%s a voté
 MEETING_GHOST_LINE,%s (ghost): %s,%s (fantôme) : %s
 CHAT_GHOST_HINT,Ghost chat: only out players see it.,Discussion des fantômes : seuls les joueurs éliminés la voient.
 GHOST_CHAT_TITLE,Ghost chat,Discussion des fantômes
+HUD_BAGS,Bags: %d/%d,Sacs : %d/%d
