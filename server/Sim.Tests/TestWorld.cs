@@ -210,6 +210,10 @@ namespace Sim.Tests
 
         public static PlayerState P(MatchEngine e, byte seat) => e.Find(seat) ?? throw new InvalidOperationException("no seat");
 
+        /// <summary>Puts a dump pile (the Trasher's signature) at a point without the v1 dump action.</summary>
+        public static Pile SeedDump(MatchEngine e, byte by, Vec2 at) =>
+            e.Piles.AddDump(at, e.Map.ZoneAt(at), e.MatchTime, P(e, by).Signature!.Value, by);
+
         /// <summary>Moves a seat onto a console (its exact position).</summary>
         public static void StandAt(MatchEngine e, byte seat, string consoleId)
         {

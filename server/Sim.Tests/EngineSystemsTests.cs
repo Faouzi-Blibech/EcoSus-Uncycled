@@ -248,13 +248,13 @@ namespace Sim.Tests
             Assert.Equal(SabotageEndResult.Cleared, Assert.Single(Of<SabotageEndedEvent>(e.Tick(0f))).Result);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
-        public void Sabotage_is_locked_for_the_opening_seconds_like_hit_and_dump()
+        [Fact]
+        public void Sabotage_is_locked_for_the_opening_seconds()
         {
             MatchEngine e = Playing();
             byte pol = Polluter(e);
 
-            Assert.Equal(RejectReason.OnCooldown, e.Apply(pol, new SabotageCommand(SabotageKind.Fire)).Reason);
+            Assert.Equal(RejectReason.OnCooldown, e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).Reason);
             Assert.Equal(10f, e.ViewFor(pol).Me.Cooldowns!.Sabotage, 2);
             Advance(e, 9.8f);
             Assert.Equal(RejectReason.OnCooldown, e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).Reason);
@@ -263,11 +263,11 @@ namespace Sim.Tests
             Assert.True(e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).IsOk);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Sabotage_opening_lock_comes_from_the_config()
         {
             MatchEngine e = Playing(new MatchConfig { SabotageStartCooldownS = 0f });
-            Assert.True(e.Apply(Polluter(e), new SabotageCommand(SabotageKind.Fire)).IsOk);
+            Assert.True(e.Apply(Polluter(e), new SabotageCommand(SabotageKind.Smog)).IsOk);
         }
 
         // ---------- smog ----------
@@ -483,16 +483,14 @@ namespace Sim.Tests
             Assert.Empty(e.ViewFor(a).Players);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Piles_outside_vision_are_absent()
         {
             MatchEngine e = Playing();
             byte pol = Polluter(e);
             byte cit = Citizen(e);
             ParkOthers(e, pol, cit);
-            e.TestTeleport(pol, new Vec2(3.5f, 6.5f));
-            Advance(e, 10.2f);
-            Assert.True(e.Apply(pol, new DumpCommand()).IsOk);
+            SeedDump(e, pol, new Vec2(3.5f, 6.5f));
             e.TestTeleport(pol, Corner);
             e.TestTeleport(cit, new Vec2(6.5f, 6.5f));
             Assert.Single(e.ViewFor(cit).Piles);

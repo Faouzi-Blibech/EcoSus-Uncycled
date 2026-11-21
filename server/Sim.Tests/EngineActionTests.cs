@@ -216,7 +216,7 @@ namespace Sim.Tests
 
         // ---------- piles and reports ----------
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Meeting_reports_every_fresh_pile_and_a_pile_is_reported_once()
         {
             MatchEngine e = Playing(ShortMeetings());
@@ -224,13 +224,8 @@ namespace Sim.Tests
             byte pol2 = Polluter(e, 1);
             byte cit = Citizen(e);
             ParkOthers(e, pol, pol2, cit);
-            e.TestTeleport(pol, new Vec2(3.5f, 6.5f));
-            e.TestTeleport(pol2, new Vec2(15.5f, 6.5f));
-            Advance(e, 10.2f);
-            Assert.True(e.Apply(pol, new DumpCommand()).IsOk);
-            Assert.True(e.Apply(pol2, new DumpCommand()).IsOk);
-            Pile west = e.Piles.All[0];
-            Pile east = e.Piles.All[1];
+            Pile west = SeedDump(e, pol, new Vec2(3.5f, 6.5f));
+            Pile east = SeedDump(e, pol2, new Vec2(15.5f, 6.5f));
 
             e.TestTeleport(cit, new Vec2(16.5f, 6.5f));
             Assert.True(e.Apply(cit, new ReportCommand(east.Id)).IsOk);
@@ -258,7 +253,7 @@ namespace Sim.Tests
             Assert.Equal(RejectReason.AlreadyReported, e.Apply(cit, new ReportCommand(west.Id)).Reason);
         }
 
-        [Theory(Skip = "v1 rule, out of play in v2")]
+        [Theory]
         [InlineData(5.0f, 6.4f, null)]
         [InlineData(5.0f, 6.7f, RejectReason.OutOfRange)]
         [InlineData(7.9f, 3.5f, RejectReason.WallBetween)]
@@ -268,9 +263,7 @@ namespace Sim.Tests
             byte pol = Polluter(e);
             byte cit = Citizen(e);
             ParkOthers(e, pol, cit);
-            e.TestTeleport(pol, new Vec2(5.0f, 3.5f));
-            Advance(e, 10.2f);
-            Assert.True(e.Apply(pol, new DumpCommand()).IsOk);
+            SeedDump(e, pol, new Vec2(5.0f, 3.5f));
             e.TestTeleport(pol, Corner);
             e.TestTeleport(cit, new Vec2(x, y));
             CommandResult r = e.Apply(cit, new ReportCommand(e.Piles.All[0].Id));
