@@ -1,0 +1,56 @@
+{
+  "trained_on": "TACO (CC BY 4.0, http://tacodataset.org)",
+  "date": "2026-11-21",
+  "base_model": "yolov8s-seg.pt",
+  "epochs_max": 80,
+  "epochs_run": 64,
+  "imgsz": 640,
+  "mask_map50": 0.248,
+  "mask_map50_95": 0.1829,
+  "box_map50": 0.2513,
+  "per_class_mask_map50_95": {
+    "plastic_bottle": 0.4204,
+    "glass_bottle": 0.0985,
+    "drink_can": 0.3165,
+    "metal_can": 0.115,
+    "foil": 0.2984,
+    "drink_carton": 0.0211,
+    "paperboard": 0.06,
+    "cardboard": 0.3655,
+    "paper": 0.049,
+    "paper_cup": 0.034,
+    "plastic_cup": 0.1972,
+    "plastic_container": 0.215,
+    "plastic_film": 0.1702,
+    "wrapper": 0.1653,
+    "styrofoam": 0.2166
+  },
+  "classes": [
+    "plastic_bottle",
+    "glass_bottle",
+    "drink_can",
+    "metal_can",
+    "foil",
+    "drink_carton",
+    "paperboard",
+    "cardboard",
+    "paper",
+    "paper_cup",
+    "plastic_cup",
+    "plastic_container",
+    "plastic_film",
+    "wrapper",
+    "styrofoam"
+  ],
+  "closeup_eval": {
+    "note": "264 close-up crops of held-out TACO val items, full pipeline, trusted classes only, taco_accept_conf 0.6",
+    "right_stream": {
+      "without_taco": 0.409,
+      "with_taco": 0.489
+    },
+    "wrong_stream": {
+      "without_taco": 0.193,
+      "with_taco": 0.193
+    }
+  }
+}
