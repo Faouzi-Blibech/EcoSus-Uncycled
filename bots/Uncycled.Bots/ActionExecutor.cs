@@ -280,6 +280,12 @@ namespace Uncycled.Bots
                 case BotAction.GoSmogPanel:
                     StartWalk(me, ActionQuery.NthOfKind(map, ConsoleKind.SmogFix, 0)?.Position, map, now);
                     break;
+                case BotAction.LeaveGas:
+                {
+                    ZoneDef? warned = Memory != null ? ActionQuery.WarnedGasRoomHere(view, Memory, map) : null;
+                    StartWalk(me, warned != null ? ActionQuery.NearestCellOutside(map, warned, me) : (Vec2?)null, map, now);
+                    break;
+                }
 
                 case BotAction.GoDirtySpot:
                 case BotAction.FinishSpot:
@@ -455,6 +461,7 @@ namespace Uncycled.Bots
                 case BotAction.GoFireA:
                 case BotAction.GoFireB:
                 case BotAction.GoSmogPanel:
+                case BotAction.LeaveGas:
                     WalkStep(view, dt, now, send);
                     break;
 
@@ -1129,15 +1136,17 @@ namespace Uncycled.Bots
         }
 
         /// <summary>
-        /// A committed step ends when an alarm starts (fire or smog turns active) or the bot is hit (own
-        /// poison rises). Only the own SeatView is read; a meeting is handled by Step (not Playing).
+        /// A committed step ends when an alarm starts (fire or smog turns active), the room it stands in is
+        /// warned of gas (no mask), or the bot is hit (own poison rises). Only the own SeatView is read; a meeting is handled by Step (not Playing).
         /// </summary>
         private bool StopTriggered(SeatView view)
         {
             bool fire = ActionQuery.FireActive(view);
             bool smog = ActionQuery.SmogActive(view);
             int poison = view.Me.Poison ?? 0;
-            bool stop = (fire && !_prevFire) || (smog && !_prevSmog) || poison > _prevPoison;
+            // the gas warning of the room this Cleaner stands in (no mask): the step is dropped, leave the room
+            bool gas = Memory != null && ActionQuery.WarnedGasRoomHere(view, Memory, _map ?? Memory.Map) != null;
+            bool stop = (fire && !_prevFire) || (smog && !_prevSmog) || poison > _prevPoison || gas;
             _prevFire = fire;
             _prevSmog = smog;
             _prevPoison = poison;

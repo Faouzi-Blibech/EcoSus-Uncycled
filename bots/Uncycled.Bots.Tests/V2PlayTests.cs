@@ -400,6 +400,65 @@ namespace Uncycled.Bots.Tests
             Assert.Empty(bot.Memory.Inferred);
         }
 
+
+        // ---------- the gas warning ----------
+
+        /// <summary>
+        /// Two Cleaners stand in gas_market (one cleaning market_bins, one idle); a Trasher gasses it. Only
+        /// these two Cleaners think. Returns (match, the two seats).
+        /// </summary>
+        private static (TestMatch M, BrainRig Rig, byte A, byte B) GasMarketSetup(int masksForA)
+        {
+            TestMatch m = TestMatch.Create(2);
+            byte pol = m.FirstSeatOf(Role.Polluter);
+            var cits = m.Engine.Players.Where(p => p.Role == Role.Citizen).Select(p => p.Seat).Take(2).ToArray();
+            byte a = cits[0];
+            byte b = cits[1];
+            m.TickFor(m.Config.TrasherStartCooldownS + 1f);
+            m.Engine.Find(pol)!.Ability = TrasherAbility.Gas;
+            m.Engine.Find(a)!.Masks = masksForA;
+            Sim.World.ConsoleDef bins = m.Map.FindConsole("market_bins")!;
+            m.Engine.Spots.Find(bins.Id)!.State = SpotState.Dirty;
+            m.Engine.TestTeleport(a, bins.Position);
+            m.Engine.TestTeleport(b, new Vec2(7.5f, 3.5f));
+            var rig = new BrainRig(m, 7);
+            for (byte s = 0; s < m.Config.Seats; s++)
+            {
+                if (s != a && s != b)
+                {
+                    rig.Skip.Add(s);
+                }
+            }
+
+            rig.RunUntil(() => false, 2.5f); // A starts its clean and is committed to it
+            Assert.Equal(MatchPhase.Playing, m.Engine.Phase);
+            Assert.True(m.Engine.Apply(pol, new GasCommand("gas_market")).IsOk);
+            return (m, rig, a, b);
+        }
+
+        [Fact]
+        public void CleanersInAWarnedRoom_LeaveItBeforeTheGasFires_EvenWhileCleaning()
+        {
+            (TestMatch m, BrainRig rig, byte a, byte b) = GasMarketSetup(0);
+
+            rig.RunUntil(() => m.Events.Any(e => e is GasDoneEvent), m.Config.GasWarningS + 1f);
+
+            Assert.Contains(m.Events, e => e is GasDoneEvent);
+            Assert.True(m.Engine.Find(a)!.IsActive, "the Cleaner who was cleaning was gassed");
+            Assert.True(m.Engine.Find(b)!.IsActive, "the idle Cleaner was gassed");
+            Assert.DoesNotContain(m.Events, e => e is YouAreOutEvent o && o.Cause == OutCause.Gas);
+        }
+
+        [Fact]
+        public void CleanerWithAMask_MayStayInAWarnedRoom()
+        {
+            (TestMatch m, BrainRig rig, byte a, _) = GasMarketSetup(1);
+
+            rig.RunUntil(() => m.Events.Any(e => e is GasDoneEvent), m.Config.GasWarningS + 1f);
+
+            Assert.Contains(m.Events, e => e is MaskUsedEvent u && u.Seat == a);
+            Assert.True(m.Engine.Find(a)!.IsActive);
+        }
         // ---------- the observation ----------
 
         [Fact]

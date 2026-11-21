@@ -361,6 +361,60 @@ namespace Uncycled.Bots
             return n;
         }
 
+        /// <summary>
+        /// The gas room whose warning runs (the public gas warning) when this Cleaner stands in it without a
+        /// mask; null otherwise. A mask holder may stay: the mask takes the gas.
+        /// </summary>
+        public static ZoneDef? WarnedGasRoomHere(SeatView view, BotMemory mem, MapData map)
+        {
+            if (mem.GasWarnedRoom == null || view.Me.Role != Role.Citizen || view.Me.Masks > 0)
+            {
+                return null;
+            }
+
+            foreach (ZoneDef room in map.GasRooms)
+            {
+                if (room.Id == mem.GasWarnedRoom && room.Contains(view.Me.Position))
+                {
+                    return room;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>The walkable cell just outside a room that is the shortest walk from a position; null when none is reachable.</summary>
+        public static Vec2? NearestCellOutside(MapData map, ZoneDef room, Vec2 from)
+        {
+            MapDistances dist = MapDistances.For(map);
+            Vec2? best = null;
+            int bestPath = int.MaxValue;
+            int x0 = (int)System.Math.Floor(room.X) - 1;
+            int y0 = (int)System.Math.Floor(room.Y) - 1;
+            int x1 = (int)System.Math.Ceiling(room.X + room.Width);
+            int y1 = (int)System.Math.Ceiling(room.Y + room.Height);
+            for (int y = y0; y <= y1; y++)
+            {
+                for (int x = x0; x <= x1; x++)
+                {
+                    var c = new Vec2(x + 0.5f, y + 0.5f);
+                    if (room.Contains(c) || !map.Walk.IsWalkableCell(x, y))
+                    {
+                        continue;
+                    }
+
+                    int d = dist.Path(from, c);
+                    if (d != MapDistances.Unreachable && d < bestPath)
+                    {
+                        bestPath = d;
+                        best = c;
+                    }
+                }
+            }
+
+            return best;
+        }
+
         /// <summary>The gas room (map gas_rooms) holding the most visible non-partner players, or null when none holds one.</summary>
         public static ZoneDef? GasRoomWithPlayers(SeatView view, MapData map, out int count)
         {

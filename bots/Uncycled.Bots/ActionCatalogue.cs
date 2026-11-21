@@ -12,7 +12,7 @@ namespace Uncycled.Bots
         public const int Count = 30;
 
         /// <summary>Every action of the enum, v2 ones included; FullMask has this length.</summary>
-        public const int TotalCount = 42;
+        public const int TotalCount = 43;
 
         private const int SlotCount = 4;
         private const float CooldownEps = 1e-3f;
@@ -133,6 +133,7 @@ namespace Uncycled.Bots
             full[(int)BotAction.GoMachine] = bags > 0 && machine != null;
             full[(int)BotAction.Deliver] = bags > 0 && !view.MachineJammed && machine != null && ActionQuery.InRange(map, view.Me.Position, machine);
             full[(int)BotAction.PickUpgrade] = mem.UpgradeOffer != null && mem.UpgradeOffer.Count > 0;
+            full[(int)BotAction.LeaveGas] = ActionQuery.WarnedGasRoomHere(view, mem, map) != null;
             full[(int)BotAction.HealSelf] = ActionQuery.Infected(view) && view.Me.Heals > 0;
             full[(int)BotAction.FixMachine] = view.MachineJammed && machine != null;
             if (ActionQuery.Infected(view) && !mem.InfectedCallUsed)

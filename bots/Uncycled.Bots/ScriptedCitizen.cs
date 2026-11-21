@@ -9,7 +9,7 @@ using Sim.World;
 namespace Uncycled.Bots
 {
     /// <summary>
-    /// Scripted Cleaner (v2): heal yourself or call the free meeting when infected, pick from an open
+    /// Scripted Cleaner (v2): leave a gas-warned room, heal yourself or call the free meeting when infected, pick from an open
     /// upgrade offer, fix a jammed machine, repair smog, report a fresh body, bring a full bag to the
     /// machine, clean the nearest dirty spot, wander when every spot is clean. Votes by suspicion.
     /// </summary>
@@ -34,6 +34,12 @@ namespace Uncycled.Bots
             MapData map = Mem.Map;
             Vec2 me = view.Me.Position;
             MapDistances dist = MapDistances.For(map);
+
+            // 0. the gas warning of the room I stand in (public to everyone): walk out, before anything else
+            if (mask[(int)BotAction.LeaveGas])
+            {
+                return Same(BotAction.LeaveGas, true);
+            }
 
             // 1. infected: heal yourself, else call the one free meeting
             if (mask[(int)BotAction.HealSelf])
