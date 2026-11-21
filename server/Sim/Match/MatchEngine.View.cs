@@ -189,7 +189,8 @@ namespace Sim.Match
                 meetingView,
                 Result,
                 me.IsActive ? null : new List<ChatEvent>(_ghostChat),
-                spots);
+                spots,
+                Machine.Jammed);
         }
     }
 }

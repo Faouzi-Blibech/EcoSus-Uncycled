@@ -110,6 +110,7 @@ namespace Sim.Core
     {
         Hit,
         Dump,
+        Repollute,
     }
 
     public enum Winner
