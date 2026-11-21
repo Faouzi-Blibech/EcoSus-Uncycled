@@ -67,9 +67,11 @@ func _run(args: PackedStringArray) -> int:
 	var errors: PackedStringArray = MapJson.root_errors(root)
 	var d: Dictionary = MapJson.build(root)
 	var dark: Array = MapJson.dark_of(root)
+	var gas: Array = MapJson.gas_rooms_of(root)
 	root.free()
 	errors.append_array(MapJson.validate(d))
 	errors.append_array(MapJson.dark_errors(d, dark))
+	errors.append_array(MapJson.gas_errors(d, gas))
 	if not errors.is_empty():
 		for e in errors:
 			printerr(e)
