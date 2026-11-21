@@ -7,8 +7,9 @@ namespace Sim.Match
     /// </summary>
     public sealed class SnapshotExtras
     {
-        public SnapshotExtras(float smogLevel, float? repairElapsed, bool machineJammed = false, float? machineRepairElapsed = null, string? gasRoom = null, float gasInS = 0f)
+        public SnapshotExtras(float smogLevel, float? repairElapsed, bool machineJammed = false, float? machineRepairElapsed = null, string? gasRoom = null, float gasInS = 0f, float dashS = 0f)
         {
+            DashS = dashS;
             GasRoom = gasRoom;
             GasInS = gasInS;
             MachineJammed = machineJammed;
@@ -19,6 +20,9 @@ namespace Sim.Match
 
         /// <summary>0..1 smog strength citizen vision follows; still above 0 for a moment after the smog ends (the vision eases back).</summary>
         public float SmogLevel { get; }
+
+        /// <summary>Seconds until this seat's dash is ready (0 = ready). Wire-only, kept out of SeatView so the bots' schema does not change.</summary>
+        public float DashS { get; }
 
         /// <summary>Seconds of the smog repair so far; only for the seat that is repairing, null for everyone else.</summary>
         public float? RepairElapsed { get; }

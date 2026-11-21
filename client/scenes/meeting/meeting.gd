@@ -309,8 +309,8 @@ func _build_discussion() -> void:
 	if str(Session.meeting.get("cause", "")) == "emergency":
 		cause_key = "MEETING_CAUSE_EMERGENCY"
 	_left.add_child(UIKit.make_label(tr(cause_key) % _name_of(by), 14))
-	var bar: float = float(Session.meeting.get("task_bar", 0.0)) * 100.0
-	_left.add_child(UIKit.make_label(tr("MEETING_TASK_BAR") % bar, 12, MUTED))
+	# v2: the cleanliness meter (the v1 task bar is out of play).
+	_left.add_child(UIKit.make_label(tr("HUD_METER") % Session.meter, 12, MUTED))
 	_left.add_child(UIKit.make_label(tr("MEETING_CLUES"), 12, MUTED))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

@@ -16,7 +16,7 @@ const SESSION_FIELDS: Array[String] = [
 	"my_tasks", "piles", "out_seats", "is_out", "spawn", "spawn_pending", "has_me_pos", "seats",
 	"cooldowns", "emergencies_left", "move_seq", "sabotage", "spots", "bags", "bag_cap",
 	"machine_jammed", "machine_repair_t", "upgrade_offer", "ability", "repollutes", "ability_choices",
-	"ability_pick_sent", "heals", "infected_s", "alert_used",
+	"ability_pick_sent", "heals", "infected_s", "alert_used", "dash_s",
 ]
 
 var _saved: Dictionary = {}
@@ -77,9 +77,10 @@ func _round(role: String, at: String, offset: float) -> RoundScene:
 	r._player.position = map.marker(at).position + Vector2(offset, 0.0)
 	r._minigames = load("res://minigames/minigame_layer.tscn").instantiate() as MinigameLayer
 	r.add_child(r._minigames)
-	for kind in ["use", "report", "repollute", "plant_virus", "gas", "pick_ability", "call_meeting", "sabotage", "clean_start", "clean_cancel", "pick_upgrade", "heal"]:
+	for kind in ["use", "report", "repollute", "plant_virus", "gas", "pick_ability", "call_meeting", "sabotage", "clean_start", "clean_cancel", "pick_upgrade", "heal", "dash"]:
 		r.senders[kind] = _record(kind)
 	r.senders["fix"] = func(console: String, holding: bool) -> void: _sent.append(["fix", console, holding])
+	r.senders["move"] = func(pos: Vector2, _seq: int) -> void: _sent.append(["move", pos])
 	return r
 
 
@@ -814,5 +815,42 @@ func test_alert_calls_the_meeting_once_per_infection() -> bool:
 	r.perform_action("alert")
 	assert_eq(_sent, [["call_meeting", null]], "one meeting call")
 	assert_true(Session.alert_used, "used")
+	_restore()
+	return true
+
+
+## DASH sends the last walking direction once, then waits for dash_ok (no second dash, no moves).
+func test_dash_sends_last_direction_and_waits_for_the_server() -> bool:
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
+	Session.dash_s = 0.0
+	r._last_dir = Vector2.LEFT
+	r.perform_action("dash")
+	assert_eq(_sent, [["dash", Vector2.LEFT]], "dash with the last direction")
+	r.perform_action("dash")
+	assert_eq(_sent.size(), 1, "no second dash while waiting")
+	assert_true(r._dash_busy(), "frozen while waiting: no walking, no move sends")
+	_restore()
+	return true
+
+
+func test_dash_not_ready_sends_nothing() -> bool:
+	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
+	Session.dash_s = 5.0
+	r.perform_action("dash")
+	assert_eq(_sent, [], "on cooldown")
+	_restore()
+	return true
+
+
+## dash_ok moves the player to the server's end point (after the short dash animation).
+func test_dash_ok_moves_the_player_there() -> bool:
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
+	Session.dash_s = 0.0
+	var to: Vector2 = r._player.global_position + Vector2(96, 0)
+	r.perform_action("dash")
+	r._on_event({"t": "dash_ok", "pos": to, "cooldown": 20.0})
+	r._finish_dash()
+	assert_true(r._player.global_position.is_equal_approx(to), "at the end point")
+	assert_true(r._dash_wait < 0.0, "no longer waiting")
 	_restore()
 	return true

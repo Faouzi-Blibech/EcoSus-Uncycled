@@ -121,6 +121,8 @@ var infected_s: float = -1.0
 ## Trasher-only: re-pollutes so far and the unlocked ability ("", "virus" or "gas").
 var repollutes: int = 0
 var ability: String = ""
+## Seconds until my dash is ready (0 = ready, every role); -1 until a snapshot says.
+var dash_s: float = -1.0
 var match_t: float = 0.0
 var me_pos: Vector2 = Vector2.ZERO
 var has_me_pos: bool = false
@@ -612,6 +614,7 @@ func _read_private(me: Dictionary) -> void:
 	masks = int(_num(me.get("masks"), 0.0))
 	infected_s = _num(me.get("infected_s"), -1.0)
 	repollutes = int(_num(me.get("repollutes"), 0.0))
+	dash_s = _num(me.get("dash"), -1.0)
 	ability = str(me["ability"]) if me.get("ability") is String else ""
 
 
@@ -671,6 +674,8 @@ func _on_event(data: Dictionary) -> void:
 		"gas_done":
 			gas_room = ""
 			gas_in_s = 0.0
+		"dash_ok":
+			dash_s = _num(data.get("cooldown"), 0.0)
 		"repollute_ok":
 			cooldowns["repollute"] = _num(data.get("cooldown"), 0.0)
 			repollutes = int(_num(data.get("count"), repollutes))

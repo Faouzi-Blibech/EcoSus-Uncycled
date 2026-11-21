@@ -260,6 +260,17 @@ namespace Sim.Match
         public byte Target { get; }
     }
 
+    /// <summary>protocol: dash {dir}. Any active seat with the dash ready: a burst of up to dash.tiles along dir, stopped by walls.</summary>
+    public sealed class DashCommand : ICommand
+    {
+        public DashCommand(Vec2 direction)
+        {
+            Direction = direction;
+        }
+
+        public Vec2 Direction { get; }
+    }
+
     /// <summary>Ok, or rejected with a protocol reason.</summary>
     public readonly struct CommandResult
     {

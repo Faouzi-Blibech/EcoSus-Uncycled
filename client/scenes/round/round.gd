@@ -42,6 +42,15 @@ const MACHINE_FIX_FALLBACK_S: float = 4.0
 ## Used while Session.tuning has no virus.heal_range; equals the server default.
 const HEAL_RANGE_FALLBACK_TILES: float = 1.5
 const GasOverlayScript: GDScript = preload("res://world/vision/gas_overlay.gd")
+const DashGhostScript: GDScript = preload("res://world/player/dash_ghost.gd")
+## The dash slide on screen (the server already moved the seat; this is only the look).
+const DASH_ANIM_S: float = 0.15
+## Give up waiting for dash_ok after this (a lost reply must not freeze the player).
+const DASH_WAIT_MAX_S: float = 0.8
+## Afterimages left along a dash.
+const DASH_GHOSTS: int = 5
+## A remote seat moving more than this between two frames is dashing: it leaves afterimages too.
+const REMOTE_DASH_STEP_PX: float = 16.0
 
 var _map: MapRoot = null
 var _player: LocalPlayer = null
@@ -58,6 +67,12 @@ var _world_shown: bool = true
 var _avatars: Dictionary = {}
 var _piles: Dictionary = {}
 var _awaiting_pos: bool = false
+## The last walking direction: a dash goes this way (right until the player first moves).
+var _last_dir: Vector2 = Vector2.RIGHT
+## Seconds waited for dash_ok, -1 when not waiting.
+var _dash_wait: float = -1.0
+var _dash_tween: Tween = null
+var _dash_to: Vector2 = Vector2.ZERO
 var _send_timer: float = 0.0
 var _leaving: bool = false
 ## The fire console the local player holds ("" when none) and the smog panel being repaired.
@@ -96,6 +111,7 @@ var senders: Dictionary = {
 	"call_meeting": Net.send_call_meeting,
 	"pick_upgrade": Net.send_pick_upgrade,
 	"heal": Net.send_heal,
+	"dash": Net.send_dash,
 }
 var _hud: Hud = null
 var _minigames: MinigameLayer = null
@@ -256,6 +272,11 @@ func _physics_process(_delta: float) -> void:
 	var dir: Vector2 = Vector2.ZERO
 	if not _awaiting_pos and Session.phase == "playing" and not Session.is_out:
 		dir = _read_direction()
+	if dir != Vector2.ZERO:
+		_last_dir = dir.normalized()
+	# Frozen while the server answers the dash and while the slide plays.
+	if _dash_busy():
+		return
 	_player.move_with(dir, Session.speed_px_per_s)
 
 
@@ -280,10 +301,14 @@ func _process(delta: float) -> void:
 	_update_remote(Session.sample(Net.server_time() - RENDER_DELAY_S))
 
 	_joystick.enabled = not _minigames.is_open()
+	if _dash_wait >= 0.0:
+		_dash_wait += delta
+		if _dash_wait > DASH_WAIT_MAX_S:
+			_dash_wait = -1.0
 	_send_timer += delta
 	if _send_timer >= MOVE_SEND_INTERVAL_S:
 		_send_timer = fmod(_send_timer, MOVE_SEND_INTERVAL_S)
-		if not _awaiting_pos and Session.phase == "playing" and not Session.is_out:
+		if not _awaiting_pos and not _dash_busy() and Session.phase == "playing" and not Session.is_out:
 			_send_move()
 
 
@@ -303,6 +328,40 @@ func _read_direction() -> Vector2:
 	return dir
 
 
+## True while waiting for dash_ok or while the dash slide plays.
+func _dash_busy() -> bool:
+	return _dash_wait >= 0.0 or (_dash_tween != null and _dash_tween.is_valid() and _dash_tween.is_running())
+
+
+## The server moved me to `to_px`: slide there quickly and leave afterimages along the way.
+func _start_dash(to_px: Vector2) -> void:
+	_dash_wait = -1.0
+	_dash_to = to_px
+	var from: Vector2 = _player.global_position
+	_leave_ghosts(from, to_px, Session.seat_color(Session.seat_id))
+	if not is_inside_tree():
+		_finish_dash()
+		return
+	_dash_tween = create_tween()
+	_dash_tween.tween_property(_player, "global_position", to_px, DASH_ANIM_S).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_dash_tween.tween_callback(_finish_dash)
+
+
+func _finish_dash() -> void:
+	_player.teleport_to(_dash_to)
+	_dash_wait = -1.0
+
+
+## Fading copies of the body along a dash line (own and remote dashes).
+func _leave_ghosts(from: Vector2, to: Vector2, color: Color) -> void:
+	for i in DASH_GHOSTS:
+		var g: Node2D = DashGhostScript.new()
+		g.position = from.lerp(to, float(i) / float(DASH_GHOSTS))
+		g.set("color", color)
+		g.set("delay", 0.03 * float(i))
+		_avatars_holder.add_child(g)
+
+
 ## Shows the seats in `remote` (seat -> {pos, color, out}) and hides the others.
 func _update_remote(remote: Dictionary) -> void:
 	for seat in _avatars:
@@ -317,8 +376,11 @@ func _update_remote(remote: Dictionary) -> void:
 			_avatars_holder.add_child(a)
 			_avatars[seat] = a
 		a.set_display_name(Session.seat_name(int(seat)))
+		var to: Vector2 = info["pos"]
+		if a.visible and a.position.distance_to(to) > REMOTE_DASH_STEP_PX:
+			_leave_ghosts(a.position, to, Session.color_of(int(info["color"])))
 		a.visible = true
-		a.position = info["pos"]
+		a.position = to
 		a.set_out(bool(info["out"]))
 
 
@@ -468,6 +530,7 @@ func action_states() -> Dictionary:
 	ctx["heals"] = Session.heals
 	ctx["infected"] = Session.infected_s >= 0.0
 	ctx["alert_used"] = Session.alert_used
+	ctx["dash_s"] = Session.dash_s
 	return ActionRules.button_states(ctx)
 
 
@@ -499,6 +562,10 @@ func perform_action(action: String) -> void:
 			if bool(states["heal"]):
 				var target: int = Session.seat_id if Session.infected_s >= 0.0 else _nearest_seat_in_reach(local_position_px(), heal_range_px())
 				senders["heal"].call(target)
+		"dash":
+			if bool(Net.as_dict(states["dash"]).get("ready", false)) and not _dash_busy():
+				senders["dash"].call(_last_dir)
+				_dash_wait = 0.0
 		"alert":
 			if bool(states["alert"]):
 				Session.alert_used = true
@@ -841,6 +908,8 @@ func _on_clean_cancelled(data: Dictionary) -> void:
 ## fix means the server holds nothing for us (the hold or the repair is not real).
 func _on_action_rejected(data: Dictionary) -> void:
 	match str(data.get("action", "")):
+		"dash":
+			_dash_wait = -1.0
 		"clean_start":
 			_forget_clean()
 		"fix":
@@ -863,6 +932,8 @@ func _on_snapshot(_data: Dictionary) -> void:
 func _on_event(data: Dictionary) -> void:
 	if str(data.get("t", "")) == "spot_cleaned":
 		_update_spots()
+	if str(data.get("t", "")) == "dash_ok" and data.get("pos") is Vector2:
+		_start_dash(data["pos"])
 	_leave_if_phase_changed()
 
 
