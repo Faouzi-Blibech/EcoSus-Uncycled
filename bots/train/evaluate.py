@@ -54,11 +54,36 @@ PROMOTE_MIN_GAIN = 0.10
 EJECTION_FIELDS = ("correct_ejections", "wrong_ejections")
 
 
+def _host_flag(host_cmd: str, flag: str) -> str | None:
+    parts = shlex.split(host_cmd)
+    return parts[parts.index(flag) + 1] if flag in parts and parts.index(flag) + 1 < len(parts) else None
+
+
 def promote(nn: dict, baseline: dict, role: str) -> tuple[bool, str]:
     """The promotion rule: >= 10 points above the scripted baseline and both bootstrap CI bounds above it.
     `nn` and `baseline` are summarise() dicts; role polluter reads the Trasher side, citizen the Cleaner side."""
     if role not in ("polluter", "citizen"):
         raise ValueError(f"role must be polluter or citizen, got {role!r}")
+    opposing = "citizen" if role == "polluter" else "polluter"
+    for name, doc, keys in (("nn eval", nn, (f"{role}_win_rate", f"{role}_win_boot_ci95", role, opposing, "seeds",
+                                              "host_cmd")),
+                            ("baseline", baseline, (f"{role}_win_rate", "citizen", "polluter", "seeds",
+                                                    "host_cmd"))):
+        for key in keys:
+            if key not in doc:
+                return False, f"not comparable: {name} field {key} missing"
+    if baseline["citizen"] != "scripted" or baseline["polluter"] != "scripted":
+        return False, "not comparable: baseline is not scripted vs scripted"
+    if nn[role] == "scripted":
+        return False, f"not comparable: nn eval {role} side is scripted, nothing to promote"
+    if nn[opposing] != "scripted":
+        return False, f"not comparable: nn eval opposing side ({opposing}) is {nn[opposing]}, not scripted"
+    if nn["seeds"] != baseline["seeds"]:
+        return False, f"not comparable: seeds differ (nn {nn['seeds']}, baseline {baseline['seeds']})"
+    for flag in ("--map", "--seats"):
+        a, b = _host_flag(nn["host_cmd"], flag), _host_flag(baseline["host_cmd"], flag)
+        if a != b:
+            return False, f"not comparable: {flag[2:]} differs (nn {a}, baseline {b})"
     nn_rate, base_rate = nn[f"{role}_win_rate"], baseline[f"{role}_win_rate"]
     lo, hi = nn[f"{role}_win_boot_ci95"]
     gain = nn_rate - base_rate
@@ -121,7 +146,12 @@ def summarise(matches: list[dict]) -> dict:
 def git_commit() -> str:
     try:
         out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=HERE, capture_output=True, text=True, timeout=20)
-        return out.stdout.strip() or "unknown"
+        commit = out.stdout.strip()
+        if not commit:
+            return "unknown"
+        status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=HERE,
+                                capture_output=True, text=True, timeout=20)
+        return commit + "-dirty" if status.stdout.strip() else commit
     except (OSError, subprocess.SubprocessError):
         return "unknown"
 

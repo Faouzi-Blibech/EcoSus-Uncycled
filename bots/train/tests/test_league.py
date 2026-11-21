@@ -54,6 +54,7 @@ def test_keep_new_needs_better_vs_current_and_not_worse_vs_scripted():
     assert league.keep_new(0.50, 0.50, 0.60, 0.60) is False  # a tie vs the current opponent is a rejection
     assert league.keep_new(0.60, 0.50, 0.56, 0.60) is False  # 4 points worse vs scripted
     assert league.keep_new(0.60, 0.50, 0.58, 0.60) is True   # within the 0.03 noise allowance
+    assert league.keep_new(0.40, 0.50, 0.60, 0.60) is False  # clearly worse vs current
 
 
 def test_opponent_mix_drops_previous_when_there_is_none():
@@ -162,3 +163,10 @@ def test_turn_report_lists_ejections_right_and_wrong(tmp_path):
         assert "correct_ejections" in t[key] and "wrong_ejections" in t[key]
     md = (tmp_path / "league.md").read_text(encoding="utf-8")
     assert "ejections" in md
+
+
+def test_keep_new_boundary_is_not_decided_by_float_rounding():
+    # exactly 15 of 500 matches = 3.0 points below: kept, whatever the binary representation
+    for a in range(200, 300):
+        assert league.keep_new(0.6, 0.5, a / 500, (a + 15) / 500) is True, a
+    assert league.keep_new(0.6, 0.5, 200 / 500, 216 / 500) is False  # 16 matches: really worse

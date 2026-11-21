@@ -51,7 +51,7 @@ def keep_new(new_vs_current: float, prev_vs_current: float, new_vs_scripted: flo
     """Keep the new version only when strictly better against the other role's current network and not
     more than the noise allowance worse against scripted opponents."""
     return (new_vs_current > prev_vs_current
-            and new_vs_scripted >= prev_vs_scripted - SCRIPTED_NOISE_ALLOWANCE)
+            and new_vs_scripted >= prev_vs_scripted - SCRIPTED_NOISE_ALLOWANCE - 1e-9)
 
 
 def opponent_mix(current: str | Path, previous: str | Path | None, w_current: float, w_scripted: float,
