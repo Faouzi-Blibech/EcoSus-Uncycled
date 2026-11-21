@@ -353,22 +353,39 @@ namespace Sim.Match
         public IReadOnlyList<byte> Living { get; }
     }
 
-    /// <summary>chat. To everyone.</summary>
+    /// <summary>
+    /// chat. A phrase (PhraseId + Args) or a typed line (Text). To everyone, or, for a ghost line,
+    /// only to the seats that were out when it was sent.
+    /// </summary>
     public sealed class ChatEvent : GameEvent
     {
-        public ChatEvent(byte seat, string phraseId, IReadOnlyList<ChatArg> args)
-            : base(null)
+        public ChatEvent(byte seat, string? phraseId, IReadOnlyList<ChatArg> args)
+            : this(seat, phraseId, args, null, false, null)
+        {
+        }
+
+        public ChatEvent(byte seat, string? phraseId, IReadOnlyList<ChatArg> args, string? text, bool ghost, IReadOnlyList<byte>? recipients)
+            : base(recipients)
         {
             Seat = seat;
             PhraseId = phraseId;
             Args = args;
+            Text = text;
+            Ghost = ghost;
         }
 
         public byte Seat { get; }
 
-        public string PhraseId { get; }
+        /// <summary>The phrase id; null for a typed line.</summary>
+        public string? PhraseId { get; }
 
         public IReadOnlyList<ChatArg> Args { get; }
+
+        /// <summary>The filtered, normalised typed line; null for a phrase.</summary>
+        public string? Text { get; }
+
+        /// <summary>True for out-seat chat: only out seats receive it and bots never log it.</summary>
+        public bool Ghost { get; }
     }
 
     /// <summary>voting_started. To everyone.</summary>

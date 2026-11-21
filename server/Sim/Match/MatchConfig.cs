@@ -91,8 +91,20 @@ namespace Sim.Match
         /// <summary>Ejection reveals whether the seat was a polluter (04 section 10).</summary>
         public bool ConfirmEject { get; set; } = true;
 
-        /// <summary>Chat phrases per seat per meeting (protocol section 5; not in tuning.json).</summary>
+        /// <summary>Chat phrases per seat per meeting (tuning.json meeting.phrases_per_meeting).</summary>
         public int PhrasesPerMeeting { get; set; } = 5;
+
+        /// <summary>Longest typed chat line after normalisation, in Unicode code points (as a Godot LineEdit counts) (over-length is rejected).</summary>
+        public int TextMaxChars { get; set; } = 120;
+
+        /// <summary>Typed chat lines per seat per meeting (separate from the phrases).</summary>
+        public int TextPerMeeting { get; set; } = 5;
+
+        /// <summary>Minimum seconds between two chat lines of one seat (typed, phrase or ghost).</summary>
+        public float ChatMinGapS { get; set; } = 2f;
+
+        /// <summary>Ghost chat lines kept for the welcome of out seats (oldest dropped first).</summary>
+        public int GhostChatKeep { get; set; } = 100;
 
         /// <summary>Max arguments in one chat phrase (engine choice; not in tuning.json).</summary>
         public int PhraseMaxArgs { get; set; } = 3;

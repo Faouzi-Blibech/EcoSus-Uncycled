@@ -84,6 +84,7 @@ namespace Sim.Match
         private readonly Dictionary<byte, byte?> _votes = new Dictionary<byte, byte?>();
         private readonly List<byte> _votedOrder = new List<byte>();
         private readonly Dictionary<byte, int> _chatCounts = new Dictionary<byte, int>();
+        private readonly Dictionary<byte, int> _textCounts = new Dictionary<byte, int>();
 
         public MeetingSession(byte calledBy, MeetingCause cause, int? reportedPileId, IReadOnlyList<ClueInfo> clues, float taskBar, IReadOnlyList<byte> voters, float discussionS)
         {
@@ -138,6 +139,19 @@ namespace Sim.Match
         internal void CountChat(byte seat)
         {
             _chatCounts[seat] = ChatCount(seat) + 1;
+        }
+
+        /// <summary>Typed chat lines the seat has sent in this meeting.</summary>
+        public int TextCount(byte seat)
+        {
+            int c;
+            _textCounts.TryGetValue(seat, out c);
+            return c;
+        }
+
+        internal void CountText(byte seat)
+        {
+            _textCounts[seat] = TextCount(seat) + 1;
         }
 
         internal void BeginVoting(float votingS)

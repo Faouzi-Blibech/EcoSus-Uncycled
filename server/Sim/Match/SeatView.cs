@@ -155,8 +155,9 @@ namespace Sim.Match
     /// <summary>Meeting state any seat may know (for rejoin): never who voted for whom.</summary>
     public sealed class MeetingView
     {
-        public MeetingView(MeetingStage stage, float endsIn, byte calledBy, MeetingCause cause, IReadOnlyList<ClueInfo> clues, IReadOnlyList<byte> voted, bool myVoteCast, byte? myVote, float taskBar, int myChatCount = 0, IReadOnlyList<byte>? living = null)
+        public MeetingView(MeetingStage stage, float endsIn, byte calledBy, MeetingCause cause, IReadOnlyList<ClueInfo> clues, IReadOnlyList<byte> voted, bool myVoteCast, byte? myVote, float taskBar, int myChatCount = 0, IReadOnlyList<byte>? living = null, int myText = 0)
         {
+            MyText = myText;
             Stage = stage;
             EndsIn = endsIn;
             CalledBy = calledBy;
@@ -194,6 +195,9 @@ namespace Sim.Match
 
         /// <summary>Seats that were active when this meeting started (public: meeting_started carries it too).</summary>
         public IReadOnlyList<byte> Living { get; }
+
+        /// <summary>Typed chat lines this seat has sent in this meeting (counts toward TextPerMeeting).</summary>
+        public int MyText { get; }
     }
 
     /// <summary>Everything one seat may know right now. Becomes the snapshot message.</summary>
@@ -214,8 +218,10 @@ namespace Sim.Match
             IReadOnlyList<PileView> piles,
             SabotageView? sabotage,
             MeetingView? meeting,
-            GameOverEvent? gameOver)
+            GameOverEvent? gameOver,
+            IReadOnlyList<ChatEvent>? ghostChat = null)
         {
+            GhostChat = ghostChat ?? new List<ChatEvent>();
             Seat = seat;
             Phase = phase;
             PhaseTimeLeft = phaseTimeLeft;
@@ -267,5 +273,8 @@ namespace Sim.Match
         public MeetingView? Meeting { get; }
 
         public GameOverEvent? GameOver { get; }
+
+        /// <summary>Ghost chat so far, oldest first. Non-empty only in the view of an out seat.</summary>
+        public IReadOnlyList<ChatEvent> GhostChat { get; }
     }
 }

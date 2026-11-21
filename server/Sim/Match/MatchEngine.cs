@@ -19,6 +19,9 @@ namespace Sim.Match
         private readonly List<PlayerState> _players;
         private readonly IRandom _rng;
         private readonly PhraseCatalogue? _phrases;
+        private readonly ChatFilter _filter;
+        private readonly List<ChatEvent> _ghostChat = new List<ChatEvent>();
+        private readonly Dictionary<byte, float> _lastChatAt = new Dictionary<byte, float>();
         private readonly List<GameEvent> _pending = new List<GameEvent>();
         private readonly List<TimelineEntry> _timeline = new List<TimelineEntry>();
         private readonly Dictionary<byte, TaskSession> _sessions = new Dictionary<byte, TaskSession>();
@@ -31,13 +34,15 @@ namespace Sim.Match
         private float _phaseTimer;
 
         /// <param name="phrases">Chat phrase catalogue; null accepts any non-empty id.</param>
+        /// <param name="filter">Word filter for typed chat; null or ChatFilter.Empty changes nothing.</param>
         public MatchEngine(
             MatchConfig config,
             MapData map,
             IReadOnlyList<SeatSetup> seats,
             IReadOnlyList<TaskTypeDef> taskTypes,
             IRandom rng,
-            PhraseCatalogue? phrases = null)
+            PhraseCatalogue? phrases = null,
+            ChatFilter? filter = null)
         {
             Config = config ?? throw new ArgumentNullException(nameof(config));
             Map = map ?? throw new ArgumentNullException(nameof(map));
@@ -101,6 +106,7 @@ namespace Sim.Match
             Witnesses = new WitnessLog();
             EmergenciesLeft = config.EmergenciesPerMatch;
             _phrases = phrases;
+            _filter = filter ?? ChatFilter.Empty;
 
             int n = _players.Count;
             _lastSeenAt = new float[n * n];
@@ -283,6 +289,7 @@ namespace Sim.Match
                 case CleanStartCommand c: return ApplyCleanStart(p, c);
                 case CleanCancelCommand c: return ApplyCleanCancel(p, c);
                 case ChatPhraseCommand c: return ApplyChat(p, c);
+                case ChatTextCommand c: return ApplyChatText(p, c);
                 default: return CommandResult.Rejected(RejectReason.NotAllowed);
             }
         }
