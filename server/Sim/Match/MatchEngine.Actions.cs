@@ -595,7 +595,7 @@ namespace Sim.Match
                 return Reject(RejectReason.TargetInvalid);
             }
 
-            if (text.Length > Config.TextMaxChars)
+            if (ChatText.CodePointCount(text) > Config.TextMaxChars)
             {
                 return Reject(RejectReason.TooLong);
             }
@@ -626,9 +626,12 @@ namespace Sim.Match
         }
 
         /// <summary>True while the seat's last accepted chat line (phrase or typed) is younger than ChatMinGapS.</summary>
+        /// <summary>Float slack for the gap: 40 ticks of 0.05 s late in a match sum to a little under 2 s.</summary>
+        private const float ChatGapSlackS = 1e-3f;
+
         private bool ChatGapActive(byte seat)
         {
-            return _lastChatAt.TryGetValue(seat, out float last) && MatchTime + Epsilon < last + Config.ChatMinGapS;
+            return _lastChatAt.TryGetValue(seat, out float last) && MatchTime + ChatGapSlackS < last + Config.ChatMinGapS;
         }
 
         /// <summary>Sends a ghost line to the seats that are out right now and keeps it for their welcome.</summary>

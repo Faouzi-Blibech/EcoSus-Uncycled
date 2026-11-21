@@ -72,16 +72,17 @@ namespace Sim.Match
             int i = 0;
             while (i < text.Length)
             {
-                if (!IsTokenChar(text[i]))
+                int len;
+                if (!TokenCharAt(text, i, out len))
                 {
                     i++;
                     continue;
                 }
 
                 int start = i;
-                while (i < text.Length && IsTokenChar(text[i]))
+                while (i < text.Length && TokenCharAt(text, i, out len))
                 {
-                    i++;
+                    i += len;
                 }
 
                 if (Matches(text.Substring(start, i - start)))
@@ -134,19 +135,59 @@ namespace Sim.Match
             return false;
         }
 
-        private static bool IsTokenChar(char c)
+        /// <summary>
+        /// True when the code point at i can be part of a word: letters and digits of any plane (fullwidth,
+        /// mathematical and circled letters included), combining marks, invisible format characters and fillers.
+        /// </summary>
+        private static bool TokenCharAt(string s, int i, out int len)
         {
-            return char.IsLetterOrDigit(c) || char.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark;
+            len = 1;
+            char c = s[i];
+            if (char.IsHighSurrogate(c) && i + 1 < s.Length && char.IsLowSurrogate(s[i + 1]))
+            {
+                len = 2;
+            }
+            else if (char.IsSurrogate(c))
+            {
+                return false;
+            }
+
+            switch (CharUnicodeInfo.GetUnicodeCategory(s, i))
+            {
+                case UnicodeCategory.UppercaseLetter:
+                case UnicodeCategory.LowercaseLetter:
+                case UnicodeCategory.TitlecaseLetter:
+                case UnicodeCategory.ModifierLetter:
+                case UnicodeCategory.OtherLetter:
+                case UnicodeCategory.DecimalDigitNumber:
+                case UnicodeCategory.NonSpacingMark:
+                case UnicodeCategory.EnclosingMark:
+                case UnicodeCategory.Format:
+                    return true;
+                case UnicodeCategory.OtherSymbol:
+                case UnicodeCategory.OtherNumber:
+                case UnicodeCategory.LetterNumber:
+                    if (len == 1 && ChatText.IsFiller(c))
+                    {
+                        return true;
+                    }
+
+                    // circled, parenthesised and superscript forms fold to plain letters and digits
+                    string k = s.Substring(i, len).Normalize(NormalizationForm.FormKD);
+                    return k.Length > 0 && char.IsLetterOrDigit(k[0]);
+                default:
+                    return false;
+            }
         }
 
-        /// <summary>Lower-cases, drops accents and keeps letters and digits; optionally maps leet digits to letters.</summary>
+        /// <summary>Compatibility-folds (fullwidth, mathematical and circled letters become plain), lower-cases, drops accents, fillers and format characters, keeps letters and digits; optionally maps leet digits to letters.</summary>
         private static string Fold(string s, bool leet)
         {
-            string d = s.Normalize(NormalizationForm.FormD);
+            string d = s.Normalize(NormalizationForm.FormKD);
             var sb = new StringBuilder(d.Length);
             foreach (char raw in d)
             {
-                if (char.GetUnicodeCategory(raw) == UnicodeCategory.NonSpacingMark || !char.IsLetterOrDigit(raw))
+                if (!char.IsLetterOrDigit(raw) || ChatText.IsFiller(raw))
                 {
                     continue;
                 }

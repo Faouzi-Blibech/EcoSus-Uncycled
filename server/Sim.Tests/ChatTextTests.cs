@@ -355,5 +355,141 @@ namespace Sim.Tests
             byte other = cit == 0 ? (byte)1 : (byte)0;
             Assert.Equal(0, e.ViewFor(other).Meeting!.MyText);
         }
+        // ---------- fix round 1 ----------
+
+        private static string Cp(int codePoint) => char.ConvertFromUtf32(codePoint);
+
+        /// <summary>Spells a lower-case ASCII word with letters starting at the given code point for 'a'.</summary>
+        private static string Spell(string word, int aCodePoint) => string.Concat(word.Select(c => Cp(aCodePoint + (c - 'a'))));
+
+        public static IEnumerable<object[]> InvisibleCodePoints()
+        {
+            yield return new object[] { 0xE0001 };  // language tag
+            yield return new object[] { 0xE0020 };  // tag space
+            yield return new object[] { 0xE007F };  // cancel tag
+            yield return new object[] { 0x1D173 };  // musical format control
+            yield return new object[] { 0x13430 };  // egyptian format control
+            yield return new object[] { 0xF0000 };  // plane 15 private use
+            yield return new object[] { 0x10FFFD }; // plane 16 private use
+            yield return new object[] { 0xE0000 };  // unassigned, inside the tag block
+            yield return new object[] { 0x115F };   // hangul fillers and the braille blank
+            yield return new object[] { 0x1160 };
+            yield return new object[] { 0x3164 };
+            yield return new object[] { 0xFFA0 };
+            yield return new object[] { 0x2800 };
+        }
+
+        [Theory]
+        [MemberData(nameof(InvisibleCodePoints))]
+        public void Text_DropsInvisibleCodePointsOnEveryPlane(int cp)
+        {
+            Assert.Equal("fuck", ChatText.Normalize("fu" + Cp(cp) + "ck"));
+            Assert.Equal("", ChatText.Normalize(Cp(cp) + Cp(cp)));
+            Assert.Equal("a b", ChatText.Normalize("a " + Cp(cp) + " b"));
+        }
+
+        [Theory]
+        [InlineData(0xE0020)]
+        [InlineData(0x3164)]
+        [InlineData(0x2800)]
+        public void Text_BlankLookingLineIsRejectedAsEmpty(int cp)
+        {
+            (MatchEngine e, byte cit) = InMeeting();
+            Assert.Equal(RejectReason.TargetInvalid, Say(e, cit, Cp(cp) + Cp(cp) + " " + Cp(cp)).Reason);
+        }
+
+        [Fact]
+        public void Text_StillKeepsEmojiJoinerSequencesAndRejoinsNothingAcrossSpaces()
+        {
+            string technologist = Cp(0x1F469) + (char)0x200D + Cp(0x1F4BB);
+            Assert.Equal(technologist + " ok", ChatText.Normalize(technologist + "  ok"));
+            Assert.Equal(Cp(0x1F600) + " " + Cp(0x1F600), ChatText.Normalize(Cp(0x1F600) + " " + (char)0x200D + Cp(0x1F600)));
+        }
+
+        [Fact]
+        public void Text_CapsStackedCombiningMarks()
+        {
+            string zalgo = "a" + string.Concat(Enumerable.Range(0, 119).Select(i => (char)(0x0300 + i % 0x70)));
+            string clean = ChatText.Normalize(zalgo);
+            Assert.Equal(1 + ChatText.MaxMarksPerBase, clean.Length);
+            Assert.Equal("a" + (char)0x0300 + (char)0x0301, clean);
+
+            // the budget is per base character
+            string two = ChatText.Normalize("a" + (char)0x0300 + (char)0x0301 + (char)0x0302 + "b" + (char)0x0300 + (char)0x0301 + (char)0x0302);
+            Assert.Equal("a" + (char)0x0300 + (char)0x0301 + "b" + (char)0x0300 + (char)0x0301, two);
+        }
+
+        [Fact]
+        public void Text_ZalgoLineIsStoredWithOnlyTheKeptMarks()
+        {
+            (MatchEngine e, byte cit) = InMeeting();
+            Assert.True(Say(e, cit, "a" + string.Concat(Enumerable.Repeat((char)0x0301, 100))).IsOk);
+            Assert.Equal("a" + (char)0x0301 + (char)0x0301, Assert.Single(e.Tick(0f).OfType<ChatEvent>()).Text);
+        }
+
+        [Fact]
+        public void Filter_CatchesFullwidthMathematicalAndCircledLetters()
+        {
+            ChatFilter f = ChatFilter.Parse(FilterJson);
+            Assert.Equal("***", f.Apply(Spell("fuck", 0xFF41)));                 // fullwidth small
+            Assert.Equal("*** you", f.Apply(string.Concat("FUCK".Select(c => Cp(0xFF21 + (c - 'A')))) + " you"));
+            Assert.Equal("***", f.Apply(Spell("fuck", 0x1D41A)));                // mathematical bold
+            Assert.Equal("***", f.Apply(Spell("shit", 0x1D5BA)));                // mathematical sans-serif
+            Assert.Equal("***", f.Apply(Spell("fuck", 0x24D0)));                 // circled
+            Assert.Equal("a *** b", f.Apply("a " + Spell("shit", 0x1D41A) + " b"));
+        }
+
+        [Fact]
+        public void Filter_CatchesAWordSplitByInvisibleCharacters()
+        {
+            ChatFilter f = ChatFilter.Parse(FilterJson);
+            Assert.Equal("***", f.Apply("fu" + Cp(0xE0020) + "ck"));
+            Assert.Equal("***", f.Apply("fu" + (char)0x3164 + "ck"));
+            Assert.Equal("*** !", f.Apply("fu" + (char)0x200B + "ck !"));
+        }
+
+        [Fact]
+        public void Text_FancyLettersAndTagsAreMaskedEndToEnd()
+        {
+            (MatchEngine e, byte cit) = InMeeting(ChatFilter.Parse(FilterJson));
+            Assert.True(Say(e, cit, "you " + Spell("shit", 0xFF41) + " fu" + Cp(0xE0020) + "ck").IsOk);
+            Assert.Equal("you *** ***", Assert.Single(e.Tick(0f).OfType<ChatEvent>()).Text);
+        }
+
+        [Fact]
+        public void Chat_GapAcceptsALineFortyTicksLateEvenLateInTheMatch()
+        {
+            MatchEngine e = Playing8();
+            (byte o1, _, _) = TwoOut(e);
+            e.Tick(400f);
+            Assert.True(e.MatchTime > 399f && e.Phase == MatchPhase.Playing);
+            Assert.True(Say(e, o1, "first").IsOk);
+            for (int i = 0; i < 40; i++)
+            {
+                e.Tick(0.05f);
+            }
+
+            Assert.True(Say(e, o1, "second").IsOk);
+        }
+
+        [Fact]
+        public void Text_LengthCountsCodePointsNotUtf16Units()
+        {
+            (MatchEngine e, byte cit) = InMeeting();
+            string emoji = Cp(0x1F600);
+            Assert.Equal(2, emoji.Length);
+            Assert.True(Say(e, cit, new string('a', 119) + emoji).IsOk);             // 120 code points, 121 UTF-16 units
+            e.Tick(2f);
+            Assert.Equal(RejectReason.TooLong, Say(e, cit, new string('a', 120) + emoji).Reason); // 121 code points
+            Assert.Equal(1, e.ViewFor(cit).Meeting!.MyText);
+        }
+
+        [Fact]
+        public void CodePointCount_CountsAPairAsOne()
+        {
+            Assert.Equal(0, ChatText.CodePointCount(""));
+            Assert.Equal(3, ChatText.CodePointCount("a" + Cp(0x1F600) + "b"));
+        }
+
     }
 }

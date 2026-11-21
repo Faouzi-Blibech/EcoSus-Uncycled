@@ -122,6 +122,29 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
+        public void Heat_GhostChatFromOutSeatsMovesNothing()
+        {
+            TestMatch m = TestMatch.Create();
+            var log = new MeetingLog(m.Content.Phrases!);
+            var feed = new MeetingFeed(log);
+            var mem = new BotMemory(m.Map, m.Config);
+            feed.Add(0, mem);
+
+            var outSeats = new byte[] { 1, 2, 3 };
+            var ghost = new List<GameEvent>();
+            foreach (byte s in outSeats)
+            {
+                ghost.Add(new ChatEvent(s, "sus", new[] { ChatArg.ForSeat(Target) }, null, true, outSeats));
+            }
+
+            feed.Handle(ghost);
+            Assert.Empty(log.Acts);
+            Assert.Equal(0, log.AccusationsAgainst(Target));
+            feed.Handle(new GameEvent[] { Result() });
+            Assert.Equal(0f, mem.HeatOf(Target), 4);
+        }
+
+        [Fact]
         public void Heat_ASeatsChatAccusationAndItsVoteForTheSameTargetCountOnce()
         {
             TestMatch m = TestMatch.Create();

@@ -94,7 +94,7 @@ namespace Sim.Match
         /// <summary>Chat phrases per seat per meeting (tuning.json meeting.phrases_per_meeting).</summary>
         public int PhrasesPerMeeting { get; set; } = 5;
 
-        /// <summary>Longest typed chat line after normalisation, in UTF-16 chars (over-length is rejected).</summary>
+        /// <summary>Longest typed chat line after normalisation, in Unicode code points (as a Godot LineEdit counts) (over-length is rejected).</summary>
         public int TextMaxChars { get; set; } = 120;
 
         /// <summary>Typed chat lines per seat per meeting (separate from the phrases).</summary>
