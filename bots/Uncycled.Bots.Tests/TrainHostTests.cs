@@ -50,7 +50,7 @@ namespace Uncycled.Bots.Tests
             {
                 int maskAt = a * r.FrameSize + r.MaskOffset;
                 var valid = new List<int>();
-                for (int i = 0; i < ActionCatalogue.Count; i++)
+                for (int i = 0; i < PolicyActionsV2.Count; i++)
                 {
                     if (frames[maskAt + i] != 0)
                     {
@@ -84,7 +84,7 @@ namespace Uncycled.Bots.Tests
         [Fact]
         public void Host_DoneThenNewMatch()
         {
-            MatchRunner r = NewRunner(Options("--rw-win", "1", "--rw-task", "0", "--rw-report", "0", "--rw-fix", "0", "--rw-hit", "0", "--rw-dump", "0", "--rw-ejected", "0"));
+            MatchRunner r = NewRunner(Options("--rw-win", "1", "--rw-task", "0", "--rw-report", "0", "--rw-fix", "0", "--rw-hit", "0", "--rw-dump", "0", "--rw-ejected", "0", "--rw-ejectright", "0", "--rw-ejectwrong", "0", "--rw-deliver", "0", "--rw-spot", "0", "--rw-heal", "0", "--rw-out", "0", "--rw-cleanerout", "0", "--rw-repollute", "0", "--rw-victim", "0", "--rw-jam", "0"));
             int agents = r.AgentCount;
             ulong firstSeed = r.Seed;
             bool sawDone = false;
@@ -270,33 +270,25 @@ namespace Uncycled.Bots.Tests
             Assert.True(forced < 0.35, "forced Stay share " + forced);
         }
 
-        [Fact(Skip = "the learners still play the 30 v1 actions with a random policy, so in v2 no polluter is seen or voted out often enough to check this; restore when the networks are retrained on the v2 actions")]
+        [Fact]
         public void Host_RewardsFromAMeetingReachTheNextFrame()
         {
-            // learner polluters: the only reward is the ejection penalty, which happens inside a meeting
-            // Whether a random-policy polluter gets voted out in 3000 steps depends on the seed (some seeds
-            // have none), so the invariant is checked on every seed and the run as a whole must contain ejections.
-            int ejectedInAll = 0;
-            foreach (string seed in new[] { "7", "8", "9", "10", "11", "12" })
+            // learner Trasher: the only reward left is the ejection penalty, which is paid inside a meeting.
+            // v2 premise: a random learner is never accused by itself, so the test stages the accusation (see StageAccusation).
+            MatchRunner r = NewRunner(Options("--seed", "8", "--learner", "polluter", "--matches", "8", "--rw-win", "0", "--rw-task", "0", "--rw-report", "0", "--rw-fix", "0", "--rw-hit", "0", "--rw-dump", "0", "--rw-ejected", "-1",
+                "--rw-repollute", "0", "--rw-victim", "0", "--rw-jam", "0", "--rw-cleanerout", "0", "--rw-ejectright", "0", "--rw-ejectwrong", "0"));
+            float total = 0f;
+            StageAccusation(r, () =>
             {
-                MatchRunner r = NewRunner(Options("--seed", seed, "--learner", "polluter", "--matches", "8", "--rw-win", "0", "--rw-task", "0", "--rw-report", "0", "--rw-fix", "0", "--rw-hit", "0", "--rw-dump", "0", "--rw-ejected", "-1"));
-                var rng = new XorShiftRandom(13);
-                float total = 0f;
-                for (int d = 0; d < 3000; d++)
+                byte[] f = Frames(r);
+                for (int a = 0; a < r.AgentCount; a++)
                 {
-                    r.AdvanceRandom(rng);
-                    byte[] f = Frames(r);
-                    for (int a = 0; a < r.AgentCount; a++)
-                    {
-                        total += Reward(r, f, a);
-                    }
+                    total += Reward(r, f, a);
                 }
+            });
 
-                Assert.Equal(-(float)r.PollutersEjected, total, 3);
-                ejectedInAll += r.PollutersEjected;
-            }
-
-            Assert.True(ejectedInAll > 0, "no polluter was ejected on any seed, so the test checked nothing");
+            Assert.Equal(-(float)r.PollutersEjected, total, 3);
+            Assert.True(r.PollutersEjected > 0, "the staged meeting ejected nobody, so the test checked nothing");
         }
 
         [Fact]
@@ -355,6 +347,56 @@ namespace Uncycled.Bots.Tests
             Assert.True(heat.HeatOf(learner) > 0f, "the learner's heat did not rise");
         }
 
+        /// <summary>
+        /// Stages the one thing a random learner Trasher never does by itself: the learner re-pollutes a clean spot in sight of a
+        /// scripted Cleaner, which calls the meeting, accuses and votes. Plays on (random learner actions) until that meeting is over;
+        /// onStep runs after every decision. Ends with no meeting resolved if the staging did not work: callers assert what they need.
+        /// </summary>
+        private static void StageAccusation(MatchRunner r, Action onStep)
+        {
+            ContentBundle content = ContentLoader.Load(ContentDir);
+            var rng = new XorShiftRandom(21);
+            float ready = content.Config.EmergencyMinSinceMeetingS + 2f;
+            byte witness = 255;
+            foreach (PlayerState p in r.Engine.Players)
+            {
+                if (witness == 255 && p.Role == Role.Citizen)
+                {
+                    witness = p.Seat;
+                }
+            }
+
+            for (int d = 0; d < 4000 && (r.Engine.ActiveTime < ready || r.Engine.Smog.Active || r.Engine.ViewFor(witness).Me.Vision < 3f); d++)
+            {
+                r.AdvanceRandom(rng);
+                onStep();
+            }
+
+            Assert.True(r.Engine.ViewFor(witness).Me.Vision >= 3f, "no clear moment to stage the act");
+            MatchEngine e = r.Engine;
+            byte learner = r.AgentSeat(0);
+            Sim.World.ConsoleDef spot = content.Map.ConsolesOfKind(ConsoleKind.Task)[0];
+            e.Spots.Find(spot.Id)!.State = SpotState.Clean;
+            e.TestTeleport(learner, spot.Position);
+            e.TestTeleport(witness, NearAndInSight(content.Map, spot.Position));
+            Assert.True(e.Apply(learner, new RepolluteCommand(spot.Id)).IsOk);
+
+            r.AdvanceRandom(rng);
+            onStep();
+            Assert.NotEmpty(e.Witnesses.SeenBy(witness));
+            e.TestTeleport(witness, content.Map.ConsolesOfKind(ConsoleKind.Emergency)[0].Position);
+            Assert.True(e.Apply(witness, new CallMeetingCommand()).IsOk);
+
+            int held = r.MeetingsHeld;
+            for (int d = 0; d < 4000 && !(r.MeetingsHeld > held && r.Phase == MatchPhase.Playing); d++)
+            {
+                r.AdvanceRandom(rng);
+                onStep();
+            }
+
+            Assert.True(r.MeetingsHeld > held, "the staged meeting did not finish");
+        }
+
         private static Vec2 NearAndInSight(Sim.World.MapData map, Vec2 spot)
         {
             MapDistances dist = MapDistances.For(map);
@@ -371,43 +413,27 @@ namespace Uncycled.Bots.Tests
             return dist.NearestWalkable(spot);
         }
 
-        [Fact(Skip = "the learners still play the 30 v1 actions with a random policy, so in v2 no polluter is seen or voted out often enough to check this; restore when the networks are retrained on the v2 actions")]
+        [Fact]
         public void Host_EjectedSeatIsKnownOutByEveryLearner()
         {
-            MatchRunner r = NewRunner(Options("--matches", "8"));
-            var rng = new XorShiftRandom(14);
-            int checkedEjections = 0;
-            int seen = 0;
-            int finished = 0;
-            for (int d = 0; d < 4000 && checkedEjections < 3; d++)
+            MatchRunner r = NewRunner(Options("--seed", "8", "--learner", "polluter", "--matches", "8"));
+            StageAccusation(r, () => { });
+
+            Assert.True(r.Ejections > 0 && r.LastEjectedSeat != null, "the staged meeting ejected nobody, so the test checked nothing");
+            byte ejected = r.LastEjectedSeat!.Value;
+            int others = 0;
+            for (int a = 0; a < r.AgentCount; a++)
             {
-                r.AdvanceRandom(rng);
-                bool matchEnded = r.MatchesFinished != finished;
-                finished = r.MatchesFinished;
-                if (r.Ejections != seen)
+                if (r.AgentSeat(a) == ejected)
                 {
-                    seen = r.Ejections;
-                    if (matchEnded)
-                    {
-                        continue; // the ejection ended the match: those memories are already replaced
-                    }
-
-                    byte ejected = r.LastEjectedSeat!.Value;
-                    for (int a = 0; a < r.AgentCount; a++)
-                    {
-                        if (r.AgentSeat(a) == ejected)
-                        {
-                            continue;
-                        }
-
-                        Assert.True(r.AgentMemory(a).IsKnownOut(ejected), "agent " + a + " does not know seat " + ejected + " was ejected");
-                    }
-
-                    checkedEjections++;
+                    continue;
                 }
+
+                Assert.True(r.AgentMemory(a).IsKnownOut(ejected), "agent " + a + " does not know seat " + ejected + " was ejected");
+                others++;
             }
 
-            Assert.True(checkedEjections > 0, "no ejection in the run");
+            Assert.True(others > 0, "no other learner to check");
         }
 
         [Fact]
