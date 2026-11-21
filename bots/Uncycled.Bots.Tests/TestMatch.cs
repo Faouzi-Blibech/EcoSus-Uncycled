@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Sim.Core;
 using Sim.Match;
+using Sim.Uncycled;
 using Sim.World;
 using Uncycled.Server.Content;
 
@@ -64,6 +65,26 @@ namespace Uncycled.Bots.Tests
             {
                 Tick();
             }
+        }
+
+        /// <summary>
+        /// A dump pile at the polluter's feet with a witness record for every seat that sees it: what the v1 dump
+        /// action left behind (the action is gone in v2, so the evidence is seeded).
+        /// </summary>
+        public Pile SeedDump(byte polluter)
+        {
+            PlayerState p = Engine.Find(polluter) ?? throw new InvalidOperationException("no seat " + polluter);
+            string zone = Map.ZoneAt(p.Position);
+            Pile pile = Engine.Piles.AddDump(p.Position, zone, Engine.MatchTime, p.Signature!.Value, polluter);
+            foreach (PlayerState q in Engine.Players)
+            {
+                if (q != p && q.IsActive && Engine.CanSee(q.Seat, p.Position))
+                {
+                    Engine.Witnesses.Add(new WitnessRecord(ActKind.Dump, polluter, q.Seat, Engine.MatchTime, zone, p.Position, pile.Id, null));
+                }
+            }
+
+            return pile;
         }
 
         /// <summary>Test-only peek at hidden roles to choose which seat to drive.</summary>
