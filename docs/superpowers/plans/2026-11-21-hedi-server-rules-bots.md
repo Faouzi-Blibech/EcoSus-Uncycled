@@ -205,8 +205,14 @@ public void SpotDone_GivesBag_AndCleansSpot()
   - `SnapshotLeakTests`: a Cleaner's snapshot has no `repollutes`, `ability`, `cd.repollute`.
 - [ ] **Step 2:** Run `dotnet test server --filter TrasherTests`. Expected: FAIL.
 - [ ] **Step 3:** Implement spec section 6 ("Re-pollute", "Sabotage", "Unlock"). Reuse `DumpReadyAt` timing
-  pattern and the dump `cue` path; reuse `SabotageCooldown` shared with smog. Remove the `fire_fix` path from
-  offers (the map has no fire consoles, so `FireSystem.Available` is false).
+  pattern and the dump `cue` path; reuse `SabotageCooldown` shared with smog. Remove fire: delete the
+  `FireA`/`FireB` markers from `client/world/maps/greybox_01.tscn`, re-export the map
+  (`godot --headless --path client --script res://tools/export_map.gd -- --map greybox_01`), then
+  `FireSystem.Available` is false. The F0 map kept them because 12 bot tests walk to the fire consoles
+  (`FixRoundTests`, `ActionTests.Executor_FireHoldReleasedWhenLeaving`, `PolluterTacticsTests.Fire_*`,
+  `ObservationTests`, `MaskMutationTests`, `NavigatorTests` console count 16 -> 14, `PolluterUnchangedTests`
+  golden): skip or update them in the same commit. `ConsoleKind.Machine` and the loader's `"machine"` kind
+  already exist (F0).
 - [ ] **Step 4:** Wire it (snapshot `machine`, Trasher `me` fields). Run `dotnet test server`. Expected: PASS.
   Commit on `server/trasher-kit`.
 

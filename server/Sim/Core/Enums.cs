@@ -86,6 +86,7 @@ namespace Sim.Core
         Emergency,
         FireFix,
         SmogFix,
+        Machine,
     }
 
     public enum TaskCategory

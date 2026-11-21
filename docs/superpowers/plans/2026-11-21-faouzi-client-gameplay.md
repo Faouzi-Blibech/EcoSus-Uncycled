@@ -54,11 +54,10 @@ results scene. Louay owns `menu.gd`, `lobby.gd`, `settings_panel.gd` and the new
 - [ ] **Step 1:** Install Godot 4.7.2 standard (not .NET) and its export templates. Check: `godot --version`.
 - [ ] **Step 2: Write the failing test** in `test_map_json.gd`: the exported map has one special
   `{id: "machine", kind: "machine"}` on a walkable tile touching the map border, 4 `gas_rooms` with ids and rects,
-  10 `spawns`, and no `fire_fix` special.
+  10 `spawns`. (Done: fire consoles stay until Hedi's Task 5, bot tests depend on them.)
 - [ ] **Step 3:** Run the test runner. Expected: FAIL.
 - [ ] **Step 4:** Add the marker kinds and export, then in `greybox_01.tscn`: a machine marker at the map edge,
-  4 small gas-room rects (ids `gas_market`, `gas_garden`, `gas_depot`, `gas_dark`), 2 more spawns, delete the
-  fire markers. Regenerate: `godot --headless --path client --script res://tools/export_map.gd -- --map greybox_01`.
+  4 small gas-room rects (ids `gas_market`, `gas_garden`, `gas_depot`, `gas_dark`), 2 more spawns. Regenerate: `godot --headless --path client --script res://tools/export_map.gd -- --map greybox_01`.
 - [ ] **Step 5:** Run the test runner. Expected: PASS. Send the new JSON to Hedi (his `ContentLoader` must accept
   `machine` and `gas_rooms` before this merges). Commit on `gameplay/map-v2`.
 
