@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>Uncycled.Server.Tests</RootNamespace>
+    <AssemblyName>Uncycled.Server.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- the untrained smoke network the bot tests load; tied to the observation schema hash -->
+    <None Include="..\..\bots\Uncycled.Bots.Tests\fixtures\tiny.onnx" Link="fixtures\tiny.onnx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\bots\Uncycled.Bots.Tests\fixtures\tiny.json" Link="fixtures\tiny.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sim\Sim.csproj" />
+    <ProjectReference Include="..\Uncycled.Server\Uncycled.Server.csproj" />
+  </ItemGroup>
+
+</Project>

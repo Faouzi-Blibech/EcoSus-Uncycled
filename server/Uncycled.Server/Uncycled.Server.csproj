@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Uncycled.Server</RootNamespace>
+    <AssemblyName>Uncycled.Server</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sim\Sim.csproj" />
+    <ProjectReference Include="..\..\bots\Uncycled.Bots.Neural\Uncycled.Bots.Neural.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Uncycled.Server.Tests" />
+  </ItemGroup>
+
+</Project>
