@@ -1,0 +1,93 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://world/maps/map_root.gd" id="1_pi4l0"]
+[ext_resource type="TileSet" path="res://world/tiles/greybox_tileset.tres" id="2_ild1i"]
+[ext_resource type="Script" path="res://world/maps/map_marker.gd" id="3_27rds"]
+
+[node name="Fixture01" type="Node2D" unique_id=393636615]
+script = ExtResource("1_pi4l0")
+map_id = "fixture_01"
+
+[node name="Floor" type="TileMapLayer" parent="." unique_id=2119316830]
+tile_map_data = PackedByteArray("AAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAADAAAAAAABAAAAAAAEAAAAAAABAAAAAAAFAAAAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAAAAAAAAAACAAEAAAAAAAAAAAADAAEAAAAAAAAAAAAEAAEAAAAAAAAAAAAFAAEAAAABAAAAAAAAAAIAAAABAAAAAAABAAIAAAAAAAAAAAACAAIAAAAAAAAAAAADAAIAAAAAAAAAAAAEAAIAAAAAAAAAAAAFAAIAAAABAAAAAAAAAAMAAAABAAAAAAABAAMAAAAAAAAAAAACAAMAAAAAAAAAAAADAAMAAAAAAAAAAAAEAAMAAAAAAAAAAAAFAAMAAAABAAAAAAAAAAQAAAABAAAAAAABAAQAAAABAAAAAAACAAQAAAABAAAAAAADAAQAAAABAAAAAAAEAAQAAAABAAAAAAAFAAQAAAABAAAAAAA=")
+tile_set = ExtResource("2_ild1i")
+
+[node name="Markers" type="Node2D" parent="." unique_id=1161187084]
+
+[node name="Spawn1" type="Marker2D" parent="Markers" unique_id=1759205663]
+position = Vector2(48, 48)
+script = ExtResource("3_27rds")
+marker_id = "sp1"
+
+[node name="Spawn2" type="Marker2D" parent="Markers" unique_id=1438023774]
+position = Vector2(80, 48)
+script = ExtResource("3_27rds")
+marker_id = "sp2"
+
+[node name="Spawn3" type="Marker2D" parent="Markers" unique_id=237491757]
+position = Vector2(112, 48)
+script = ExtResource("3_27rds")
+marker_id = "sp3"
+
+[node name="Spawn4" type="Marker2D" parent="Markers" unique_id=1087800927]
+position = Vector2(144, 48)
+script = ExtResource("3_27rds")
+marker_id = "sp4"
+
+[node name="Spawn5" type="Marker2D" parent="Markers" unique_id=121509940]
+position = Vector2(48, 112)
+script = ExtResource("3_27rds")
+marker_id = "sp5"
+
+[node name="Spawn6" type="Marker2D" parent="Markers" unique_id=161124000]
+position = Vector2(80, 112)
+script = ExtResource("3_27rds")
+marker_id = "sp6"
+
+[node name="Spawn7" type="Marker2D" parent="Markers" unique_id=956375794]
+position = Vector2(112, 112)
+script = ExtResource("3_27rds")
+marker_id = "sp7"
+
+[node name="Spawn8" type="Marker2D" parent="Markers" unique_id=1757420842]
+position = Vector2(144, 112)
+script = ExtResource("3_27rds")
+marker_id = "sp8"
+
+[node name="FxBins" type="Marker2D" parent="Markers" unique_id=1338339112]
+position = Vector2(80, 80)
+script = ExtResource("3_27rds")
+marker_id = "fx_bins"
+kind = "task"
+
+[node name="MeetingButton" type="Marker2D" parent="Markers" unique_id=1585351832]
+position = Vector2(112, 80)
+script = ExtResource("3_27rds")
+marker_id = "meeting_button"
+kind = "emergency"
+
+[node name="FireA" type="Marker2D" parent="Markers" unique_id=63358439]
+position = Vector2(48, 80)
+script = ExtResource("3_27rds")
+marker_id = "fire_a"
+kind = "fire_fix"
+
+[node name="FireB" type="Marker2D" parent="Markers" unique_id=296117910]
+position = Vector2(144, 80)
+script = ExtResource("3_27rds")
+marker_id = "fire_b"
+kind = "fire_fix"
+
+[node name="SmogPanel" type="Marker2D" parent="Markers" unique_id=797882439]
+position = Vector2(112, 112)
+script = ExtResource("3_27rds")
+marker_id = "smog_panel"
+kind = "smog_fix"
+
+[node name="FxZone" type="Marker2D" parent="Markers" unique_id=167211073]
+position = Vector2(32, 32)
+script = ExtResource("3_27rds")
+marker_id = "fx_zone"
+kind = "zone"
+zone_size_tiles = Vector2i(4, 3)
+name_key = "zone_fx"
