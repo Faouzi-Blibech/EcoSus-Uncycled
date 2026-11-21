@@ -53,15 +53,12 @@ map), `me.poison`, the meeting `task_bar`.
 
 ## 4. Rooms and roles
 
-| Room size | Trashers |
-|---|---|
-| 6 | 1 |
-| 8 (default) | 2 |
-| 10 | 2 |
+**Locked (decided Sat 21 Nov, evening): every game has 8 seats and 2 Trashers.** Bots fill the free
+seats at start. A room is `full` at 8 humans.
 
-- The host picks the size in the lobby. It cannot go below the number of humans already in the room.
-- A room is `full` when its humans reach the size. At start, bots fill the free seats up to the size.
-- Seat ids 0-9. The map needs 10 spawns.
+- The server still supports 6/8/10 (`rooms.sizes`, `set_size`, built in PR #10), but no client sends
+  `set_size` and the lobby has no size picker, so every room stays at its default of 8 with 2 Trashers.
+- The map keeps its 10 spawns (harmless; seats 0-7 use the first 8).
 
 ## 5. Cleaners
 
@@ -190,7 +187,7 @@ Goal: show, with measured numbers, how the organisers' networks (Ooredoo, Tunisi
 
 | `t` | Fields | Rule |
 |---|---|---|
-| `set_size` | `size` | host, lobby; in `rooms.sizes`, not below the humans in the room, else `target_invalid` |
+| `set_size` | `size` | host, lobby; in `rooms.sizes`, not below the humans in the room, else `target_invalid`. Not used: seats are locked at 8 |
 | `set_skin` | `skin` | lobby; id from `content/skins.json`, else `target_invalid` |
 | `use` | `console` | a spot id opens a clean session; `"machine"` delivers bags |
 | `spot_done` | `spot` | Cleaner with an open session on that spot, after `min_s` |
