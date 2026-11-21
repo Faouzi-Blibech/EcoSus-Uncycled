@@ -141,6 +141,16 @@ namespace Sim.Core
         TooLong,
         TextLimit,
         PhraseLimit,
+        BagsFull,
+        SpotClean,
+        SpotDirty,
+    }
+
+    /// <summary>A cleaning spot: every task console is one (spec section 5).</summary>
+    public enum SpotState
+    {
+        Dirty,
+        Clean,
     }
 
     public enum DeadlineClock
@@ -187,6 +197,9 @@ namespace Sim.Core
                 case RejectReason.TooLong: return "too_long";
                 case RejectReason.TextLimit: return "text_limit";
                 case RejectReason.PhraseLimit: return "phrase_limit";
+                case RejectReason.BagsFull: return "bags_full";
+                case RejectReason.SpotClean: return "spot_clean";
+                case RejectReason.SpotDirty: return "spot_dirty";
                 default: return "not_allowed";
             }
         }

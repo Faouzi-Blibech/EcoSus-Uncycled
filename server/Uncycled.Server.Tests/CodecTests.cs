@@ -213,6 +213,45 @@ namespace Uncycled.Server.Tests
             }
         }
 
+        [Fact]
+        public void SpotDone_ParsesTheSpotId_AndRejectsAMissingOne()
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"spot_done\",\"spot\":\"market_bins\"}"), out ICommand? cmd, out _));
+            Assert.Equal("market_bins", Assert.IsType<SpotDoneCommand>(cmd).SpotId);
+
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"spot_done\"}"), out _, out string? error));
+            Assert.Equal("bad_field", error);
+        }
+
+        [Fact]
+        public void SpotEvents_UseKindSpotAndSpotCleaned()
+        {
+            var useOk = new UseOkEvent(2, "market_bins", ConsoleKind.Task, null, "sort_waste", null);
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(useOk)!))
+            {
+                Assert.Equal("use_ok", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("spot", d.RootElement.GetProperty("kind").GetString());
+                Assert.Equal("sort_waste", d.RootElement.GetProperty("type").GetString());
+                Assert.False(d.RootElement.TryGetProperty("task", out _));
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new SpotCleanedEvent(2, "market_bins", 1))!))
+            {
+                Assert.Equal("spot_cleaned", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("market_bins", d.RootElement.GetProperty("spot").GetString());
+                Assert.Equal(1, d.RootElement.GetProperty("bags").GetInt32());
+            }
+        }
+
+        [Theory]
+        [InlineData(RejectReason.BagsFull, "bags_full")]
+        [InlineData(RejectReason.SpotClean, "spot_clean")]
+        [InlineData(RejectReason.SpotDirty, "spot_dirty")]
+        public void NewRejectReasons_HaveWireNames(RejectReason reason, string wire)
+        {
+            Assert.Equal(wire, WireNames.Of(reason));
+        }
+
         [Theory]
         [InlineData("Alice", "Alice")]
         [InlineData("  Bob  ", "Bob")]

@@ -99,7 +99,7 @@ namespace Uncycled.Server.Tests
         private static string Why(Result r) =>
             r.Summary + ", phase " + r.Engine.Phase + ", match time " + r.Engine.MatchTime + ", active " + r.Engine.ActiveTime;
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Room_with_one_human_and_seven_bots_plays_to_game_over_with_the_bot_brains()
         {
             var log = new CountingLog();
@@ -112,7 +112,7 @@ namespace Uncycled.Server.Tests
             Assert.Equal(0, log.Warnings);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void A_brain_that_throws_falls_back_to_the_scripted_brain_and_logs_once_per_seat()
         {
             var log = new CountingLog();

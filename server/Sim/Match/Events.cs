@@ -155,6 +155,24 @@ namespace Sim.Match
         public int? Step { get; }
     }
 
+    /// <summary>spot_cleaned. To the cleaner: the spot is clean and Bags is the new bag count.</summary>
+    public sealed class SpotCleanedEvent : GameEvent
+    {
+        public SpotCleanedEvent(byte seat, string spot, int bags)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Spot = spot;
+            Bags = bags;
+        }
+
+        public byte Seat { get; }
+
+        public string Spot { get; }
+
+        public int Bags { get; }
+    }
+
     /// <summary>task_progress. To the owner.</summary>
     public sealed class TaskProgressEvent : GameEvent
     {

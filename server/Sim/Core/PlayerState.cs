@@ -46,6 +46,15 @@ namespace Sim.Core
         /// <summary>Highest accepted move sequence number (-1 = none yet).</summary>
         public long LastMoveSeq { get; internal set; }
 
+        /// <summary>Bags carried (citizens only).</summary>
+        public int Bags { get; internal set; }
+
+        /// <summary>Most bags this seat can carry (citizens only).</summary>
+        public int BagCap { get; internal set; }
+
+        /// <summary>True once the seat owns the Cleaning Tool (cleans in ToolTimeMult of the time).</summary>
+        public bool HasTool { get; internal set; }
+
         /// <summary>Movement distance budget in tiles.</summary>
         public float MoveBudget { get; internal set; }
 

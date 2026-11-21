@@ -122,6 +122,20 @@ namespace Sim.Match
         public float SabotageStartCooldownS { get; set; } = 10f;
         public float FireCountdownS { get; set; } = 45f;
 
+        // spots and bags (v2; tuning.json spots.* and bags.*)
+        public int BagCap { get; set; } = 1;
+
+        public int BackpackCap { get; set; } = 3;
+
+        /// <summary>Clean time multiplier with the Cleaning Tool (spots.tool_time_mult).</summary>
+        public float ToolTimeMult { get; set; } = 0.5f;
+
+        /// <summary>Meter added per delivered bag (spots.bag_meter_add).</summary>
+        public float BagMeterAdd { get; set; } = 10f;
+
+        /// <summary>Meter removed when a Trasher re-pollutes a spot (spots.repollute_meter_sub).</summary>
+        public float RepolluteMeterSub { get; set; } = 10f;
+
         // tasks per citizen
         public int TasksCommon { get; set; } = 1;
         public int TasksShort { get; set; } = 2;

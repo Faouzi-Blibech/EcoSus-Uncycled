@@ -88,6 +88,7 @@ namespace Sim.Match
 
             RoleAssigner.Assign(_players, config.Polluters, _rng);
             Tasks = TaskLedger.Assign(ActiveCitizenSeats(), taskTypes, config.TasksCommon, config.TasksShort, config.TasksLong, _rng);
+            Spots = SpotBoard.FromMap(map, taskTypes);
 
             _fireConsoles = map.ConsolesOfKind(ConsoleKind.FireFix);
             _emergencyConsoles = map.ConsolesOfKind(ConsoleKind.Emergency);
@@ -121,6 +122,7 @@ namespace Sim.Match
                 p.HitReadyAt = config.StartCooldownS;
                 p.DumpReadyAt = config.StartCooldownS;
                 p.MoveBudget = config.MoveBudgetCap;
+                p.BagCap = p.IsCitizen ? config.BagCap : 0;
             }
 
             Phase = MatchPhase.Intro;
@@ -168,6 +170,9 @@ namespace Sim.Match
         public PileRegistry Piles { get; }
 
         public TaskLedger Tasks { get; }
+
+        /// <summary>The cleaning spots (v2): one per task console, all dirty at the start.</summary>
+        public SpotBoard Spots { get; }
 
         /// <summary>Server-side witness records (for bots). Never sent to clients.</summary>
         public WitnessLog Witnesses { get; }
@@ -278,15 +283,17 @@ namespace Sim.Match
             {
                 case MoveCommand c: return ApplyMove(p, c);
                 case UseCommand c: return ApplyUse(p, c);
-                case TaskStepCommand c: return ApplyTaskStep(p, c);
-                case HitCommand c: return ApplyHit(p, c);
-                case DumpCommand _: return ApplyDump(p);
+                case SpotDoneCommand c: return ApplySpotDone(p, c);
+                // v1 actions, out of play in v2 (their handlers stay in MatchEngine.Actions.cs)
+                case TaskStepCommand _: return Reject(RejectReason.NotAllowed);
+                case HitCommand _: return Reject(RejectReason.NotAllowed);
+                case DumpCommand _: return Reject(RejectReason.NotAllowed);
                 case ReportCommand c: return ApplyReport(p, c);
                 case CallMeetingCommand _: return ApplyCallMeeting(p);
                 case VoteCommand c: return ApplyVote(p, c);
                 case SabotageCommand c: return ApplySabotage(p, c);
                 case FixCommand c: return ApplyFix(p, c);
-                case CleanStartCommand c: return ApplyCleanStart(p, c);
+                case CleanStartCommand _: return Reject(RejectReason.NotAllowed);
                 case CleanCancelCommand c: return ApplyCleanCancel(p, c);
                 case ChatPhraseCommand c: return ApplyChat(p, c);
                 case ChatTextCommand c: return ApplyChatText(p, c);

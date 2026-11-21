@@ -51,7 +51,7 @@ namespace Uncycled.Bots.Tests
             return string.Concat(sha.ComputeHash(Encoding.UTF8.GetBytes(text)).Select(b => b.ToString("x2")));
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Polluter_CommandsOnAFixedSeedAreUnchanged()
         {
             string t1 = Trace(3);

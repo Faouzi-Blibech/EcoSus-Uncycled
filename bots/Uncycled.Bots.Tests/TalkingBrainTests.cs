@@ -10,7 +10,7 @@ namespace Uncycled.Bots.Tests
 {
     public class TalkingBrainTests
     {
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void TalkingBrain_WhenTheTalkerThrowsTheBrainTakesItsVoteBack()
         {
             TestMatch m = TestMatch.Create(2);

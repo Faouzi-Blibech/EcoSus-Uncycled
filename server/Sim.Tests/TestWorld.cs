@@ -209,5 +209,12 @@ namespace Sim.Tests
         }
 
         public static PlayerState P(MatchEngine e, byte seat) => e.Find(seat) ?? throw new InvalidOperationException("no seat");
+
+        /// <summary>Moves a seat onto a console (its exact position).</summary>
+        public static void StandAt(MatchEngine e, byte seat, string consoleId)
+        {
+            ConsoleDef console = e.Map.FindConsole(consoleId) ?? throw new InvalidOperationException("no console " + consoleId);
+            e.TestTeleport(seat, console.Position);
+        }
     }
 }

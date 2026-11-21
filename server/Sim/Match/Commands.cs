@@ -34,6 +34,17 @@ namespace Sim.Match
         public string ConsoleId { get; }
     }
 
+    /// <summary>protocol: spot_done {spot}. Ends the clean session opened by use.</summary>
+    public sealed class SpotDoneCommand : ICommand
+    {
+        public SpotDoneCommand(string spotId)
+        {
+            SpotId = spotId ?? "";
+        }
+
+        public string SpotId { get; }
+    }
+
     /// <summary>protocol: task_step {task}.</summary>
     public sealed class TaskStepCommand : ICommand
     {

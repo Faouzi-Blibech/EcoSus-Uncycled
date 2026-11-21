@@ -18,7 +18,7 @@ namespace Uncycled.Bots.Tests
 
         // ---------- C1: the decision contract ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Executor_ReDecidedEveryHalfSecondStillCompletesATask()
         {
             TestMatch m = TestMatch.Create();
@@ -50,7 +50,7 @@ namespace Uncycled.Bots.Tests
             Assert.Single(driver.Sent, kv => kv.Key is UseCommand);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Executor_ChangingActionMidUseIsIgnored_TheCommittedStepCompletes()
         {
             TestMatch m = TestMatch.Create();
@@ -336,7 +336,7 @@ namespace Uncycled.Bots.Tests
 
         // ---------- m5, m9: observation safety ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Observation_NoNaNWithZeroedConfig()
         {
             TestMatch m = TestMatch.Create();

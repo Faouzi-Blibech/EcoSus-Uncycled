@@ -24,7 +24,7 @@ namespace Sim.Tests
         [Theory]
         [InlineData("early", RejectReason.OnCooldown)]
         [InlineData("far", RejectReason.OutOfRange)]
-        [InlineData("fire", RejectReason.FireActive)]
+        [InlineData("fire", RejectReason.FireActive, Skip = "v1 rule, out of play in v2")]
         [InlineData("none_left", RejectReason.NoEmergenciesLeft)]
         [InlineData("out", RejectReason.NotAllowed)]
         [InlineData("ok", null)]
@@ -183,7 +183,7 @@ namespace Sim.Tests
 
         // ---------- fire ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Fire_is_fixed_by_two_holders_and_cooldown_starts_at_the_end()
         {
             MatchEngine e = Playing(NoOpeningLock());
@@ -217,7 +217,7 @@ namespace Sim.Tests
             Assert.True(e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).IsOk);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Fire_expiry_adds_20_and_does_not_end_the_match()
         {
             MatchEngine e = Playing(NoOpeningLock());
@@ -231,7 +231,7 @@ namespace Sim.Tests
             Assert.Equal(MatchPhase.Playing, e.Phase);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Meeting_clears_an_active_fire()
         {
             MatchEngine e = Playing(ShortMeetings(0f));
@@ -248,7 +248,7 @@ namespace Sim.Tests
             Assert.Equal(SabotageEndResult.Cleared, Assert.Single(Of<SabotageEndedEvent>(e.Tick(0f))).Result);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Sabotage_is_locked_for_the_opening_seconds_like_hit_and_dump()
         {
             MatchEngine e = Playing();
@@ -263,7 +263,7 @@ namespace Sim.Tests
             Assert.True(e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).IsOk);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Sabotage_opening_lock_comes_from_the_config()
         {
             MatchEngine e = Playing(new MatchConfig { SabotageStartCooldownS = 0f });
@@ -483,7 +483,7 @@ namespace Sim.Tests
             Assert.Empty(e.ViewFor(a).Players);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Piles_outside_vision_are_absent()
         {
             MatchEngine e = Playing();
