@@ -5,14 +5,21 @@ host:
   matches: 16
   threads: null                                 # null = host default (cores - 2)
 
-rewards:
+rewards:                  # v2 values; the v1 task, hit and dump weights are gone (no v1 event fires)
   win: 1.0
-  task: 0.05
-  report: 0.1
-  fix: 0.05
-  hit: 0.1
-  dump: 0.05
-  ejected: -0.3
+  report: 0.1             # Cleaner: own report leads to a Trasher ejection
+  ejectright: 0.1         # Cleaner: a Trasher is voted out
+  ejectwrong: -0.1        # Cleaner: a Cleaner is voted out
+  deliver: 0.1            # Cleaner: per bag delivered
+  spot: 0.02              # Cleaner: per spot cleaned
+  fix: 0.05               # Cleaner: holder of a machine fix that completes
+  heal: 0.05              # Cleaner: heals someone
+  out: -0.1               # Cleaner: put out by gas or virus
+  ejected: -0.3           # Trasher: voted out
+  cleanerout: 0.1         # Trasher: a Cleaner is voted out
+  repollute: 0.05         # Trasher: re-pollute nobody saw
+  victim: 0.1             # Trasher: Cleaner put out by own gas or virus
+  jam: 0.02               # Trasher: machine sabotage
 
 ppo:
   device: auto            # auto = cuda if available, else cpu

@@ -12,18 +12,54 @@ namespace Uncycled.Train
     {
         public float Win { get; set; } = 1f;
 
+        /// <summary>v1 weight, parseable but no v1 event fires in v2.</summary>
         public float Task { get; set; } = 0.05f;
 
+        /// <summary>Cleaner whose own report leads to a Trasher ejection.</summary>
         public float Report { get; set; } = 0.1f;
 
         public float Fix { get; set; } = 0.05f;
 
+        /// <summary>v1 weight, parseable but no v1 event fires in v2.</summary>
         public float Hit { get; set; } = 0.1f;
 
+        /// <summary>v1 weight, parseable but no v1 event fires in v2.</summary>
         public float Dump { get; set; } = 0.05f;
 
         /// <summary>Added to a learner polluter that is voted out; negative.</summary>
         public float Ejected { get; set; } = -0.3f;
+
+        // v2 (RewardsV2): the YAML key with a capital, the flag is --rw-<key>
+
+        /// <summary>Every learner Cleaner when a Trasher is voted out.</summary>
+        public float Ejectright { get; set; } = 0.1f;
+
+        /// <summary>Every learner Cleaner when a Cleaner is voted out; negative.</summary>
+        public float Ejectwrong { get; set; } = -0.1f;
+
+        /// <summary>Cleaner, per bag delivered.</summary>
+        public float Deliver { get; set; } = 0.1f;
+
+        /// <summary>Cleaner, per spot cleaned.</summary>
+        public float Spot { get; set; } = 0.02f;
+
+        /// <summary>Cleaner, a healing it performed.</summary>
+        public float Heal { get; set; } = 0.05f;
+
+        /// <summary>Cleaner put out by gas or virus; negative.</summary>
+        public float Out { get; set; } = -0.1f;
+
+        /// <summary>Every learner Trasher when a Cleaner is voted out.</summary>
+        public float Cleanerout { get; set; } = 0.1f;
+
+        /// <summary>Trasher, a re-pollute that nobody on the other team saw.</summary>
+        public float Repollute { get; set; } = 0.05f;
+
+        /// <summary>Trasher, per Cleaner put out by its gas or its virus.</summary>
+        public float Victim { get; set; } = 0.1f;
+
+        /// <summary>Trasher, an accepted machine sabotage.</summary>
+        public float Jam { get; set; } = 0.02f;
     }
 
     /// <summary>Command line of Uncycled.Train.</summary>
@@ -36,6 +72,12 @@ namespace Uncycled.Train
         public ulong Seed { get; set; } = 1;
 
         public Role Learner { get; set; } = Role.Citizen;
+
+        /// <summary>--map: map id under content/maps.</summary>
+        public string MapId { get; set; } = ContentLoader.DefaultMapId;
+
+        /// <summary>--seats: room size to play; null keeps the content's Seats (Polluters follow the size, MatchConfig.ForSize).</summary>
+        public int? Seats { get; set; }
 
         public int Threads { get; set; } = Math.Max(1, Environment.ProcessorCount - 2);
 
@@ -108,6 +150,18 @@ namespace Uncycled.Train
 
         public RewardWeights Rewards { get; } = new RewardWeights();
 
+        /// <summary>The content of --content for --map, with the room size of --seats applied.</summary>
+        public ContentBundle LoadContent()
+        {
+            ContentBundle content = ContentLoader.Load(ContentDir, MapId);
+            if (Seats == null)
+            {
+                return content;
+            }
+
+            return new ContentBundle(content.Config.ForSize(Seats.Value), content.TuningJson, content.Tasks, content.TasksJson, content.Map, content.Phrases, content.Filter);
+        }
+
         public static HostOptions Parse(string[] args)
         {
             var o = new HostOptions();
@@ -139,6 +193,8 @@ namespace Uncycled.Train
                     case "--seed": o.Seed = ulong.Parse(value, CultureInfo.InvariantCulture); break;
                     case "--threads": o.Threads = Positive(flag, value); break;
                     case "--learner": o.Learner = ParseRole(value); break;
+                    case "--map": o.MapId = value; break;
+                    case "--seats": o.Seats = Positive(flag, value); break;
                     case "--bench": o.BenchSeconds = double.Parse(value, CultureInfo.InvariantCulture); break;
                     case "--bots": o.BotsConfig = value; break;
                     case "--citizen": o.CitizenBrain = value; break;
@@ -156,6 +212,16 @@ namespace Uncycled.Train
                     case "--rw-hit": o.Rewards.Hit = Float(value); break;
                     case "--rw-dump": o.Rewards.Dump = Float(value); break;
                     case "--rw-ejected": o.Rewards.Ejected = Float(value); break;
+                    case "--rw-ejectright": o.Rewards.Ejectright = Float(value); break;
+                    case "--rw-ejectwrong": o.Rewards.Ejectwrong = Float(value); break;
+                    case "--rw-deliver": o.Rewards.Deliver = Float(value); break;
+                    case "--rw-spot": o.Rewards.Spot = Float(value); break;
+                    case "--rw-heal": o.Rewards.Heal = Float(value); break;
+                    case "--rw-out": o.Rewards.Out = Float(value); break;
+                    case "--rw-cleanerout": o.Rewards.Cleanerout = Float(value); break;
+                    case "--rw-repollute": o.Rewards.Repollute = Float(value); break;
+                    case "--rw-victim": o.Rewards.Victim = Float(value); break;
+                    case "--rw-jam": o.Rewards.Jam = Float(value); break;
                     default: throw new ArgumentException("unknown argument " + flag);
                 }
             }

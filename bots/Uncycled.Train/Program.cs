@@ -26,7 +26,7 @@ namespace Uncycled.Train
             try
             {
                 HostOptions options = HostOptions.Parse(args);
-                ContentBundle content = ContentLoader.Load(options.ContentDir);
+                ContentBundle content = options.LoadContent();
                 BotsSettings settings = options.Settings;
                 Func<Role, IRandom, IBotBrain> brains = HostBrains.Scripted(settings, content);
                 if (options.BakeOff)
@@ -70,7 +70,7 @@ namespace Uncycled.Train
             catch (ArgumentException e)
             {
                 Console.Error.WriteLine("error: " + e.Message);
-                Console.Error.WriteLine("usage: Uncycled.Train --content <dir> --matches <N> --seed <S> --learner citizen|polluter --threads <T> [--bench <seconds>] [--bots <bots.json>] [--opponents onnx:<path>=w,scripted=w,...] [--rw-win v] [--rw-task v] [--rw-report v] [--rw-fix v] [--rw-hit v] [--rw-dump v] [--rw-ejected v]");
+                Console.Error.WriteLine("usage: Uncycled.Train --content <dir> --matches <N> --seed <S> --learner citizen|polluter --threads <T> [--bench <seconds>] [--bots <bots.json>] [--opponents onnx:<path>=w,scripted=w,...] [--rw-win v] [--rw-task v] [--rw-report v] [--rw-fix v] [--rw-hit v] [--rw-dump v] [--rw-ejected v] [--rw-ejectright v] [--rw-ejectwrong v] [--rw-deliver v] [--rw-spot v] [--rw-heal v] [--rw-out v] [--rw-cleanerout v] [--rw-repollute v] [--rw-victim v] [--rw-jam v] [--map <id>] [--seats <n>]");
                 Console.Error.WriteLine("       Uncycled.Train --bakeoff --content <dir> --meetings N --seeds A-B --out <file.json> [--max-calls N] [--deciders rule,clef,skip] [--bots <bots.json>]");
                 return 2;
             }
@@ -139,7 +139,8 @@ namespace Uncycled.Train
             int frameSize = runners[0].FrameSize;
             PipeProtocol.WriteHandshake(stdout, ObservationBuilder.Size, ActionCatalogue.Count, agents, ObservationBuilder.SchemaHash);
             Console.Error.WriteLine("host ready: " + runners.Length + " matches, " + agents + " agents, obs " + ObservationBuilder.Size
-                + ", actions " + ActionCatalogue.Count + ", threads " + options.Threads + ", learner " + options.Learner);
+                + ", actions " + ActionCatalogue.Count + ", threads " + options.Threads + ", learner " + options.Learner
+                + ", map " + runners[0].MapId + ", seats " + runners[0].Seats);
 
             var frames = new byte[agents * frameSize];
             var actions = new int[agents];
