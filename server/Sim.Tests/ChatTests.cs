@@ -121,9 +121,10 @@ namespace Sim.Tests
             for (int i = 0; i < 5; i++)
             {
                 Assert.True(e.Apply(cit, new ChatPhraseCommand("hmm", null)).IsOk);
+                e.Tick(2f); // the gap between chat lines
             }
 
-            Assert.Equal(RejectReason.NotAllowed, e.Apply(cit, new ChatPhraseCommand("hmm", null)).Reason);
+            Assert.Equal(RejectReason.PhraseLimit, e.Apply(cit, new ChatPhraseCommand("hmm", null)).Reason);
         }
 
         [Fact]
@@ -132,6 +133,7 @@ namespace Sim.Tests
             (MatchEngine e, byte cit) = InMeeting();
             Assert.Equal(0, e.ViewFor(cit).Meeting!.MyChatCount);
             Assert.True(e.Apply(cit, new ChatPhraseCommand("hmm", null)).IsOk);
+            e.Tick(2f); // the gap between chat lines
             Assert.True(e.Apply(cit, new ChatPhraseCommand("idk", null)).IsOk);
             Assert.Equal(2, e.ViewFor(cit).Meeting!.MyChatCount);
             byte other = cit == 0 ? (byte)1 : (byte)0;

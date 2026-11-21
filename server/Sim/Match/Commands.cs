@@ -172,6 +172,17 @@ namespace Sim.Match
         public IReadOnlyList<ChatArg> Args { get; }
     }
 
+    /// <summary>protocol: chat_text {text}. A typed chat line; the engine normalises and filters it.</summary>
+    public sealed class ChatTextCommand : ICommand
+    {
+        public ChatTextCommand(string text)
+        {
+            Text = text ?? "";
+        }
+
+        public string Text { get; }
+    }
+
     /// <summary>Ok, or rejected with a protocol reason.</summary>
     public readonly struct CommandResult
     {

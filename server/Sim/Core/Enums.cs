@@ -138,6 +138,9 @@ namespace Sim.Core
         FireActive,
         NoEmergenciesLeft,
         RateLimited,
+        TooLong,
+        TextLimit,
+        PhraseLimit,
     }
 
     public enum DeadlineClock
@@ -181,6 +184,9 @@ namespace Sim.Core
                 case RejectReason.FireActive: return "fire_active";
                 case RejectReason.NoEmergenciesLeft: return "no_emergencies_left";
                 case RejectReason.RateLimited: return "rate_limited";
+                case RejectReason.TooLong: return "too_long";
+                case RejectReason.TextLimit: return "text_limit";
+                case RejectReason.PhraseLimit: return "phrase_limit";
                 default: return "not_allowed";
             }
         }

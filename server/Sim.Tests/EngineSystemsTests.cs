@@ -105,7 +105,9 @@ namespace Sim.Tests
         [Fact]
         public void Votes_plurality_ejects_and_confirm_reveals_polluter()
         {
-            MatchEngine e = Playing(ShortMeetings(0f));
+            MatchConfig cfg = ShortMeetings(0f);
+            cfg.ChatMinGapS = 0f; // this test sends many lines inside a one-second discussion
+            MatchEngine e = Playing(cfg);
             byte pol = Polluter(e);
             byte cit = Citizen(e);
             e.TestTeleport(cit, ButtonPos);
@@ -117,7 +119,7 @@ namespace Sim.Tests
             Assert.True(e.Apply(cit, new ChatPhraseCommand("b", null)).IsOk);
             Assert.True(e.Apply(cit, new ChatPhraseCommand("c", null)).IsOk);
             Assert.True(e.Apply(cit, new ChatPhraseCommand("d", null)).IsOk);
-            Assert.Equal(RejectReason.NotAllowed, e.Apply(cit, new ChatPhraseCommand("e", null)).Reason); // 5 per meeting
+            Assert.Equal(RejectReason.PhraseLimit, e.Apply(cit, new ChatPhraseCommand("e", null)).Reason); // 5 per meeting
 
             Advance(e, 1.1f);
             Assert.Equal(MeetingStage.Voting, e.Meeting!.Stage);

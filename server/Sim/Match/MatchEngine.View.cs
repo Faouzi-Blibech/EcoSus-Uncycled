@@ -138,7 +138,8 @@ namespace Sim.Match
                     voted ? myVote : null,
                     m.TaskBar,
                     m.ChatCount(seat),
-                    new List<byte>(m.Voters));
+                    new List<byte>(m.Voters),
+                    m.TextCount(seat));
             }
 
             float phaseLeft = 0f;
@@ -168,7 +169,8 @@ namespace Sim.Match
                 piles,
                 sabotage,
                 meetingView,
-                Result);
+                Result,
+                me.IsActive ? null : new List<ChatEvent>(_ghostChat));
         }
     }
 }

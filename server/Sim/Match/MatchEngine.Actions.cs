@@ -506,15 +506,12 @@ namespace Sim.Match
 
         private CommandResult ApplyChat(PlayerState p, ChatPhraseCommand c)
         {
+            // An out seat chats among the out seats at any time (ghost chat); a living seat only in discussion.
+            bool ghost = !p.IsActive;
             MeetingSession? m = Meeting;
-            if (Phase != MatchPhase.Meeting || m == null || m.Stage != MeetingStage.Discussion)
+            if (!ghost && (Phase != MatchPhase.Meeting || m == null || m.Stage != MeetingStage.Discussion))
             {
                 return Reject(RejectReason.WrongPhase);
-            }
-
-            if (!p.IsActive)
-            {
-                return Reject(RejectReason.NotAllowed);
             }
 
             if (string.IsNullOrEmpty(c.PhraseId))
@@ -545,7 +542,7 @@ namespace Sim.Match
                 if (arg.Kind == ChatArgKind.Seat)
                 {
                     PlayerState? named = Find(arg.Seat);
-                    valid = named != null && (_phrases == null || named.IsActive);
+                    valid = named != null && (_phrases == null || ghost || named.IsActive);
                 }
                 else
                 {
@@ -558,14 +555,102 @@ namespace Sim.Match
                 }
             }
 
-            if (m.ChatCount(p.Seat) >= Config.PhrasesPerMeeting)
+            if (!ghost && m!.ChatCount(p.Seat) >= Config.PhrasesPerMeeting)
             {
-                return Reject(RejectReason.NotAllowed);
+                return Reject(RejectReason.PhraseLimit);
             }
 
-            m.CountChat(p.Seat);
-            Emit(new ChatEvent(p.Seat, c.PhraseId, new List<ChatArg>(c.Args)));
+            if (ChatGapActive(p.Seat))
+            {
+                return Reject(RejectReason.RateLimited);
+            }
+
+            _lastChatAt[p.Seat] = MatchTime;
+            var args = new List<ChatArg>(c.Args);
+            if (ghost)
+            {
+                EmitGhost(p.Seat, c.PhraseId, args, null);
+            }
+            else
+            {
+                m!.CountChat(p.Seat);
+                Emit(new ChatEvent(p.Seat, c.PhraseId, args));
+            }
+
             return CommandResult.Ok;
+        }
+
+        private CommandResult ApplyChatText(PlayerState p, ChatTextCommand c)
+        {
+            bool ghost = !p.IsActive;
+            MeetingSession? m = Meeting;
+            if (!ghost && (Phase != MatchPhase.Meeting || m == null || m.Stage != MeetingStage.Discussion))
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            string text = ChatText.Normalize(c.Text);
+            if (text.Length == 0)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (text.Length > Config.TextMaxChars)
+            {
+                return Reject(RejectReason.TooLong);
+            }
+
+            if (!ghost && m!.TextCount(p.Seat) >= Config.TextPerMeeting)
+            {
+                return Reject(RejectReason.TextLimit);
+            }
+
+            if (ChatGapActive(p.Seat))
+            {
+                return Reject(RejectReason.RateLimited);
+            }
+
+            _lastChatAt[p.Seat] = MatchTime;
+            string shown = _filter.Apply(text);
+            if (ghost)
+            {
+                EmitGhost(p.Seat, null, new List<ChatArg>(), shown);
+            }
+            else
+            {
+                m!.CountText(p.Seat);
+                Emit(new ChatEvent(p.Seat, null, new List<ChatArg>(), shown, false, null));
+            }
+
+            return CommandResult.Ok;
+        }
+
+        /// <summary>True while the seat's last accepted chat line (phrase or typed) is younger than ChatMinGapS.</summary>
+        private bool ChatGapActive(byte seat)
+        {
+            return _lastChatAt.TryGetValue(seat, out float last) && MatchTime + Epsilon < last + Config.ChatMinGapS;
+        }
+
+        /// <summary>Sends a ghost line to the seats that are out right now and keeps it for their welcome.</summary>
+        private void EmitGhost(byte seat, string? phraseId, IReadOnlyList<ChatArg> args, string? text)
+        {
+            var outSeats = new List<byte>();
+            foreach (PlayerState q in _players)
+            {
+                if (!q.IsActive)
+                {
+                    outSeats.Add(q.Seat);
+                }
+            }
+
+            var line = new ChatEvent(seat, phraseId, args, text, true, outSeats);
+            _ghostChat.Add(line);
+            if (_ghostChat.Count > Config.GhostChatKeep)
+            {
+                _ghostChat.RemoveAt(0);
+            }
+
+            Emit(line);
         }
 
         // ---------- sabotage ----------
