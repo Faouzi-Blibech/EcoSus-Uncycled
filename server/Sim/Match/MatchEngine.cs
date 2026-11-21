@@ -42,7 +42,9 @@ namespace Sim.Match
             IReadOnlyList<TaskTypeDef> taskTypes,
             IRandom rng,
             PhraseCatalogue? phrases = null,
-            ChatFilter? filter = null)
+            ChatFilter? filter = null,
+            byte? forcedPolluter = null,
+            byte? forcedCitizen = null)
         {
             Config = config ?? throw new ArgumentNullException(nameof(config));
             Map = map ?? throw new ArgumentNullException(nameof(map));
@@ -86,7 +88,7 @@ namespace Sim.Match
                 _players.Add(new PlayerState(sorted[i].Seat, sorted[i].Name, sorted[i].Color));
             }
 
-            RoleAssigner.Assign(_players, config.Polluters, _rng);
+            RoleAssigner.Assign(_players, config.Polluters, _rng, forcedPolluter, forcedCitizen);
             Tasks = TaskLedger.Assign(ActiveCitizenSeats(), taskTypes, config.TasksCommon, config.TasksShort, config.TasksLong, _rng);
 
             _fireConsoles = map.ConsolesOfKind(ConsoleKind.FireFix);
