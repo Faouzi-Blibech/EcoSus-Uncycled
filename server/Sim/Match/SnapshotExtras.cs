@@ -7,8 +7,10 @@ namespace Sim.Match
     /// </summary>
     public sealed class SnapshotExtras
     {
-        public SnapshotExtras(float smogLevel, float? repairElapsed)
+        public SnapshotExtras(float smogLevel, float? repairElapsed, bool machineJammed = false, float? machineRepairElapsed = null)
         {
+            MachineJammed = machineJammed;
+            MachineRepairElapsed = machineRepairElapsed;
             SmogLevel = smogLevel;
             RepairElapsed = repairElapsed;
         }
@@ -18,5 +20,11 @@ namespace Sim.Match
 
         /// <summary>Seconds of the smog repair so far; only for the seat that is repairing, null for everyone else.</summary>
         public float? RepairElapsed { get; }
+
+        /// <summary>The Recycling Machine is jammed (snapshot machine.jammed, every seat).</summary>
+        public bool MachineJammed { get; }
+
+        /// <summary>Seconds of the machine repair so far; only for the seat that is repairing (snapshot machine.repair_t).</summary>
+        public float? MachineRepairElapsed { get; }
     }
 }

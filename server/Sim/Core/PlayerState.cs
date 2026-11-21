@@ -55,6 +55,18 @@ namespace Sim.Core
         /// <summary>True once the seat owns the Cleaning Tool (cleans in ToolTimeMult of the time).</summary>
         public bool HasTool { get; internal set; }
 
+        /// <summary>Re-pollutes done so far (Trashers only).</summary>
+        public int Repollutes { get; internal set; }
+
+        /// <summary>The ability picked after the unlock (Trashers only); None until then.</summary>
+        public TrasherAbility Ability { get; internal set; }
+
+        /// <summary>True from the unlock until the Trasher picks (ability_unlocked sent, nothing picked yet).</summary>
+        public bool AbilityChoiceOpen { get; internal set; }
+
+        /// <summary>ActiveTime at which this Trasher may re-pollute again.</summary>
+        public float RepolluteReadyAt { get; internal set; }
+
         /// <summary>Movement distance budget in tiles.</summary>
         public float MoveBudget { get; internal set; }
 

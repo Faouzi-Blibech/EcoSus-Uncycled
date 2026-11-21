@@ -77,8 +77,11 @@ namespace Sim.Match
     /// <summary>Remaining cooldowns of a polluter, in seconds.</summary>
     public sealed class CooldownView
     {
-        public CooldownView(float hit, float dump, float sabotage)
+        public CooldownView(float hit, float dump, float sabotage, float repollute = 0f, float virus = 0f, float gas = 0f)
         {
+            Repollute = repollute;
+            Virus = virus;
+            Gas = gas;
             Hit = hit;
             Dump = dump;
             Sabotage = sabotage;
@@ -89,6 +92,15 @@ namespace Sim.Match
         public float Dump { get; }
 
         public float Sabotage { get; }
+
+        /// <summary>Seconds until the next re-pollute (v2).</summary>
+        public float Repollute { get; }
+
+        /// <summary>Seconds until the next virus (v2; 0 until the virus rule fills it).</summary>
+        public float Virus { get; }
+
+        /// <summary>Seconds until the next gas (v2; 0 until the gas rule fills it).</summary>
+        public float Gas { get; }
     }
 
     /// <summary>The viewer's own private data.</summary>
@@ -107,8 +119,12 @@ namespace Sim.Match
             IReadOnlyList<TaskInfo> tasks,
             int bags = 0,
             int bagCap = 0,
-            bool hasTool = false)
+            bool hasTool = false,
+            int repollutes = 0,
+            TrasherAbility ability = TrasherAbility.None)
         {
+            Repollutes = repollutes;
+            Ability = ability;
             Bags = bags;
             BagCap = bagCap;
             HasTool = hasTool;
@@ -155,6 +171,12 @@ namespace Sim.Match
         public int BagCap { get; }
 
         public bool HasTool { get; }
+
+        /// <summary>Re-pollutes done so far. Trashers only (the wire never sends it to a Cleaner).</summary>
+        public int Repollutes { get; }
+
+        /// <summary>The picked ability, None before. Trashers only.</summary>
+        public TrasherAbility Ability { get; }
     }
 
     public sealed class SabotageView

@@ -212,6 +212,38 @@ public static class Codec
                 return true;
             }
 
+            case "repollute":
+            {
+                string? spot = GetString(r, "spot");
+                if (string.IsNullOrEmpty(spot) || spot.Length > 64)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new RepolluteCommand(spot);
+                return true;
+            }
+
+            case "pick_ability":
+            {
+                string? ability = GetString(r, "ability");
+                if (ability == "virus")
+                {
+                    cmd = new PickAbilityCommand(TrasherAbility.Virus);
+                    return true;
+                }
+
+                if (ability == "gas")
+                {
+                    cmd = new PickAbilityCommand(TrasherAbility.Gas);
+                    return true;
+                }
+
+                error = "bad_field";
+                return false;
+            }
+
             case "task_step":
             {
                 if (!TryGetInt(r, "task", out int taskId))
@@ -276,6 +308,12 @@ public static class Codec
                 if (kind == "smog")
                 {
                     cmd = new SabotageCommand(SabotageKind.Smog);
+                    return true;
+                }
+
+                if (kind == "machine")
+                {
+                    cmd = new SabotageCommand(SabotageKind.Machine);
                     return true;
                 }
 

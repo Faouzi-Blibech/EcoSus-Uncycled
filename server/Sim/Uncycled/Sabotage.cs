@@ -158,6 +158,57 @@ namespace Sim.Uncycled
     }
 
     /// <summary>
+    /// Recycling Machine jam: deliveries are refused while Jammed. One Cleaner fixes it by holding fix at the
+    /// machine for machine.fix_s; leaving range drops the repair (same shape as SmogSystem).
+    /// </summary>
+    public sealed class MachineSystem
+    {
+        public MachineSystem(string? consoleId)
+        {
+            ConsoleId = consoleId;
+        }
+
+        public string? ConsoleId { get; }
+
+        public bool Available => ConsoleId != null;
+
+        public bool Jammed { get; private set; }
+
+        public byte? RepairSeat { get; private set; }
+
+        public float RepairElapsed { get; private set; }
+
+        internal void Jam()
+        {
+            Jammed = true;
+            CancelRepair();
+        }
+
+        internal void Clear()
+        {
+            Jammed = false;
+            CancelRepair();
+        }
+
+        internal void BeginRepair(byte seat)
+        {
+            RepairSeat = seat;
+            RepairElapsed = 0f;
+        }
+
+        internal void AdvanceRepair(float dt)
+        {
+            RepairElapsed += dt;
+        }
+
+        internal void CancelRepair()
+        {
+            RepairSeat = null;
+            RepairElapsed = 0f;
+        }
+    }
+
+    /// <summary>
     /// Smog: citizen vision eases toward smog_min while active and back when cleared.
     /// One citizen clears it by staying at the smog panel for a fixed time.
     /// </summary>

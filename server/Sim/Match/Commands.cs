@@ -101,6 +101,28 @@ namespace Sim.Match
         public bool IsSkip => Target == null;
     }
 
+    /// <summary>protocol: repollute {spot}. A Trasher turns a clean spot dirty again.</summary>
+    public sealed class RepolluteCommand : ICommand
+    {
+        public RepolluteCommand(string spotId)
+        {
+            SpotId = spotId ?? "";
+        }
+
+        public string SpotId { get; }
+    }
+
+    /// <summary>protocol: pick_ability {ability}. Once per match, after ability_unlocked.</summary>
+    public sealed class PickAbilityCommand : ICommand
+    {
+        public PickAbilityCommand(TrasherAbility ability)
+        {
+            Ability = ability;
+        }
+
+        public TrasherAbility Ability { get; }
+    }
+
     /// <summary>protocol: sabotage {kind}.</summary>
     public sealed class SabotageCommand : ICommand
     {

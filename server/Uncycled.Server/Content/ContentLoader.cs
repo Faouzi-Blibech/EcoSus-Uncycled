@@ -197,6 +197,13 @@ public static class ContentLoader
             ToolTimeMult = Num(t, "spots", "tool_time_mult", d.ToolTimeMult),
             BagMeterAdd = Num(t, "spots", "bag_meter_add", d.BagMeterAdd),
             RepolluteMeterSub = Num(t, "spots", "repollute_meter_sub", d.RepolluteMeterSub),
+            RepolluteCooldownS = Num(t, "trasher", "repollute_cooldown_s", d.RepolluteCooldownS),
+            UnlockAfter = (int)Num(t, "trasher", "unlock_after", d.UnlockAfter),
+            TrasherStartCooldownS = Num(t, "trasher", "start_cooldown_s", d.TrasherStartCooldownS),
+            VirusCooldownS = Num(t, "trasher", "virus_cooldown_s", d.VirusCooldownS),
+            GasCooldownS = Num(t, "trasher", "gas_cooldown_s", d.GasCooldownS),
+            GasWarningS = Num(t, "trasher", "gas_warning_s", d.GasWarningS),
+            MachineFixS = Num(t, "machine", "fix_s", d.MachineFixS),
             TasksCommon = (int)Num(t, "tasks", "common", d.TasksCommon),
             TasksShort = (int)Num(t, "tasks", "short", d.TasksShort),
             TasksLong = (int)Num(t, "tasks", "long", d.TasksLong),
@@ -326,6 +333,7 @@ public static class ContentLoader
             case "emergency": return ConsoleKind.Emergency;
             case "fire_fix": return ConsoleKind.FireFix;
             case "smog_fix": return ConsoleKind.SmogFix;
+            case "machine": return ConsoleKind.Machine;
             default: throw new InvalidDataException("Unknown console kind: " + kind);
         }
     }

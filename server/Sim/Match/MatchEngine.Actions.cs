@@ -719,6 +719,90 @@ namespace Sim.Match
             Emit(line);
         }
 
+        // ---------- re-pollute and ability (spec section 6) ----------
+
+        private CommandResult ApplyRepollute(PlayerState p, RepolluteCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsPolluter)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            Spot? spot = Spots.Find(c.SpotId);
+            if (spot == null)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (ActiveTime + Epsilon < p.RepolluteReadyAt)
+            {
+                return Reject(RejectReason.OnCooldown);
+            }
+
+            RejectReason? reach = CheckReach(p.Position, spot.Position, spot.Range);
+            if (reach != null)
+            {
+                return Reject(reach.Value);
+            }
+
+            if (spot.State != SpotState.Clean)
+            {
+                return Reject(RejectReason.SpotDirty);
+            }
+
+            List<byte> witnesses = WitnessesOf(p);
+            spot.State = SpotState.Dirty;
+            Meter.Add(-Config.RepolluteMeterSub);
+            p.RepolluteReadyAt = ActiveTime + Config.RepolluteCooldownS;
+            p.Repollutes++;
+            if (witnesses.Count > 0)
+            {
+                Emit(new CueEvent(witnesses, CueKind.Repollute, p.Seat, spot.Position));
+            }
+
+            Emit(new RepolluteOkEvent(p.Seat, Config.RepolluteCooldownS, p.Repollutes));
+            if (p.Repollutes == Config.UnlockAfter && p.Ability == TrasherAbility.None)
+            {
+                p.AbilityChoiceOpen = true;
+                Emit(new AbilityUnlockedEvent(p.Seat));
+            }
+
+            return CommandResult.Ok;
+        }
+
+        private CommandResult ApplyPickAbility(PlayerState p, PickAbilityCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsPolluter)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (!p.AbilityChoiceOpen)
+            {
+                return Reject(RejectReason.NotUnlocked);
+            }
+
+            if (c.Ability != TrasherAbility.Virus && c.Ability != TrasherAbility.Gas)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            p.Ability = c.Ability;
+            p.AbilityChoiceOpen = false;
+            Emit(new AbilityOkEvent(p.Seat, c.Ability));
+            return CommandResult.Ok;
+        }
+
         // ---------- sabotage ----------
 
         private CommandResult ApplySabotage(PlayerState p, SabotageCommand c)
@@ -739,9 +823,22 @@ namespace Sim.Match
                 return Reject(RejectReason.NotAllowed);
             }
 
-            if (Fire.Active || Smog.Active || ActiveTime + Epsilon < SabotageTimer.ReadyAt)
+            if (Fire.Active || Smog.Active || Machine.Jammed || ActiveTime + Epsilon < SabotageTimer.ReadyAt)
             {
                 return Reject(RejectReason.OnCooldown);
+            }
+
+            if (c.Kind == SabotageKind.Machine)
+            {
+                if (!Machine.Available)
+                {
+                    return Reject(RejectReason.NotAllowed);
+                }
+
+                Machine.Jam();
+                SabotageTimer.OnStarted();
+                Emit(new SabotageStartedEvent(SabotageKind.Machine, null));
+                return CommandResult.Ok;
             }
 
             if (c.Kind == SabotageKind.Fire)
@@ -837,7 +934,63 @@ namespace Sim.Match
                 return Smog.RepairSeat == p.Seat ? CommandResult.Ok : Reject(RejectReason.NotAllowed);
             }
 
+            if (console.Kind == ConsoleKind.Machine)
+            {
+                if (!c.Holding)
+                {
+                    if (Machine.RepairSeat == p.Seat)
+                    {
+                        Machine.CancelRepair();
+                    }
+
+                    return CommandResult.Ok;
+                }
+
+                if (!Machine.Jammed)
+                {
+                    return Reject(RejectReason.NotAllowed);
+                }
+
+                RejectReason? reach = CheckReach(p.Position, console.Position, console.Range);
+                if (reach != null)
+                {
+                    return Reject(reach.Value);
+                }
+
+                if (Machine.RepairSeat == null)
+                {
+                    Machine.BeginRepair(p.Seat);
+                    return CommandResult.Ok;
+                }
+
+                return Machine.RepairSeat == p.Seat ? CommandResult.Ok : Reject(RejectReason.NotAllowed);
+            }
+
             return Reject(RejectReason.TargetInvalid);
+        }
+
+        /// <summary>The seat holding fix at the jammed machine is revalidated every tick; the hold counts to machine.fix_s.</summary>
+        private void TickMachineRepair(float dt)
+        {
+            if (!Machine.Jammed || Machine.RepairSeat == null)
+            {
+                return;
+            }
+
+            PlayerState? rp = Find(Machine.RepairSeat.Value);
+            ConsoleDef? console = Machine.ConsoleId == null ? null : Map.FindConsole(Machine.ConsoleId);
+            if (rp == null || !rp.IsActive || console == null
+                || CheckReach(rp.Position, console.Position, console.Range) != null)
+            {
+                Machine.CancelRepair();
+                return;
+            }
+
+            Machine.AdvanceRepair(dt);
+            if (Machine.RepairElapsed + Epsilon >= Config.MachineFixS)
+            {
+                EndSabotage(SabotageKind.Machine, SabotageEndResult.Fixed);
+            }
         }
 
         /// <summary>Fire holders are revalidated every tick; all held = fixed; countdown end = +meter.</summary>
@@ -908,6 +1061,10 @@ namespace Sim.Match
             if (kind == SabotageKind.Fire)
             {
                 Fire.Stop();
+            }
+            else if (kind == SabotageKind.Machine)
+            {
+                Machine.Clear();
             }
             else
             {
