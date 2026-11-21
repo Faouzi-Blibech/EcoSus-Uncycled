@@ -1,4 +1,4 @@
-# Wire Protocol v0 (draft)
+# Wire Protocol v1 (draft)
 
 Single source of truth for client <-> server messages. Change this file, the server and the
 client in the same PR, and bump `PROTOCOL_VERSION` on any breaking change.
@@ -11,7 +11,7 @@ client in the same PR, and bump `PROTOCOL_VERSION` on any breaking change.
 - Max message: 4 KB client -> server (whole message, all frames). Rate limit: 30 msg/s, burst 60.
 - Coordinates must be finite numbers; NaN/Infinity closes the connection.
 
-`PROTOCOL_VERSION = 0`
+`PROTOCOL_VERSION = 1` (1: typed chat `chat_text`, `chat` event `text` and `ghost`, `my_text`, `ghost_chat`, reasons `too_long`, `text_limit`, `phrase_limit`)
 
 ## 1. Connection
 
@@ -29,7 +29,7 @@ client in the same PR, and bump `PROTOCOL_VERSION` on any breaking change.
 |---|---|---|---|
 | C->S | `create` | `name` | creates a room, sender is host |
 | C->S | `join` | `code`, `name`, `token?` | `token` = rejoin a seat. A `name` equal (case-insensitive) to a name already in the room gets a suffix " 2", " 3", ... (cut to fit 16 chars on a text-element boundary, so an emoji is never split; the bots added at match start follow the same rule); the name actually used is the one in `welcome.seats` and `lobby.seats`, so clients show that one, not what they typed. A rejoin keeps its name |
-| S->C | `welcome` | `room`, `seat`, `token`, `host_seat`, `tuning`, `tasks` (the `tasks` array of `content/tasks.json`: `[{type, category, steps, min_s, consoles}]`), `map_id`, `map_version`, `phase`, `seats`, `state?` | `seats: [{seat, name, color, human, out}]` lists every seat, also in the lobby and on rejoin (`out` is false in the lobby); `state` only when rejoining mid-match, see 2.1 |
+| S->C | `welcome` | `room`, `seat`, `token`, `host_seat`, `tuning`, `tasks` (the `tasks` array of `content/tasks.json`: `[{type, category, steps, min_s, consoles}]`), `map_id`, `map_version`, `phase`, `seats`, `state?`, `ghost_chat?` | `seats: [{seat, name, color, human, out}]` lists every seat, also in the lobby and on rejoin (`out` is false in the lobby); `state` only when rejoining mid-match, see 2.1 |
 | S->C | `join_failed` | `reason` (`no_room`, `full`, `in_match`, `bad_name`) | |
 | C->S | `set_color` | `color` | lobby only |
 | S->C | `lobby` | `seats: [{seat, name, color, human, ready}]`, `host_seat` | sent on every lobby change; `host_seat` moves when the host leaves or drops, so a client takes it from every `lobby` message |
@@ -48,15 +48,17 @@ client in the same PR, and bump `PROTOCOL_VERSION` on any breaking change.
   "tasks": [ { "id": 3, "type": "sort_waste", "steps": 1, "steps_done": 0, "console": "market_bins" } ],
   "cooldowns": { "hit": 0, "dump": 0, "sabotage": 0 },
   "emergencies_left": 1,
-  "meeting": { "stage": "voting", "ends_in": 12.0, "clues": [], "voted": [1, 4], "my_vote": null, "my_chat": 2, "living": [0, 1, 2, 4], "task_bar": 0.42 },
+  "meeting": { "stage": "voting", "ends_in": 12.0, "clues": [], "voted": [1, 4], "my_vote": null, "my_chat": 2, "my_text": 3, "living": [0, 1, 2, 4], "task_bar": 0.42 },
   "sabotage": null,
   "game_over": null
 }
 ```
 
-In `meeting`, `my_chat` is how many chat phrases this seat has sent in the current meeting (5 allowed), so a
+In `meeting`, `my_chat` is how many chat phrases this seat has sent in the current meeting (5 allowed) and `my_text` how many typed lines (5 allowed, counted separately), so a
 rejoining client shows the right "lines left". `living` is the seat ids active at meeting start (same as in
 `meeting_started`): the only seats a chat phrase may name.
+
+`welcome.ghost_chat` (top level of `welcome`, next to `state`) is present only for a seat that is out: the ghost lines said so far, oldest first (at most 100), each shaped like the `chat` event, `ghost: true` included. A living seat's welcome never has it.
 
 `clock_t` is the deadline clock exactly as in the snapshot (4.1), so a rejoining client shows the right time left at once (`deadline_t` follows with the next snapshot; until then `tuning.match.deadline_s`).
 
@@ -134,8 +136,9 @@ when none.
 | Dir | `t` | Fields | Notes |
 |---|---|---|---|
 | S->C | `meeting_started` | `by`, `cause` ("report"/"emergency"), `clues: [{pile, zone, t, waste?, victim?}]`, `task_bar`, `discussion_s`, `living` (seat ids active at meeting start) | `clues` = every pile that became reported at this meeting start |
-| C->S | `chat_phrase` | `id`, `args` | `id` must be in `content/phrases.json`; `args` match its slots in order (seat ids, zone ids of living seats and map zones), else `target_invalid`; max 5 per seat per meeting; discussion stage only, else `wrong_phase` |
-| S->C | `chat` | `seat`, `id`, `args` or `text` | `text` only for AI-generated bot lines (server-made, filtered) |
+| C->S | `chat_phrase` | `id`, `args` | `id` must be in `content/phrases.json`; `args` match its slots in order (seat ids, zone ids of living seats and map zones), else `target_invalid`; max 5 per seat per meeting (`phrase_limit`); discussion stage only, else `wrong_phase`; a living seat only. An out seat may send one at any time as a ghost line |
+| C->S | `chat_text` | `text` | a typed line. The server trims, collapses whitespace and strips control and invisible characters, then rejects an empty line (`target_invalid`), one over 120 characters (`too_long`, never truncated) or a 6th line in the meeting (`text_limit`); discussion stage only, else `wrong_phase`. At least 2 s between two chat lines (typed or phrase) of a seat, else `rate_limited`. Raw `text` over 1024 characters or not a string: `error` `bad_field`. Listed words (`content/chat_filter.json`) are replaced by `***`. An out seat may send one at any time as a ghost line (no per-meeting cap) |
+| S->C | `chat` | `seat`, then `id`, `args` (a phrase) or `text` (a typed human line, filtered, plain text: never parse markup), `ghost?` | `ghost: true` marks a ghost line: sent only to the seats that are out when it is said, never to a living seat. Bots do not type, so `text` is always a human line |
 | S->C | `voting_started` | `voting_s` | |
 | C->S | `vote` | `target` (seat) or `skip: true` | |
 | S->C | `vote_cast` | `seat` | who voted, not for whom |
@@ -154,5 +157,5 @@ when none.
 
 - `action_rejected.reason`: `on_cooldown`, `out_of_range`, `wall_between`, `wrong_phase`,
   `not_allowed`, `target_invalid`, `target_immune`, `already_reported`, `already_cleaning`,
-  `fire_active`, `no_emergencies_left`, `rate_limited`.
+  `fire_active`, `no_emergencies_left`, `rate_limited`, `too_long` (typed line over 120 characters), `text_limit` (5 typed lines used up), `phrase_limit` (5 phrases used up; `not_allowed` stays for an out seat in a meeting-only action).
 - `game_over.reason`: `polluters_voted_out`, `tasks_done`, `pollution_full`, `deadline`, `parity`.

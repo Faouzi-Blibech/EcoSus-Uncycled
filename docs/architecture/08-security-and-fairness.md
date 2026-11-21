@@ -46,7 +46,8 @@ could be said out loud.
 | `dump` | polluter, active, cooldown, phase `Playing` |
 | `report` | active; pile fresh; in range + line of sight; phase `Playing` (allowed during fire; the meeting clears it) |
 | `call_meeting` | active; at the emergency console; match-wide emergencies left; 15 s since the last meeting; no fire |
-| `chat_phrase` | phase is meeting; phrase id exists; args are seat ids / zone ids only; 3 per meeting per seat |
+| `chat_phrase` | discussion stage (out seats: any time, as ghost chat); phrase id exists; args are seat ids / zone ids only; 5 per meeting per seat |
+| `chat_text` | raw text at most 1024 characters, else `bad_field`; discussion stage (out seats: any time, as ghost chat); normalised, 120 characters at most (`too_long`), 5 per meeting per seat (`text_limit`), 2 s between chat lines (`rate_limited`); listed words replaced by `***` |
 | `ready` | discussion stage; seat active |
 | `vote` | voting stage; seat active; not voted yet; target active or skip |
 | `sabotage` | polluter, active, sabotage cooldown, phase `Playing`, no sabotage already active |
@@ -68,7 +69,7 @@ what actually matters, because it keeps the server's idea of "who can see whom" 
 | Action spam / flooding | 40 messages/s per connection, burst 80; 4 KB max per message (all frames); bounded room inbox; slow readers disconnected |
 | Room guessing | 4-letter codes from 20 unambiguous letters (160,000 codes); rooms close when empty |
 | Seat hijack | Reconnect token = random 128-bit GUID per seat, only sent to that seat |
-| Offensive names | 12 chars, `[A-Za-z0-9 _-]`, simple banned-word list; no free-text chat at all |
+| Offensive names | 12 chars, `[A-Za-z0-9 _-]`, simple banned-word list; typed chat is length-limited, rate-limited and word-filtered |
 | API key leak | Keys only in server env / `.env`; never in client builds or logs |
 | Prompt injection via names | Names sanitised before prompts; AI output filtered and capped |
 | Server crash loses rounds | Accepted for the event; the container restarts automatically |

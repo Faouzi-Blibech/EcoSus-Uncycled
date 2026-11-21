@@ -98,6 +98,19 @@ public static class Wire
                 w.WriteStartObject();
                 WriteState(w, state);
                 w.WriteEndObject();
+                if (state.Me.Status == PlayerStatus.Out)
+                {
+                    // ghost chat so far: only an out seat's view holds any (the engine never gives it to a living seat)
+                    w.WriteStartArray("ghost_chat");
+                    foreach (ChatEvent line in state.GhostChat)
+                    {
+                        w.WriteStartObject();
+                        WriteChat(w, line);
+                        w.WriteEndObject();
+                    }
+
+                    w.WriteEndArray();
+                }
             }
         });
 
@@ -198,6 +211,7 @@ public static class Wire
 
             w.WriteBoolean("my_vote_cast", m.MyVoteCast);
             w.WriteNumber("my_chat", m.MyChatCount);
+            w.WriteNumber("my_text", m.MyText);
             w.Ids("living", m.Living);
             w.F("task_bar", m.TaskBar);
             w.WriteEndObject();
@@ -217,6 +231,43 @@ public static class Wire
         else
         {
             w.WriteNull("game_over");
+        }
+    }
+
+    /// <summary>
+    /// One chat line: {t, seat, text} for a typed line or {t, seat, id, args} for a phrase, plus
+    /// ghost: true for a ghost line (out seats only). Used by the chat event and welcome.ghost_chat.
+    /// </summary>
+    private static void WriteChat(Utf8JsonWriter w, ChatEvent e)
+    {
+        w.WriteString("t", "chat");
+        w.WriteNumber("seat", (int)e.Seat);
+        if (e.PhraseId == null)
+        {
+            w.WriteString("text", e.Text ?? "");
+        }
+        else
+        {
+            w.WriteString("id", e.PhraseId);
+            w.WriteStartArray("args");
+            foreach (ChatArg a in e.Args)
+            {
+                if (a.Kind == ChatArgKind.Seat)
+                {
+                    w.WriteNumberValue((int)a.Seat);
+                }
+                else
+                {
+                    w.WriteStringValue(a.Zone);
+                }
+            }
+
+            w.WriteEndArray();
+        }
+
+        if (e.Ghost)
+        {
+            w.WriteBoolean("ghost", true);
         }
     }
 
@@ -578,26 +629,7 @@ public static class Wire
                 });
 
             case ChatEvent e:
-                return JsonOut.Build(w =>
-                {
-                    w.WriteString("t", "chat");
-                    w.WriteNumber("seat", (int)e.Seat);
-                    w.WriteString("id", e.PhraseId);
-                    w.WriteStartArray("args");
-                    foreach (ChatArg a in e.Args)
-                    {
-                        if (a.Kind == ChatArgKind.Seat)
-                        {
-                            w.WriteNumberValue((int)a.Seat);
-                        }
-                        else
-                        {
-                            w.WriteStringValue(a.Zone);
-                        }
-                    }
-
-                    w.WriteEndArray();
-                });
+                return JsonOut.Build(w => WriteChat(w, e));
 
             case VotingStartedEvent e:
                 return JsonOut.Build(w =>

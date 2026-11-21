@@ -232,6 +232,7 @@ classDiagram
     class Report { int PileId }
     class CallMeeting { }
     class ChatPhrase { string Id; object[] Args }
+    class ChatText { string Text }
     class Ready { }
     class CastVote { byte? Target }
     class Sabotage { SabotageKind Kind }
@@ -249,6 +250,7 @@ classDiagram
     Command <|.. Report
     Command <|.. CallMeeting
     Command <|.. ChatPhrase
+    Command <|.. ChatText
     Command <|.. Ready
     Command <|.. CastVote
     Command <|.. Sabotage

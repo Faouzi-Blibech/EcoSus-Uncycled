@@ -23,7 +23,7 @@ messages, the design spec wins for why. Fix the other doc.
 | 08 | [08-security-and-fairness.md](08-security-and-fairness.md) | Hidden-information matrix, validation per command, threat model, limits |
 | 09 | [09-deployment-and-ops.md](09-deployment-and-ops.md) | Hosting, builds, CI, configuration, observability, demo-day runbook |
 | 10 | [10-testing.md](10-testing.md) | Test strategy per layer, soak test, playtest protocol |
-| -- | [../protocol.md](../protocol.md) | **Source of truth for messages.** Wire protocol v0: every message and field |
+| -- | [../protocol.md](../protocol.md) | **Source of truth for messages.** Wire protocol v1: every message and field |
 
 ## Glossary
 

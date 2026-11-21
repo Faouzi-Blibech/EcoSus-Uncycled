@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "note": "Editable list of words hidden in typed chat (each hit becomes ***). Whole-word matching is used, case-insensitive: a listed word never matches inside a longer word, so keep the entries full words and never add a word that is also part of an innocent word. Add other languages as new keys under words.",
+  "words": {
+    "en": [
+      "fuck", "fucks", "fucked", "fucker", "fucking", "motherfucker", "mf",
+      "shit", "shitty", "bullshit", "bitch", "bitches", "bastard", "bastards",
+      "asshole", "assholes", "dick", "dickhead", "cock", "cunt", "pussy", "twat", "wanker", "wankers", "prick", "pricks",
+      "slut", "sluts", "whore", "whores", "douche", "douchebag",
+      "piss", "pissed", "damn", "goddamn", "crap",
+      "retard", "retards", "retarded", "spastic",
+      "nigger", "niggers", "nigga", "niggas",
+      "faggot", "faggots", "fag", "fags", "tranny",
+      "chink", "chinks", "gook", "spic", "spics", "kike", "kikes", "wetback", "coon", "paki",
+      "rapist", "kys", "nazi", "nazis"
+    ]
+  }
+}

@@ -15,7 +15,8 @@ public sealed class ContentBundle
         IReadOnlyList<TaskTypeDef> tasks,
         string tasksJson,
         MapData map,
-        PhraseCatalogue? phrases = null)
+        PhraseCatalogue? phrases = null,
+        ChatFilter? filter = null)
     {
         Config = config;
         TuningJson = tuningJson;
@@ -23,6 +24,7 @@ public sealed class ContentBundle
         TasksJson = tasksJson;
         Map = map;
         Phrases = phrases;
+        Filter = filter ?? ChatFilter.Empty;
     }
 
     public MatchConfig Config { get; }
@@ -39,6 +41,9 @@ public sealed class ContentBundle
 
     /// <summary>Chat phrase catalogue from phrases.json; every engine validates chat against it (null: any id).</summary>
     public PhraseCatalogue? Phrases { get; }
+
+    /// <summary>Word filter from chat_filter.json; every engine applies it to typed chat (Empty: no words).</summary>
+    public ChatFilter Filter { get; }
 
     public string MapId => Map.Id;
 
@@ -93,7 +98,8 @@ public static class ContentLoader
         IReadOnlyList<TaskTypeDef> tasks = ReadTasks(tasksArray);
         MapData map = ReadMap(mapDoc.RootElement);
         PhraseCatalogue phrases = PhraseCatalogue.Parse(File.ReadAllText(Path.Combine(contentDir, "phrases.json")));
-        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases);
+        ChatFilter filter = ChatFilter.Parse(File.ReadAllText(Path.Combine(contentDir, "chat_filter.json")));
+        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter);
     }
 
     // ---------- tuning ----------
@@ -174,6 +180,10 @@ public static class ContentLoader
             EmergenciesPerMatch = (int)Num(t, "meeting", "emergencies_per_match", d.EmergenciesPerMatch),
             EmergencyMinSinceMeetingS = Num(t, "meeting", "emergency_min_since_meeting_s", d.EmergencyMinSinceMeetingS),
             MissedVoteIsSkip = Flag(t, "meeting", "missed_vote_is_skip", d.MissedVoteIsSkip),
+            PhrasesPerMeeting = (int)Num(t, "meeting", "phrases_per_meeting", d.PhrasesPerMeeting),
+            TextMaxChars = (int)Num(t, "meeting", "text_max_chars", d.TextMaxChars),
+            TextPerMeeting = (int)Num(t, "meeting", "text_per_meeting", d.TextPerMeeting),
+            ChatMinGapS = Num(t, "meeting", "chat_min_gap_s", d.ChatMinGapS),
             LostSightGraceS = Num(t, "visibility", "lost_sight_grace_s", d.LostSightGraceS),
             SabotageSharedCooldownS = Num(t, "sabotage", "shared_cooldown_s", d.SabotageSharedCooldownS),
             SabotageStartCooldownS = Num(t, "sabotage", "start_cooldown_s", d.SabotageStartCooldownS),

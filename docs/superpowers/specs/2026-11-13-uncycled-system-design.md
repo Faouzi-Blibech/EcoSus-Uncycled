@@ -45,7 +45,7 @@ call meetings and vote the polluters out before the pollution meter fills.
 **Non-goals (for the event)**
 - Accounts, friends, matchmaking lists, cosmetics store, ads, iOS app (iPhones use the web build).
 - More than one polished map.
-- Voice chat or free-text chat (humans talk out loud; the game has tappable phrases only).
+- Voice chat. (Typed chat was added later: 120 characters, 5 lines per meeting, word filter.)
 
 **Anti-goals (failure even if it "works")**
 - A round that breaks when the venue Wi-Fi drops (must have a plan B, see section 9).
@@ -169,7 +169,7 @@ one comes from.
 | (new) | **Pollution meter:** the round's clock; cleaning piles lowers it | new |
 | (new) | **Clues and signatures:** zone, time, and a waste type that links piles to one polluter | new |
 | Report / emergency meeting / vote | Same; most votes kicks a player out; timed-out votes count as skip | `MeetingSession` (reused, two edits) + new `PileReport` |
-| Meeting talk | Humans talk out loud; bots post phrases; humans tap phrases to tell the bots | new `Bots/Testimony`, `Bots/VotePolicy` |
+| Meeting talk | Humans chat by phrases or typed text; bots post phrases; humans tap phrases to tell the bots | new `Bots/Testimony`, `Bots/VotePolicy` |
 | Critical sabotage | Landfill fire: two players hold two consoles | `HoldMeltdown`, `SabotageCooldown` (reused) |
 | Lights sabotage | Smog: citizen vision shrinks | new `SmogSystem` |
 | Win checks | Polluters out -> meter full -> parity -> tasks done | new `UncycledWin` |
@@ -286,7 +286,7 @@ Details: `docs/architecture/10-testing.md`.
 
 Decided by the owner (2026-11-13): multiplayer with judges in one round; Godot + .NET; Web,
 Windows, Android; 8 seats, 2 polluters; vote kick-out; poison hits; free dump + witness; humans
-talk aloud and bots use phrases; 60 s talk + 30 s vote.
+chat by phrases or typed text and bots use phrases; 60 s talk + 30 s vote.
 
 Open, most important first:
 1. **What an out player does.** Today: a waiting screen until the round ends (the owner said an

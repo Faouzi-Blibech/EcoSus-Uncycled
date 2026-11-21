@@ -157,9 +157,11 @@ sequenceDiagram
     R-->>All: meeting_started {by, cause, clues, task_bar, active, discussion_s}
     B->>R: chat_phrase {id, args} (testimony, up to 2 per bot)
     All->>R: chat_phrase {id, args} (a human taps a player card to accuse or clear)
-    R-->>All: chat {seat, id, args, text?}
+    All->>R: chat_text {text} (a human types a line: 120 characters, 5 per meeting, 2 s gap, word filter)
+    R-->>All: chat {seat, id, args} or {seat, text}
+    Note over R: lines of out players are ghost chat: chat {.., ghost: true} to out seats only
     Note over B: bots add every phrase they hear to their suspicion scores
-    Note over All: humans also talk out loud, up to 60 s
+    Note over All: the discussion lasts up to 60 s
     All->>R: ready
     R-->>All: ready_cast {seat}
     Note over R: voting starts at 60 s, or once every active human is ready (10 s minimum)
