@@ -174,6 +174,42 @@ namespace Sim.Tests
         }
 
         [Fact]
+        public void RoleAssigner_ForcedPolluter_IsPolluter()
+        {
+            for (ulong seed = 1; seed <= 20; seed++)
+            {
+                var players = new List<PlayerState>();
+                for (byte i = 0; i < 8; i++)
+                {
+                    players.Add(new PlayerState(i, "p", i));
+                }
+
+                byte forced = (byte)(seed % 8);
+                RoleAssigner.Assign(players, 2, new XorShiftRandom(seed), forcedPolluter: forced);
+                Assert.True(players[forced].IsPolluter, "seed " + seed);
+                Assert.Equal(2, players.FindAll(p => p.IsPolluter).Count);
+            }
+        }
+
+        [Fact]
+        public void RoleAssigner_ForcedCitizen_IsCitizen()
+        {
+            for (ulong seed = 1; seed <= 20; seed++)
+            {
+                var players = new List<PlayerState>();
+                for (byte i = 0; i < 8; i++)
+                {
+                    players.Add(new PlayerState(i, "p", i));
+                }
+
+                byte forced = (byte)(seed % 8);
+                RoleAssigner.Assign(players, 2, new XorShiftRandom(seed), forcedCitizen: forced);
+                Assert.False(players[forced].IsPolluter, "seed " + seed);
+                Assert.Equal(2, players.FindAll(p => p.IsPolluter).Count);
+            }
+        }
+
+        [Fact]
         public void XorShift_is_deterministic()
         {
             var a = new XorShiftRandom(123);
