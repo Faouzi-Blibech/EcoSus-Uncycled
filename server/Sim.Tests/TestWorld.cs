@@ -37,7 +37,7 @@ namespace Sim.Tests
         /// <summary>A far corner used to park seats that should not matter.</summary>
         public static readonly Vec2 Corner = new Vec2(18.5f, 8.5f);
 
-        public static MapData FromAscii(string[] rows, IReadOnlyList<ConsoleDef> consoles, IReadOnlyList<ZoneDef> zones, IReadOnlyList<Vec2> spawns, IReadOnlyList<ZoneDef>? dark = null)
+        public static MapData FromAscii(string[] rows, IReadOnlyList<ConsoleDef> consoles, IReadOnlyList<ZoneDef> zones, IReadOnlyList<Vec2> spawns, IReadOnlyList<ZoneDef>? dark = null, IReadOnlyList<ZoneDef>? gasRooms = null)
         {
             int h = rows.Length;
             int w = rows[0].Length;
@@ -53,8 +53,15 @@ namespace Sim.Tests
                 }
             }
 
-            return new MapData(w, h, walk, sight, zones, consoles, spawns, "test_map", "v1", dark);
+            return new MapData(w, h, walk, sight, zones, consoles, spawns, "test_map", "v1", dark, gasRooms);
         }
+
+        /// <summary>Two gas rooms: gas_w (x 1..5, y 1..4) and gas_e (x 14..18, y 1..4), clear of the spawns, the button and the corner.</summary>
+        public static readonly IReadOnlyList<ZoneDef> GasRooms = new List<ZoneDef>
+        {
+            new ZoneDef("gas_w", 1f, 1f, 4f, 3f),
+            new ZoneDef("gas_e", 14f, 1f, 4f, 3f),
+        };
 
         public static MapData Map(IReadOnlyList<ZoneDef>? dark = null)
         {
@@ -79,7 +86,7 @@ namespace Sim.Tests
                 new Vec2(9.5f, 4.5f), new Vec2(10.5f, 4.5f), new Vec2(11.5f, 4.5f), new Vec2(9.5f, 5.5f),
                 new Vec2(11.5f, 5.5f), new Vec2(9.5f, 6.5f), new Vec2(10.5f, 6.5f), new Vec2(11.5f, 6.5f),
             };
-            return FromAscii(Rows, consoles, zones, spawns, dark);
+            return FromAscii(Rows, consoles, zones, spawns, dark, GasRooms);
         }
 
         public static List<TaskTypeDef> TaskTypes()

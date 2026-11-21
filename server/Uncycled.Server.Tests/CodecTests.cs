@@ -382,6 +382,38 @@ namespace Uncycled.Server.Tests
             Assert.Equal("not_unlocked", WireNames.Of(RejectReason.NotUnlocked));
         }
 
+        [Fact]
+        public void Gas_Command_And_Events_HaveTheirWireShape()
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"gas\",\"room\":\"gas_market\"}"), out ICommand? cmd, out _));
+            Assert.Equal("gas_market", Assert.IsType<GasCommand>(cmd).RoomId);
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"gas\"}"), out _, out string? error));
+            Assert.Equal("bad_field", error);
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new GasWarningEvent("gas_dark", 3f))!))
+            {
+                Assert.Equal("gas_warning", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("gas_dark", d.RootElement.GetProperty("room").GetString());
+                Assert.Equal(3f, d.RootElement.GetProperty("in_s").GetSingle());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new GasDoneEvent("gas_dark"))!))
+            {
+                Assert.Equal("gas_done", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("gas_dark", d.RootElement.GetProperty("room").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new MaskUsedEvent(3))!))
+            {
+                Assert.Equal("mask_used", d.RootElement.GetProperty("t").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new YouAreOutEvent(3, OutCause.Gas))!))
+            {
+                Assert.Equal("gas", d.RootElement.GetProperty("cause").GetString());
+            }
+        }
+
         [Theory]
         [InlineData("Alice", "Alice")]
         [InlineData("  Bob  ", "Bob")]

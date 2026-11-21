@@ -357,6 +357,18 @@ public static class Wire
 
             w.WriteEndObject();
 
+            if (extras?.GasRoom != null)
+            {
+                w.WriteStartObject("gas");
+                w.WriteString("room", extras.GasRoom);
+                w.F("in_s", extras.GasInS);
+                w.WriteEndObject();
+            }
+            else
+            {
+                w.WriteNull("gas");
+            }
+
             w.WriteStartArray("spots");
             foreach (SpotView s in v.Spots)
             {
@@ -878,6 +890,24 @@ public static class Wire
                     w.WriteString("t", "game_over");
                     WriteGameOverBody(w, e);
                 });
+
+            case GasWarningEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "gas_warning");
+                    w.WriteString("room", e.Room);
+                    w.F("in_s", e.InS);
+                });
+
+            case GasDoneEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "gas_done");
+                    w.WriteString("room", e.Room);
+                });
+
+            case MaskUsedEvent _:
+                return JsonOut.Build(w => w.WriteString("t", "mask_used"));
 
             default:
                 return null;

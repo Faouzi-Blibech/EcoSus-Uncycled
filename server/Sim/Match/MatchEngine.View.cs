@@ -15,7 +15,7 @@ namespace Sim.Match
         {
             float? repair = Smog.Active && Smog.RepairSeat == seat ? Smog.RepairElapsed : (float?)null;
             float? machineRepair = Machine.Jammed && Machine.RepairSeat == seat ? Machine.RepairElapsed : (float?)null;
-            return new SnapshotExtras(Smog.Level, repair, Machine.Jammed, machineRepair);
+            return new SnapshotExtras(Smog.Level, repair, Machine.Jammed, machineRepair, _gasRoom?.Id, Math.Max(0f, _gasLeft));
         }
 
         /// <summary>
@@ -98,7 +98,8 @@ namespace Sim.Match
                     Math.Max(0f, me.HitReadyAt - ActiveTime),
                     Math.Max(0f, me.DumpReadyAt - ActiveTime),
                     SabotageTimer.Remaining(ActiveTime),
-                    Math.Max(0f, me.RepolluteReadyAt - ActiveTime));
+                    Math.Max(0f, me.RepolluteReadyAt - ActiveTime),
+                    gas: Math.Max(0f, me.GasReadyAt - ActiveTime));
             }
 
             var myView = new MyView(

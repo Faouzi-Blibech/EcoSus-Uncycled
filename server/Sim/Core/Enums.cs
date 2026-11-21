@@ -16,6 +16,7 @@ namespace Sim.Core
     {
         Poison,
         Vote,
+        Gas,
     }
 
     public enum MatchPhase
