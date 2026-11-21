@@ -168,3 +168,56 @@ func test_machine_repair_time_only_while_counting() -> bool:
 	s._on_snapshot(snap)
 	assert_near(s.machine_repair_t, -1.0, 0.001, "not counting")
 	return true
+
+
+func test_trasher_events() -> bool:
+	var s: Object = _session()
+	s._on_match_started({"role": "polluter", "spawn": Vector2.ZERO})
+	s._on_event({"t": "repollute_ok", "cooldown": 20.0, "count": 3})
+	assert_eq(s.repollutes, 3, "count")
+	assert_near(float(s.cooldowns.get("repollute", -1.0)), 20.0, 0.001, "cooldown from the event")
+	s._on_event({"t": "ability_unlocked", "choices": ["virus", "gas"]})
+	assert_eq(s.ability_choices, ["virus", "gas"], "choice offered")
+	s._on_event({"t": "ability_ok", "ability": "gas"})
+	assert_eq(s.ability, "gas", "ability")
+	assert_eq(s.ability_choices, [], "choice closed")
+	_cleanup_save()
+	return true
+
+
+## The server does not re-send ability_unlocked after a rejoin: the snapshot (no ability, enough
+## re-pollutes) brings the choice back, unless a pick is already on its way.
+func test_rejoined_trasher_gets_the_ability_choice_back() -> bool:
+	var s: Object = _session()
+	s.tuning = {"trasher": {"unlock_after": 3}}
+	s.role = "polluter"
+	var snap: Dictionary = _trasher_snapshot()
+	snap["me"]["ability"] = null
+	snap["me"]["repollutes"] = 3
+	s._on_snapshot(snap)
+	assert_eq(s.ability_choices, ["virus", "gas"], "unlocked but not picked: offer again")
+	s.ability_choices = []
+	s.ability_pick_sent = true
+	s._on_snapshot(snap)
+	assert_eq(s.ability_choices, [], "a pick is on its way: no second offer")
+	return true
+
+
+func test_infection_heal_mask_and_gas_events() -> bool:
+	var s: Object = _session()
+	s._on_snapshot(_cleaner_snapshot())
+	s.alert_used = true
+	s._on_event({"t": "infected", "countdown": 35.0})
+	assert_near(s.infected_s, 35.0, 0.001, "countdown at once")
+	assert_true(not s.alert_used, "a new infection gives a new alert")
+	s._on_event({"t": "healed", "by": 3})
+	assert_near(s.infected_s, -1.0, 0.001, "cured")
+	s.masks = 1
+	s._on_event({"t": "mask_used"})
+	assert_eq(s.masks, 0, "the mask is used up")
+	s._on_event({"t": "gas_warning", "room": "gas_depot", "in_s": 3.0})
+	assert_eq(s.gas_room, "gas_depot", "warning room")
+	assert_near(s.gas_in_s, 3.0, 0.001, "warning time")
+	s._on_event({"t": "gas_done", "room": "gas_depot"})
+	assert_eq(s.gas_room, "", "gas over")
+	return true
