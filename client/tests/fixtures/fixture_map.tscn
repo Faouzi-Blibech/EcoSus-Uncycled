@@ -66,17 +66,21 @@ script = ExtResource("3_27rds")
 marker_id = "meeting_button"
 kind = "emergency"
 
-[node name="FireA" type="Marker2D" parent="Markers" unique_id=63358439]
+[node name="Machine" type="Marker2D" parent="Markers" unique_id=63358439]
 position = Vector2(48, 80)
 script = ExtResource("3_27rds")
-marker_id = "fire_a"
-kind = "fire_fix"
+marker_id = "machine"
+kind = "machine"
 
-[node name="FireB" type="Marker2D" parent="Markers" unique_id=296117910]
-position = Vector2(144, 80)
+[node name="Spawn9" type="Marker2D" parent="Markers" unique_id=296117910]
+position = Vector2(48, 48)
 script = ExtResource("3_27rds")
-marker_id = "fire_b"
-kind = "fire_fix"
+marker_id = "sp9"
+
+[node name="Spawn10" type="Marker2D" parent="Markers" unique_id=296117911]
+position = Vector2(80, 48)
+script = ExtResource("3_27rds")
+marker_id = "sp10"
 
 [node name="SmogPanel" type="Marker2D" parent="Markers" unique_id=797882439]
 position = Vector2(112, 112)

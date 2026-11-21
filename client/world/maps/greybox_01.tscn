@@ -17,42 +17,52 @@ tile_set = ExtResource("2_tiles")
 [node name="Spawn1" type="Marker2D" parent="Markers"]
 position = Vector2(592, 400)
 script = ExtResource("3_marker")
-marker_id = "sp1"
+marker_id = "sp01"
 
 [node name="Spawn2" type="Marker2D" parent="Markers"]
 position = Vector2(624, 400)
 script = ExtResource("3_marker")
-marker_id = "sp2"
+marker_id = "sp02"
 
 [node name="Spawn3" type="Marker2D" parent="Markers"]
 position = Vector2(656, 400)
 script = ExtResource("3_marker")
-marker_id = "sp3"
+marker_id = "sp03"
 
 [node name="Spawn4" type="Marker2D" parent="Markers"]
 position = Vector2(688, 400)
 script = ExtResource("3_marker")
-marker_id = "sp4"
+marker_id = "sp04"
 
 [node name="Spawn5" type="Marker2D" parent="Markers"]
 position = Vector2(592, 432)
 script = ExtResource("3_marker")
-marker_id = "sp5"
+marker_id = "sp05"
 
 [node name="Spawn6" type="Marker2D" parent="Markers"]
 position = Vector2(624, 432)
 script = ExtResource("3_marker")
-marker_id = "sp6"
+marker_id = "sp06"
 
 [node name="Spawn7" type="Marker2D" parent="Markers"]
 position = Vector2(656, 432)
 script = ExtResource("3_marker")
-marker_id = "sp7"
+marker_id = "sp07"
 
 [node name="Spawn8" type="Marker2D" parent="Markers"]
 position = Vector2(688, 432)
 script = ExtResource("3_marker")
-marker_id = "sp8"
+marker_id = "sp08"
+
+[node name="Spawn9" type="Marker2D" parent="Markers"]
+position = Vector2(560, 400)
+script = ExtResource("3_marker")
+marker_id = "sp09"
+
+[node name="Spawn10" type="Marker2D" parent="Markers"]
+position = Vector2(720, 400)
+script = ExtResource("3_marker")
+marker_id = "sp10"
 
 [node name="MarketBins" type="Marker2D" parent="Markers"]
 position = Vector2(240, 176)
@@ -138,6 +148,12 @@ script = ExtResource("3_marker")
 marker_id = "fire_b"
 kind = "fire_fix"
 
+[node name="Machine" type="Marker2D" parent="Markers"]
+position = Vector2(48, 336)
+script = ExtResource("3_marker")
+marker_id = "machine"
+kind = "machine"
+
 [node name="SmogPanel" type="Marker2D" parent="Markers"]
 position = Vector2(1296, 208)
 script = ExtResource("3_marker")
@@ -180,4 +196,32 @@ position = Vector2(1056, 544)
 script = ExtResource("3_marker")
 marker_id = "dark_se"
 kind = "dark"
+zone_size_tiles = Vector2i(8, 6)
+
+[node name="GasMarket" type="Marker2D" parent="Markers"]
+position = Vector2(32, 32)
+script = ExtResource("3_marker")
+marker_id = "gas_market"
+kind = "gas_room"
+zone_size_tiles = Vector2i(8, 6)
+
+[node name="GasGarden" type="Marker2D" parent="Markers"]
+position = Vector2(480, 32)
+script = ExtResource("3_marker")
+marker_id = "gas_garden"
+kind = "gas_room"
+zone_size_tiles = Vector2i(6, 6)
+
+[node name="GasDepot" type="Marker2D" parent="Markers"]
+position = Vector2(672, 544)
+script = ExtResource("3_marker")
+marker_id = "gas_depot"
+kind = "gas_room"
+zone_size_tiles = Vector2i(6, 6)
+
+[node name="GasDark" type="Marker2D" parent="Markers"]
+position = Vector2(1056, 544)
+script = ExtResource("3_marker")
+marker_id = "gas_dark"
+kind = "gas_room"
 zone_size_tiles = Vector2i(8, 6)
