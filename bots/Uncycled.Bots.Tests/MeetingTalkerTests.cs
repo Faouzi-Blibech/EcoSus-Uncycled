@@ -403,7 +403,7 @@ namespace Uncycled.Bots.Tests
 
                 foreach (byte seat in state.Living)
                 {
-                    if (seat != state.Self && !Grounding.IsRepeat(state.Chat, "where", seat, null))
+                    if (seat != state.Self && !Grounding.IsRepeat(state.Chat, state.Self, "where", seat, null))
                     {
                         return Task.FromResult(MeetingDecision.Say(Name, "where", seat));
                     }

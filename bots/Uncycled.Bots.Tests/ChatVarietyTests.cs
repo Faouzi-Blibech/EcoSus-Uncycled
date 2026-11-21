@@ -135,19 +135,75 @@ namespace Uncycled.Bots.Tests
             Assert.NotEqual((byte?)3, g.Seat);
         }
 
+        private static readonly Dictionary<string, string> KindOf = new Dictionary<string, string>
+        {
+            { "sus", "accuse" }, { "saw_dump", "accuse" }, { "saw_hit", "accuse" }, { "near_pile", "accuse" }, { "i_was", "alibi" },
+            { "with", "alibi" }, { "where", "question" }, { "agree", "react" }, { "doubt", "react" }, { "not_me", "react" },
+            { "lying", "react" }, { "vote", "vote" }, { "hmm", "filler" }, { "idk", "filler" }, { "skip_no_proof", "vote" },
+        };
+
+        /// <summary>What the bot at seat 0 says in successive rounds: the rule decider's pick, grounded, appended to the chat each time (quiet rounds are listed as "-").</summary>
+        private static List<string> Rounds(Role role, IEnumerable<ChatAct> chat, IEnumerable<EvidenceItem> evidence, Dictionary<byte, float> suspicion, int rounds, byte[]? partners = null)
+        {
+            var said = chat.ToList();
+            var result = new List<string>();
+            for (int i = 0; i < rounds; i++)
+            {
+                MeetingState s = State(role, chat: said, evidence: evidence, suspicion: suspicion, partners: partners);
+                MeetingDecision g = Grounding.Check(RuleDecider.Decide(s), s);
+                if (!g.Speak)
+                {
+                    result.Add("-");
+                    continue;
+                }
+
+                result.Add(g.PhraseId + (g.Seat != null ? " " + g.Seat : "") + (g.Zone != null ? " " + g.Zone : ""));
+                said.Add(new ChatAct(0, g.PhraseId!, KindOf[g.PhraseId!], g.Seat, g.Zone, 20f));
+            }
+
+            return result;
+        }
+
         [Fact]
-        public void RepeatedDenial_BecomesTheAlibi_ThenNothing()
+        public void AccusedEyewitnessCitizen_AfterSomeoneElsesDenial_StillSaysItsOwnLine()
+        {
+            var evidence = new[]
+            {
+                new EvidenceItem(EvidenceItem.SawDump, 5, "depot", 50f),
+                new EvidenceItem(EvidenceItem.MyZone, null, "garden", 40f),
+            };
+            var chat = new[] { Sus(2, 0), Act(1, "not_me", "react"), Act(1, "i_was", "alibi", null, "garden") };
+
+            List<string> said = Rounds(Role.Citizen, chat, evidence, new Dictionary<byte, float> { { 5, 100f } }, 4);
+
+            Assert.Equal(new[] { "not_me", "i_was garden", "saw_dump 5 depot", "-" }, said);
+        }
+
+        [Fact]
+        public void AccusedPolluter_AfterACitizensAlibi_StillGivesItsOwnAlibi_NeverSilence()
         {
             var evidence = new[] { new EvidenceItem(EvidenceItem.MyZone, null, "garden", 40f) };
-            ChatAct accused = Sus(2, 0);
-            ChatAct otherDenial = Act(1, "not_me", "react");
+            var chat = new[] { Sus(2, 0), Act(1, "not_me", "react"), Act(1, "i_was", "alibi", null, "depot") };
 
-            MeetingDecision first = Grounding.Check(MeetingDecision.Say("fake", "not_me"), State(chat: new[] { accused, otherDenial }, evidence: evidence));
-            Assert.Equal("i_was", first.PhraseId);
-            Assert.Equal("garden", first.Zone);
+            List<string> said = Rounds(Role.Polluter, chat, evidence, new Dictionary<byte, float>(), 3, new byte[] { 7 });
 
-            MeetingDecision second = Grounding.Check(MeetingDecision.Say("fake", "not_me"), State(chat: new[] { accused, otherDenial, Act(1, "i_was", "alibi", null, "garden") }, evidence: evidence));
-            Assert.False(second.Speak);
+            Assert.Equal("not_me", said[0]);
+            Assert.StartsWith("i_was ", said[1]); // a lie, in a zone the citizen named too: both are first-person statements
+            Assert.NotEqual("-", said[1]);
+        }
+
+        [Fact]
+        public void TwoBotsWhoWereBothInTheDepot_BothSayIWasDepot()
+        {
+            var evidence = new[] { new EvidenceItem(EvidenceItem.MyZone, null, "depot", 40f) };
+            MeetingState s = State(chat: new[] { Act(2, "i_was", "alibi", null, "depot") }, evidence: evidence);
+
+            MeetingDecision g = Grounding.Check(MeetingDecision.Say("fake", "i_was", null, "depot"), s);
+
+            Assert.Equal("i_was", g.PhraseId);
+            Assert.Equal("depot", g.Zone);
+            Assert.False(Grounding.IsRepeat(s.Chat, 0, "i_was", null, "depot"));
+            Assert.True(Grounding.IsRepeat(new[] { Act(0, "i_was", "alibi", null, "depot") }, 0, "i_was", null, "depot"));
         }
 
         [Fact]

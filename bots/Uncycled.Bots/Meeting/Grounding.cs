@@ -41,17 +41,22 @@ namespace Uncycled.Bots.Meeting
         private static MeetingDecision CheckSpeak(MeetingDecision d, MeetingState s)
         {
             MeetingDecision g = CheckGrounded(d, s);
-            return g.Speak && IsRepeat(s.Chat, g.PhraseId!, g.Seat, g.Zone) ? InsteadOfRepeat(g, s) : g;
+            return g.Speak && IsRepeat(s.Chat, s.Self, g.PhraseId!, g.Seat, g.Zone) ? InsteadOfRepeat(g, s) : g;
         }
 
         // ---------- no repeats ----------
 
-        /// <summary>True when the meeting chat already holds a line with this phrase id and these slots (said by anyone).</summary>
-        public static bool IsRepeat(IReadOnlyList<ChatAct> chat, string phraseId, byte? seat, string? zone)
+        /// <summary>
+        /// True when the meeting chat already holds a line with this phrase id and these slots. Lines about a seat
+        /// (sus, saw_*, near_pile, where, agree, vote) count whoever said them; the first-person ones (not_me, i_was,
+        /// with) are separate statements, so only this seat's own earlier line is a repeat.
+        /// </summary>
+        public static bool IsRepeat(IReadOnlyList<ChatAct> chat, byte self, string phraseId, byte? seat, string? zone)
         {
+            bool firstPerson = phraseId == "not_me" || phraseId == "i_was" || phraseId == "with";
             foreach (ChatAct a in chat)
             {
-                if (a.PhraseId == phraseId && a.Seat == seat && a.Zone == zone)
+                if (a.PhraseId == phraseId && a.Seat == seat && a.Zone == zone && (!firstPerson || a.Speaker == self))
                 {
                     return true;
                 }
@@ -71,8 +76,9 @@ namespace Uncycled.Bots.Meeting
             string id = repeat.PhraseId!;
             if (id == "not_me")
             {
-                MeetingDecision alibi = s.GaveAlibi() ? MeetingDecision.Quiet(src) : CheckAlibi(null, false, s, src);
-                return alibi.PhraseId == "i_was" && !IsRepeat(s.Chat, "i_was", null, alibi.Zone) ? alibi : MeetingDecision.Quiet(src);
+                // a second denial is the alibi, as in the grounded path; a polluter gives the zone it lies with (never silence)
+                string? zone = s.GaveAlibi() ? null : RuleDecider.AlibiZone(s);
+                return zone != null && !IsRepeat(s.Chat, s.Self, "i_was", null, zone) ? MeetingDecision.Say(src, "i_was", null, zone) : MeetingDecision.Quiet(src);
             }
 
             if (repeat.Seat == null || (id != "sus" && id != EvidenceItem.SawDump && id != EvidenceItem.SawHit && id != EvidenceItem.NearPile))
@@ -85,7 +91,7 @@ namespace Uncycled.Bots.Meeting
             {
                 foreach (EvidenceItem e in s.Evidence)
                 {
-                    if (e.Kind == kind && e.Seat == target && !IsRepeat(s.Chat, kind, target, e.Zone))
+                    if (e.Kind == kind && e.Seat == target && !IsRepeat(s.Chat, s.Self, kind, target, e.Zone))
                     {
                         return MeetingDecision.Say(src, kind, target, e.Zone);
                     }
@@ -94,7 +100,7 @@ namespace Uncycled.Bots.Meeting
 
             foreach (ChatAct a in s.Chat)
             {
-                if (a.Kind == "accuse" && a.Seat == target && a.Speaker != s.Self && !IsRepeat(s.Chat, "agree", a.Speaker, null))
+                if (a.Kind == "accuse" && a.Seat == target && a.Speaker != s.Self && !IsRepeat(s.Chat, s.Self, "agree", a.Speaker, null))
                 {
                     MeetingDecision agree = CheckAgree(a.Speaker, s, src);
                     if (agree.PhraseId == "agree")
@@ -104,12 +110,12 @@ namespace Uncycled.Bots.Meeting
                 }
             }
 
-            if (IsLiving(s, target) && !IsRepeat(s.Chat, "where", target, null))
+            if (IsLiving(s, target) && !IsRepeat(s.Chat, s.Self, "where", target, null))
             {
                 return MeetingDecision.Say(src, "where", target);
             }
 
-            if (!IsRepeat(s.Chat, "vote", target, null))
+            if (!IsRepeat(s.Chat, s.Self, "vote", target, null))
             {
                 MeetingDecision vote = CheckGrounded(MeetingDecision.Say(src, "vote", target), s);
                 if (vote.PhraseId == "vote")

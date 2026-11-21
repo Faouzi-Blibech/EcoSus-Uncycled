@@ -152,10 +152,15 @@ namespace Uncycled.Train
             return sb.ToString();
         }
 
-        /// <summary>A phrase line as one key: the id and its slots in order, so two lines are identical when the keys are equal.</summary>
+        /// <summary>A phrase line as one key: the id and its slots in order (and the speaker for not_me, i_was, with), so two lines are identical when the keys are equal.</summary>
         private static string LineKey(ChatEvent chat)
         {
             var sb = new StringBuilder(chat.PhraseId);
+            if (chat.PhraseId == "not_me" || chat.PhraseId == "i_was" || chat.PhraseId == "with")
+            {
+                sb.Append("|by").Append(chat.Seat.ToString(CultureInfo.InvariantCulture)); // first-person lines are separate statements per speaker
+            }
+
             foreach (ChatArg arg in chat.Args)
             {
                 sb.Append('|').Append(arg.Kind == ChatArgKind.Seat ? "s" + arg.Seat.ToString(CultureInfo.InvariantCulture) : "z" + arg.Zone);
