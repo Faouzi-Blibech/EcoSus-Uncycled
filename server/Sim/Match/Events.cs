@@ -275,6 +275,51 @@ namespace Sim.Match
         public Vec2 Position { get; }
     }
 
+    /// <summary>repollute_ok {cooldown, count}. To the Trasher: Count is the re-pollutes so far.</summary>
+    public sealed class RepolluteOkEvent : GameEvent
+    {
+        public RepolluteOkEvent(byte seat, float cooldown, int count)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Cooldown = cooldown;
+            Count = count;
+        }
+
+        public byte Seat { get; }
+
+        public float Cooldown { get; }
+
+        public int Count { get; }
+    }
+
+    /// <summary>ability_unlocked {choices}. To the Trasher at the unlock_after-th re-pollute; the choices are virus and gas.</summary>
+    public sealed class AbilityUnlockedEvent : GameEvent
+    {
+        public AbilityUnlockedEvent(byte seat)
+            : base(Only(seat))
+        {
+            Seat = seat;
+        }
+
+        public byte Seat { get; }
+    }
+
+    /// <summary>ability_ok {ability}. To the Trasher that picked.</summary>
+    public sealed class AbilityOkEvent : GameEvent
+    {
+        public AbilityOkEvent(byte seat, TrasherAbility ability)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Ability = ability;
+        }
+
+        public byte Seat { get; }
+
+        public TrasherAbility Ability { get; }
+    }
+
     /// <summary>hit_ok {cooldown}. To the hitter.</summary>
     public sealed class HitOkEvent : GameEvent
     {

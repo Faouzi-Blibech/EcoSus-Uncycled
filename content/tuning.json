@@ -15,6 +15,8 @@
   "sabotage": { "start_cooldown_s": 10, "shared_cooldown_s": 30, "fire_countdown_s": 45, "smog_fix_s": 3 },
   "spots":  { "bag_meter_add": 10, "repollute_meter_sub": 10, "tool_time_mult": 0.5 },
   "bags":   { "cap": 1, "backpack_cap": 3 },
+  "trasher": { "repollute_cooldown_s": 20, "unlock_after": 3, "virus_cooldown_s": 30, "gas_cooldown_s": 90, "gas_warning_s": 3, "start_cooldown_s": 10 },
+  "machine": { "fix_s": 4 },
   "tasks":  { "common": 0, "short": 0, "long": 0 },
   "bots":   { "skill": 0.6, "reaction_min_s": 0.4, "reaction_max_s": 1.2 },
   "minigames": { "sort_items": 5, "compost_turns": 3, "gauge_fill_per_s": 0.5, "gauge_band_lo": 0.6, "gauge_band_hi": 0.85, "meter_digits": 3, "crush_cans": 5, "rinse_fill_per_s": 0.5, "rinse_band_lo": 0.6, "rinse_band_hi": 0.85, "glass_lift_px": 80, "glass_bottles": 4 }

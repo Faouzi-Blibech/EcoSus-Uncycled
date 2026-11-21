@@ -69,6 +69,7 @@ namespace Sim.Core
     {
         Smog,
         Fire,
+        Machine,
     }
 
     public enum SabotageEndResult
@@ -100,6 +101,7 @@ namespace Sim.Core
     {
         Hit,
         Dump,
+        Repollute,
     }
 
     public enum ActKind
@@ -145,6 +147,7 @@ namespace Sim.Core
         BagsFull,
         SpotClean,
         SpotDirty,
+        NotUnlocked,
     }
 
     /// <summary>A cleaning spot: every task console is one (spec section 5).</summary>
@@ -152,6 +155,14 @@ namespace Sim.Core
     {
         Dirty,
         Clean,
+    }
+
+    /// <summary>The lethal ability a Trasher picks after the third re-pollute (spec section 6).</summary>
+    public enum TrasherAbility
+    {
+        None,
+        Virus,
+        Gas,
     }
 
     public enum DeadlineClock
@@ -201,6 +212,7 @@ namespace Sim.Core
                 case RejectReason.BagsFull: return "bags_full";
                 case RejectReason.SpotClean: return "spot_clean";
                 case RejectReason.SpotDirty: return "spot_dirty";
+                case RejectReason.NotUnlocked: return "not_unlocked";
                 default: return "not_allowed";
             }
         }

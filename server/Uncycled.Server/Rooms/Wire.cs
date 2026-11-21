@@ -219,6 +219,7 @@ public static class Wire
 
         w.WriteEndArray();
         WriteBags(w, me);
+        WriteTrasherFields(w, me);
         if (me.Cooldowns != null)
         {
             WriteCooldowns(w, "cooldowns", me.Cooldowns);
@@ -338,12 +339,22 @@ public static class Wire
             }
 
             WriteBags(w, me);
+            WriteTrasherFields(w, me);
             if (me.Cooldowns != null)
             {
                 WriteCooldowns(w, "cd", me.Cooldowns);
             }
 
             w.WriteNumber("emergencies_left", v.EmergenciesLeft);
+            w.WriteEndObject();
+
+            w.WriteStartObject("machine");
+            w.WriteBoolean("jammed", extras?.MachineJammed ?? false);
+            if (extras?.MachineRepairElapsed != null)
+            {
+                w.F("repair_t", extras.MachineRepairElapsed.Value);
+            }
+
             w.WriteEndObject();
 
             w.WriteStartArray("spots");
@@ -401,11 +412,31 @@ public static class Wire
         w.WriteBoolean("tool", me.HasTool);
     }
 
+    /// <summary>repollutes and ability: Trashers only (a Cleaner's message never mentions them).</summary>
+    private static void WriteTrasherFields(Utf8JsonWriter w, MyView me)
+    {
+        if (me.Role != Role.Polluter)
+        {
+            return;
+        }
+
+        w.WriteNumber("repollutes", me.Repollutes);
+        if (me.Ability == TrasherAbility.None)
+        {
+            w.WriteNull("ability");
+        }
+        else
+        {
+            w.WriteString("ability", Snake(me.Ability));
+        }
+    }
+
     private static void WriteCooldowns(Utf8JsonWriter w, string name, CooldownView cd)
     {
         w.WriteStartObject(name);
-        w.F("hit", cd.Hit);
-        w.F("dump", cd.Dump);
+        w.F("repollute", cd.Repollute);
+        w.F("virus", cd.Virus);
+        w.F("gas", cd.Gas);
         w.F("sabotage", cd.Sabotage);
         w.WriteEndObject();
     }
@@ -653,6 +684,31 @@ public static class Wire
                     w.WriteString("kind", Snake(e.Kind));
                     w.WriteNumber("seat", (int)e.Actor);
                     w.Pos("pos", e.Position);
+                });
+
+            case RepolluteOkEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "repollute_ok");
+                    w.F("cooldown", e.Cooldown);
+                    w.WriteNumber("count", e.Count);
+                });
+
+            case AbilityUnlockedEvent _:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "ability_unlocked");
+                    w.WriteStartArray("choices");
+                    w.WriteStringValue("virus");
+                    w.WriteStringValue("gas");
+                    w.WriteEndArray();
+                });
+
+            case AbilityOkEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "ability_ok");
+                    w.WriteString("ability", Snake(e.Ability));
                 });
 
             case HitOkEvent e:

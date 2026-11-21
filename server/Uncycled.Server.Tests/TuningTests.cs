@@ -90,6 +90,21 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void The_trasher_and_machine_keys_are_read_and_the_real_file_holds_them()
+        {
+            using JsonDocument set = JsonDocument.Parse("{\"trasher\":{\"repollute_cooldown_s\":7,\"unlock_after\":2,\"start_cooldown_s\":5},\"machine\":{\"fix_s\":9}}");
+            MatchConfig c = ContentLoader.ReadConfig(set.RootElement);
+            Assert.Equal((7f, 2, 5f, 9f), (c.RepolluteCooldownS, c.UnlockAfter, c.TrasherStartCooldownS, c.MachineFixS));
+            using JsonDocument none = JsonDocument.Parse("{}");
+            MatchConfig d = ContentLoader.ReadConfig(none.RootElement);
+            Assert.Equal((20f, 3, 10f, 4f), (d.RepolluteCooldownS, d.UnlockAfter, d.TrasherStartCooldownS, d.MachineFixS));
+
+            MatchConfig real = ContentLoader.Load(ContentLoader.ResolveDir(null)).Config;
+            Assert.Equal((20f, 3, 10f, 4f), (real.RepolluteCooldownS, real.UnlockAfter, real.TrasherStartCooldownS, real.MachineFixS));
+            Assert.Equal((30f, 90f, 3f), (real.VirusCooldownS, real.GasCooldownS, real.GasWarningS));
+        }
+
+        [Fact]
         public void The_real_tuning_json_holds_the_sabotage_start_cooldown()
         {
             ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null));

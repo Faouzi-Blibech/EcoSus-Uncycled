@@ -104,6 +104,41 @@ namespace Uncycled.Server.Tests
             }
         }
 
+        [Fact]
+        public void CleanerSnapshotAndWelcome_HaveNoTrasherFields_ButTheTrasherHasThem()
+        {
+            MatchEngine engine = BuildEngine(5UL);
+            engine.Tick(engine.Config.IntroS);
+            foreach (PlayerState p in engine.Players)
+            {
+                SeatView view = engine.ViewFor(p.Seat);
+                string snapshot = Wire.Snapshot(view, 1, 1.0, engine.ExtrasFor(p.Seat));
+                string welcome = Wire.Welcome("BCDF", p.Seat, "tok", 0, MinimalBundle(), "playing", view, new List<Seat>(), _ => false);
+                if (p.IsCitizen)
+                {
+                    foreach (string json in new[] { snapshot, welcome })
+                    {
+                        Assert.DoesNotContain("\"repollutes\"", json);
+                        Assert.DoesNotContain("\"ability\"", json);
+                        Assert.DoesNotContain("\"repollute\"", json);
+                    }
+                }
+                else
+                {
+                    using System.Text.Json.JsonDocument s = System.Text.Json.JsonDocument.Parse(snapshot);
+                    System.Text.Json.JsonElement me = s.RootElement.GetProperty("me");
+                    Assert.Equal(0, me.GetProperty("repollutes").GetInt32());
+                    Assert.Equal(System.Text.Json.JsonValueKind.Null, me.GetProperty("ability").ValueKind);
+                    Assert.True(me.GetProperty("cd").TryGetProperty("repollute", out _));
+                    Assert.False(me.GetProperty("cd").TryGetProperty("hit", out _));
+                    using System.Text.Json.JsonDocument w = System.Text.Json.JsonDocument.Parse(welcome);
+                    System.Text.Json.JsonElement state = w.RootElement.GetProperty("state");
+                    Assert.Equal(0, state.GetProperty("repollutes").GetInt32());
+                    Assert.True(state.GetProperty("cooldowns").TryGetProperty("repollute", out _));
+                }
+            }
+        }
+
         private static void AssertNoPolluterInfo(string json)
         {
             Assert.DoesNotContain("polluter", json, StringComparison.OrdinalIgnoreCase);

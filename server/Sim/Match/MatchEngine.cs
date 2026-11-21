@@ -103,6 +103,8 @@ namespace Sim.Match
             Fire = new FireSystem(fireIds);
             List<ConsoleDef> smogPanels = map.ConsolesOfKind(ConsoleKind.SmogFix);
             Smog = new SmogSystem(smogPanels.Count > 0 ? smogPanels[0].Id : null);
+            List<ConsoleDef> machines = map.ConsolesOfKind(ConsoleKind.Machine);
+            Machine = new MachineSystem(machines.Count > 0 ? machines[0].Id : null);
             SabotageTimer = new SabotageCooldown(config.SabotageSharedCooldownS, config.SabotageStartCooldownS);
             Meter = new PollutionMeter();
             Piles = new PileRegistry();
@@ -123,6 +125,7 @@ namespace Sim.Match
                 p.Position = map.SpawnFor(i);
                 p.HitReadyAt = config.StartCooldownS;
                 p.DumpReadyAt = config.StartCooldownS;
+                p.RepolluteReadyAt = config.TrasherStartCooldownS;
                 p.MoveBudget = config.MoveBudgetCap;
                 p.BagCap = p.IsCitizen ? config.BagCap : 0;
             }
@@ -182,6 +185,9 @@ namespace Sim.Match
         public FireSystem Fire { get; }
 
         public SmogSystem Smog { get; }
+
+        /// <summary>The Recycling Machine jam (v2). A delivery must be refused while Machine.Jammed.</summary>
+        public MachineSystem Machine { get; }
 
         public SabotageCooldown SabotageTimer { get; }
 
@@ -293,6 +299,8 @@ namespace Sim.Match
                 case ReportCommand c: return ApplyReport(p, c);
                 case CallMeetingCommand _: return ApplyCallMeeting(p);
                 case VoteCommand c: return ApplyVote(p, c);
+                case RepolluteCommand c: return ApplyRepollute(p, c);
+                case PickAbilityCommand c: return ApplyPickAbility(p, c);
                 case SabotageCommand c: return ApplySabotage(p, c);
                 case FixCommand c: return ApplyFix(p, c);
                 case CleanStartCommand _: return Reject(RejectReason.NotAllowed);
@@ -371,6 +379,7 @@ namespace Sim.Match
             Meter.Add(Config.MeterPassivePerS * dt);
             Smog.Ease(dt, Config.SmogEaseS);
             TickSmogRepair(dt);
+            TickMachineRepair(dt);
             TickFire(dt);
             TickCleaning(dt);
             UpdateSightMemory();
@@ -434,6 +443,7 @@ namespace Sim.Match
             _sessions.Clear();
             Smog.CancelRepair();
             _smogRepairConsole = null;
+            Machine.CancelRepair();
             if (Fire.Active)
             {
                 Fire.Stop();
@@ -577,6 +587,11 @@ namespace Sim.Match
             _sessions.Remove(p.Seat);
             CancelCleaningBy(p.Seat);
             Fire.Release(p.Seat);
+            if (Machine.RepairSeat == p.Seat)
+            {
+                Machine.CancelRepair();
+            }
+
             if (Smog.RepairSeat == p.Seat)
             {
                 Smog.CancelRepair();
