@@ -51,12 +51,34 @@ public sealed class MeetingKit : IDisposable
         var timeout = TimeSpan.FromSeconds(settings.MeetingTimeoutS);
         var budget = new DailyBudget(settings.MeetingDailyCallCap, () => DateTime.UtcNow);
         ClefDecider? clef = ClefDecider.FromEnvironment(http, budget, log, timeout, env);
+        IMeetingDecider primary = Choose(settings.MeetingClefFor, clef);
         logger.LogInformation(
-            "Bot meeting talk: {Decider} (daily cap {Cap}, timeout {Timeout} s)",
-            clef == null ? "rule path only (no Cloudflare keys)" : "Clef-flash with rule fallback",
+            "Bot meeting talk: clef_for {ClefFor}, {Decider} (daily cap {Cap}, timeout {Timeout} s)",
+            settings.MeetingClefFor,
+            clef == null ? "rule path only (no Cloudflare keys)" : primary.Name,
             settings.MeetingDailyCallCap,
             settings.MeetingTimeoutS);
-        return new MeetingKit(clef ?? (IMeetingDecider)new RuleDecider(), log, settings.MeetingTimeoutS, http);
+        return new MeetingKit(primary, log, settings.MeetingTimeoutS, http);
+    }
+
+    /// <summary>"vote": rules talk and the model votes; "all": the model talks and votes; "none" (default), anything else, or no keys: rules only.</summary>
+    internal static IMeetingDecider Choose(string clefFor, ClefDecider? clef)
+    {
+        var rule = new RuleDecider();
+        if (clef == null)
+        {
+            return rule;
+        }
+
+        switch (clefFor)
+        {
+            case "all":
+                return clef;
+            case "vote":
+                return new StageDecider(rule, clef);
+            default:
+                return rule;
+        }
     }
 
     public void Dispose()

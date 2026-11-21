@@ -30,6 +30,23 @@ namespace Uncycled.Server.Tests
                 new TaskCompletionSource<MeetingDecision>().Task;
         }
 
+        /// <summary>Never talks; votes for the first living seat that is neither itself nor its partner.</summary>
+        private sealed class VoteOnly : IMeetingDecider
+        {
+            public string Name => "fake";
+
+            public Task<MeetingDecision> DecideAsync(MeetingState state, CancellationToken ct)
+            {
+                if (state.Stage != MeetingStage.Voting)
+                {
+                    return Task.FromResult(MeetingDecision.Quiet("fake"));
+                }
+
+                byte target = state.Living.First(s => s != state.Self && !state.Partners.Contains(s));
+                return Task.FromResult(new MeetingDecision { Vote = target, Source = "fake" });
+            }
+        }
+
         private sealed class Probe
         {
             public readonly Dictionary<byte, int> ChatLines = new Dictionary<byte, int>();
@@ -131,6 +148,47 @@ namespace Uncycled.Server.Tests
             Assert.Equal(p.LivingBotsAtVote.OrderBy(s => s), p.Voted.OrderBy(s => s));
             Assert.All(lines, l => Assert.Contains("\"source\":\"rule\"", l));
             Assert.Contains(lines, l => l.Contains("\"fallback\":\"late\""));
+        }
+
+        [Fact]
+        public void Room_AVoteRaisesTheTargetsHeatLikeInTraining()
+        {
+            using var kit = new MeetingKit(new VoteOnly(), new MeetingDecisionLog(_ => { }));
+            RoomRig rig = NewRig(kit);
+
+            Probe p = RunOneMeeting(rig);
+
+            Assert.Equal(0, p.BotChat); // nobody accused in the chat: only the votes can have raised an accusation share
+            Assert.NotEmpty(p.Voted);
+            float accusation = 0f;
+            foreach (Uncycled.Server.Rooms.Seat seat in rig.Room.Seats)
+            {
+                BotMemory? mem = ((rig.Room.Seats[seat.Id].Brain as GuardedBrain)?.Active as TalkingBrain)?.Memory;
+                if (mem == null)
+                {
+                    continue;
+                }
+
+                for (byte target = 0; target < rig.Content.Config.Seats; target++)
+                {
+                    accusation = Math.Max(accusation, mem.HeatAccusations(target));
+                }
+            }
+
+            Assert.True(accusation > 0f, "a bot's vote must count as an accusation in the heat, as the training host does");
+        }
+
+        [Theory]
+        [InlineData("vote", "rule+clef")]
+        [InlineData("all", "clef")]
+        [InlineData("none", "rule")]
+        [InlineData("nonsense", "rule")]
+        public void ClefFor_ChoosesWhichDecisionsTheModelMakes(string clefFor, string expected)
+        {
+            var clef = new ClefDecider(new System.Net.Http.HttpClient(), "acct", "token", new DailyBudget(5, () => DateTime.UtcNow), new MeetingDecisionLog(_ => { }), TimeSpan.FromSeconds(3));
+
+            Assert.Equal(expected, MeetingKit.Choose(clefFor, clef).Name);
+            Assert.Equal("rule", MeetingKit.Choose(clefFor, null).Name);
         }
 
         [Fact]

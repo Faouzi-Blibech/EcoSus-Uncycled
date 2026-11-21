@@ -142,7 +142,7 @@ public class BotBrains : IDisposable
             MatchId = meeting.MatchId,
         };
         var talking = new TalkingBrain(brain, talker, meeting.Log, message => _log.LogWarning("{Message}", message));
-        meeting.Feed.Add(seat, talking);
+        meeting.Feed.Add(seat, talking, talking);
         return talking;
     }
 
