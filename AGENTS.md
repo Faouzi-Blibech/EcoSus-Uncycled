@@ -3,6 +3,8 @@
 Rules for every coding agent (Claude Code, Codex, Cursor, Copilot, Gemini...). Read this whole
 file before writing code. If a request conflicts with it, ask the human.
 
+- **Current design (v2, 2026-11-21), wins over every older doc below:** `docs/design/2026-11-21-cleaners-vs-trashers.md`.
+  Team, owners, schedule: `docs/team/README.md`. Section 1 and the owners in section 3 describe v1.
 - What the game is and why: `docs/CONTEXT.md`
 - Event rules, schedule and the jury grid we are scored on: `docs/HACKATHON.md`
 - Full system design: `docs/superpowers/specs/2026-11-13-uncycled-system-design.md`
