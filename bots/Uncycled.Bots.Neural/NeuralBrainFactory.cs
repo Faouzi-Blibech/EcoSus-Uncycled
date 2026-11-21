@@ -1,0 +1,61 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using Sim.Core;
+using Sim.Uncycled;
+
+namespace Uncycled.Bots.Neural
+{
+    /// <summary>Picks the brain of a bot seat: the role's network when it loads, the scripted brain otherwise.</summary>
+    public static class NeuralBrainFactory
+    {
+        // One session per model file for the whole process, shared by every bot of that role.
+        private static readonly ConcurrentDictionary<string, OnnxPolicy> Loaded = new ConcurrentDictionary<string, OnnxPolicy>();
+        private static readonly ConcurrentDictionary<string, bool> Reported = new ConcurrentDictionary<string, bool>();
+
+        /// <summary>The model file of a role inside modelsDir: citizen.onnx or polluter.onnx.</summary>
+        public static string ModelPath(Role role, string modelsDir)
+        {
+            return Path.Combine(modelsDir, role == Role.Polluter ? "polluter.onnx" : "citizen.onnx");
+        }
+
+        /// <summary>
+        /// Neural when s.Brain is "neural" and the role's model loads with the current observation schema
+        /// hash; scripted otherwise (switch off, file missing, corrupt, other schema). Never throws for a bad model.
+        /// </summary>
+        public static IBotBrain For(Role role, BotsSettings s, string modelsDir, IRandom rng, IReadOnlyList<TaskTypeDef>? taskTypes = null, Action<string>? log = null)
+        {
+            IBotBrain scripted = BrainFactory.Scripted(role, s, rng, taskTypes);
+            if (!string.Equals(s.Brain, "neural", StringComparison.OrdinalIgnoreCase))
+            {
+                return scripted;
+            }
+
+            string path = ModelPath(role, modelsDir);
+            string key = Path.GetFullPath(path);
+            if (!Loaded.TryGetValue(key, out OnnxPolicy? policy))
+            {
+                if (!OnnxPolicy.TryLoad(path, ObservationBuilder.SchemaHash, out policy, out string reason) || policy == null)
+                {
+                    if (Reported.TryAdd(key, true))
+                    {
+                        (log ?? (message => Console.Error.WriteLine(message)))("neural " + role + " model not used, scripted brain plays: " + reason);
+                    }
+
+                    return scripted;
+                }
+
+                // two rooms can build the same session at once: keep the first, free the other
+                OnnxPolicy built = policy;
+                policy = Loaded.GetOrAdd(key, built);
+                if (!ReferenceEquals(policy, built))
+                {
+                    built.Dispose();
+                }
+            }
+
+            return new NeuralBrain(policy, scripted, s, rng, taskTypes, log);
+        }
+    }
+}

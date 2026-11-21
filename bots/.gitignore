@@ -1,0 +1,6 @@
+.build/
+train/runs/
+train/checkpoints/
+__pycache__/
+bin/
+obj/
