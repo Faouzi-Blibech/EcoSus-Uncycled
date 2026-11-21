@@ -159,9 +159,6 @@ ENV/
 env.bak/
 venv.bak/
 
-# Conda environments
-conda-meta/
-
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -221,3 +218,29 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- Uncycled ----
+# Separate reference repo, cloned here for agents, never committed
+reference/
+
+# Godot (commit *.import files, ignore the cache)
+.godot/
+client/.godot/
+export_credentials.cfg
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Builds and signing
+build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Secrets
+.env
+.env.*
