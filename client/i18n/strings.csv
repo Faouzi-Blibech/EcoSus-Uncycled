@@ -8,6 +8,7 @@ BOOT_ERROR,Something went wrong (%s). Please try again.,Un problème est survenu
 COMMON_SETTINGS,Settings,Paramètres,الإعدادات
 COMMON_SAVE,Save,Enregistrer,حفظ
 COMMON_CANCEL,Cancel,Annuler,إلغاء
+COMMON_CLOSE,Close,Fermer,إغلاق
 SETTINGS_TITLE,Settings,Paramètres,الإعدادات
 SETTINGS_NAME,Player name,Nom du joueur,اسم اللاعب
 SETTINGS_LANGUAGE,Language,Langue,اللغة
@@ -16,7 +17,13 @@ SETTINGS_BAD_URL,"The address must start with ws:// or wss://","L'adresse doit c
 LANG_EN,English,English,English
 LANG_FR,Français,Français,Français
 MENU_NAME_PLACEHOLDER,Your name,Ton nom,اسمك
-MENU_CREATE,Create a room,Créer une salle,إنشاء غرفة
+MENU_CREATE_GAME,Create Game,Créer,إنشاء لعبة
+MENU_JOIN_GAME,Join Game,Rejoindre,انضمام إلى لعبة
+MENU_JOIN_TITLE,Enter the room code,Entre le code de la salle,أدخل رمز الغرفة
+MENU_PROFILE,Profile,Profil,الملف الشخصي
+MENU_PROFILE_SKINS,Skins unlock with your daily scan streak. Coming soon.,Les skins se débloquent avec ta série de scans quotidiens. Bientôt disponible.,تُفتح الأزياء بسلسلة المسح اليومية. قريبًا.
+MENU_SCAN,Scan & earn,Scanne et gagne,امسح واربح
+"MENU_SCAN_TEXT","Scan a real recyclable item with your camera to earn points, keep your daily streak and unlock skins. Coming soon.","Scanne un vrai objet recyclable avec ta caméra pour gagner des points, garder ta série quotidienne et débloquer des skins. Bientôt disponible.","امسح غرضًا حقيقيًا قابلًا لإعادة التدوير بالكاميرا لتربح نقاطًا وتحافظ على سلسلتك اليومية وتفتح أزياء جديدة. قريبًا."
 MENU_CODE_PLACEHOLDER,Code,Code,الرمز
 MENU_JOIN,Join,Rejoindre,انضمام
 MENU_NAME_REQUIRED,Please enter a name.,Entre un nom d'abord.,أدخل اسمًا أولًا.
