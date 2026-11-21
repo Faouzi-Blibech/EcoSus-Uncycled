@@ -432,5 +432,35 @@ namespace Uncycled.Bots.Tests
             RepolluteCommand cmd = Assert.Single(bot.Sent.OfType<RepolluteCommand>());
             Assert.Equal(order[rank], cmd.SpotId);
         }
+
+        // ---------- the schema hash ----------
+
+        [Fact]
+        public void SchemaV2_Hash_IsPrintedAndStable()
+        {
+            string first = SchemaV2.Hash;
+            _out.WriteLine("SchemaV2.Hash = " + first);
+
+            Assert.Equal(first, SchemaV2.Hash);
+            Assert.Equal(64, first.Length);
+            Assert.Matches("^[0-9a-f]{64}$", first);
+            Assert.Contains(ObservationBuilderV2.SchemaText, SchemaV2.Text);
+            Assert.Contains("policy:SabotageMachine", SchemaV2.Text);
+            Assert.Contains("view:GasView.", SchemaV2.Text);
+            Assert.Contains("view:SeatView.Spots:", SchemaV2.Text); // no exclusions: the v2 fields the v1 hash leaves out are in
+        }
+
+        /// <summary>
+        /// The v2 contract is frozen once a model is trained on it. A deliberate change to the observation, the policy
+        /// list or a view (for example a suspicion weight) changes the hash: update this value in the same commit and
+        /// train again; the message prints the new one.
+        /// </summary>
+        private const string FrozenHash = "12e77159effddb87ef842b12844d9fd121e4af9e9e1e858ef6785e925c7de607";
+
+        [Fact]
+        public void SchemaV2_Hash_IsFrozen()
+        {
+            Assert.True(FrozenHash == SchemaV2.Hash, "SchemaV2.Hash changed: now " + SchemaV2.Hash + ", frozen " + FrozenHash);
+        }
     }
 }
