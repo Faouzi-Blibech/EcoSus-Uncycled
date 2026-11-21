@@ -22,8 +22,8 @@ An original multiplayer social-deduction game about recycling.
   it becomes a witness), **poison** citizens (each hit adds 34%, so 3 hits; at 100% the citizen becomes
   pollution and is out) and **sabotage** (smog that shrinks vision, a landfill fire that two
   players must put out).
-- Anyone can report a pile or press the emergency button to call a **meeting**: 60 s of talking
-  out loud, then 30 s to vote. The most-voted player is kicked out.
+- Anyone can report a pile or press the emergency button to call a **meeting**: 60 s of chat
+  (phrases or typed lines), then 30 s to vote. The most-voted player is kicked out.
 - Citizens win by finishing tasks or voting out both polluters. Polluters win when the pollution
   meter fills, when they equal the citizens still in, or when the 10-minute match deadline hits.
 - Citizens can clean dump piles to lower the meter. Each polluter has a secret "signature" waste

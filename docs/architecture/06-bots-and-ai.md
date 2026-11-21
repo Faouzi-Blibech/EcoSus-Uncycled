@@ -91,7 +91,7 @@ stateDiagram-v2
 
 Phrases are ids with arguments; the client renders them in the player's language. **Humans use
 the same phrases**: in the meeting screen, tapping a player card offers the accusation phrases.
-Humans still talk out loud; the phrases are how they tell the bots.
+Humans can also type a line (120 characters, 5 per meeting, word filter); the phrases are how they tell the bots.
 
 | Phrase id | Args | Example (en) | Kind |
 |---|---|---|---|

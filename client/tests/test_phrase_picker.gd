@@ -153,7 +153,7 @@ func test_picker_disabled_outside_discussion_and_after_five() -> bool:
 	s._on_event({"t": "chat", "seat": 0, "id": "hmm", "args": []})
 	assert_true(not p.is_enabled() and p.lines_left() == 0, "five sent: closed")
 	s.is_out = true
-	s.chat_used = 0
+	s.phrases_used = 0
 	assert_true(not p.is_enabled(), "a seat that is out cannot chat")
 	return true
 
@@ -164,7 +164,7 @@ func test_only_my_lines_count_and_a_new_meeting_resets() -> bool:
 	assert_eq(s.chat_left(), Phrases.LIMIT, "another seat's line is not mine")
 	s._on_event({"t": "chat", "seat": 0, "id": "hmm", "args": []})
 	assert_eq(s.chat_left(), Phrases.LIMIT - 1, "my line counts")
-	s._on_event({"t": "action_rejected", "action": "chat_phrase", "reason": "not_allowed"})
+	s._on_event({"t": "action_rejected", "action": "chat_phrase", "reason": "phrase_limit"})
 	assert_eq(s.chat_left(), 0, "the server says no more: the picker closes")
 	s._on_event({"t": "meeting_started", "cause": "report", "by": 1})
 	assert_eq(s.chat_left(), Phrases.LIMIT, "a new meeting starts again")
@@ -215,21 +215,21 @@ func test_clue_victims_and_living_keep_out_seats_out_of_the_picker() -> bool:
 func test_scene_closes_the_picker_when_chat_closes_under_it() -> bool:
 	var s: Object = _discussion_session()
 	var saved: Dictionary = {}
-	for f in ["seat_id", "seats", "out_seats", "is_out", "phase", "meeting", "map_id", "chat_used"]:
+	for f in ["seat_id", "seats", "out_seats", "is_out", "phase", "meeting", "map_id", "phrases_used"]:
 		saved[f] = Session.get(f)
 		Session.set(f, s.get(f))
 	var m: Control = track(load("res://scenes/meeting/meeting.tscn").instantiate()) as Control
 	m._ready()
 	m._on_say()
 	assert_true(m._picking and _find_picker(m._left) != null, "the picker is open")
-	Session.chat_used = Phrases.LIMIT
-	m._on_event({"t": "action_rejected", "action": "chat_phrase", "reason": "not_allowed"})
+	Session.phrases_used = Phrases.LIMIT
+	m._on_event({"t": "action_rejected", "action": "chat_phrase", "reason": "phrase_limit"})
 	assert_true(not m._picking and _find_picker(m._left) == null, "a refusal closes it")
-	assert_true(m._say_note.text.contains(m.tr("CHAT_REJECTED")), "and says so for a moment: " + m._say_note.text)
-	Session.chat_used = 4
+	assert_true(m._say_note.text.contains(m.tr("REJECT_PHRASE_LIMIT")), "and says so for a moment: " + m._say_note.text)
+	Session.phrases_used = 4
 	m._on_say()
 	assert_true(m._picking, "reopened with one line left")
-	Session.chat_used = Phrases.LIMIT
+	Session.phrases_used = Phrases.LIMIT
 	m._on_event({"t": "chat", "seat": 0, "id": "hmm", "args": []})
 	assert_true(not m._picking and _find_picker(m._left) == null, "the last line echoed closes it too")
 	for f in saved:
@@ -307,7 +307,7 @@ func test_picker_sends_ints_and_zone_ids_only_when_every_slot_is_filled() -> boo
 	p.choose_kind("filler")
 	p.choose_phrase("hmm")
 	assert_true(p.can_send(), "a phrase with no slot can go at once")
-	s.chat_used = Phrases.LIMIT
+	s.phrases_used = Phrases.LIMIT
 	p.send()
 	assert_eq(_sent.size(), 1, "a closed picker never sends")
 	return true

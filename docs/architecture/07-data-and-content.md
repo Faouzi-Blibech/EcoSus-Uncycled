@@ -190,7 +190,7 @@ flowchart LR
 
 - All player-facing text lives in `client/i18n/strings.csv` (`keys,en,fr`).
 - The server never sends display text, only keys and arguments (`zone_market`, `saw_dump`).
-  The one exception is AI-written text (`chat.text`, `debrief.text`), written in the **room
+  The exceptions are the lines humans type (`chat.text`: as typed, in any language, with English words from `content/chat_filter.json` replaced by `***`, shown as plain text) and AI-written text (`debrief.text`), written in the **room
   language** chosen by the host, because everyone in the room reads the same line.
 - Recycling facts: `facts.json` holds `{id, en, fr, source}`; the debrief shows one fact by id.
   Prefer facts about Tunisia and Sweden (the event is Swedish-Tunisian), each with a checkable

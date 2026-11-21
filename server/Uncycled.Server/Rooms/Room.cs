@@ -568,7 +568,7 @@ public sealed class Room
         try
         {
             var rng = new XorShiftRandom((ulong)Random.Shared.NextInt64());
-            _engine = new MatchEngine(_content.Config, _content.Map, setups, _content.Tasks, rng, _content.Phrases);
+            _engine = new MatchEngine(_content.Config, _content.Map, setups, _content.Tasks, rng, _content.Phrases, _content.Filter);
         }
         catch (Exception ex)
         {

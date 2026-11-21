@@ -98,8 +98,46 @@ public static class Wire
                 w.WriteStartObject();
                 WriteState(w, state);
                 w.WriteEndObject();
+                if (state.Me.Status == PlayerStatus.Out)
+                {
+                    // ghost chat so far: only an out seat's view holds any (the engine never gives it to a living seat)
+                    w.WriteStartArray("ghost_chat");
+                    foreach (string line in NewestGhostLines(state.GhostChat, content.Config))
+                    {
+                        w.WriteRawValue(line);
+                    }
+
+                    w.WriteEndArray();
+                }
             }
         });
+
+    /// <summary>
+    /// The newest ghost lines that fit the welcome budget (at most GhostWelcomeMaxLines lines and
+    /// GhostWelcomeMaxBytes bytes of encoded JSON), encoded, oldest first. Keeps a welcome under the
+    /// client's inbound buffer however much was said.
+    /// </summary>
+    private static List<string> NewestGhostLines(IReadOnlyList<ChatEvent> lines, MatchConfig config)
+    {
+        var kept = new List<string>();
+        int bytes = 0;
+        for (int i = lines.Count - 1; i >= 0 && kept.Count < config.GhostWelcomeMaxLines; i--)
+        {
+            ChatEvent line = lines[i];
+            string json = JsonOut.Build(w => WriteChat(w, line));
+            int size = Encoding.UTF8.GetByteCount(json) + 1; // the comma
+            if (bytes + size > config.GhostWelcomeMaxBytes)
+            {
+                break;
+            }
+
+            bytes += size;
+            kept.Add(json);
+        }
+
+        kept.Reverse();
+        return kept;
+    }
 
     /// <summary>The "seats" array shared by welcome and match_started: every occupied seat.</summary>
     private static void WriteSeats(Utf8JsonWriter w, IReadOnlyList<Seat> seats, Func<byte, bool> isOut)
@@ -198,6 +236,7 @@ public static class Wire
 
             w.WriteBoolean("my_vote_cast", m.MyVoteCast);
             w.WriteNumber("my_chat", m.MyChatCount);
+            w.WriteNumber("my_text", m.MyText);
             w.Ids("living", m.Living);
             w.F("task_bar", m.TaskBar);
             w.WriteEndObject();
@@ -217,6 +256,43 @@ public static class Wire
         else
         {
             w.WriteNull("game_over");
+        }
+    }
+
+    /// <summary>
+    /// One chat line: {t, seat, text} for a typed line or {t, seat, id, args} for a phrase, plus
+    /// ghost: true for a ghost line (out seats only). Used by the chat event and welcome.ghost_chat.
+    /// </summary>
+    private static void WriteChat(Utf8JsonWriter w, ChatEvent e)
+    {
+        w.WriteString("t", "chat");
+        w.WriteNumber("seat", (int)e.Seat);
+        if (e.PhraseId == null)
+        {
+            w.WriteString("text", e.Text ?? "");
+        }
+        else
+        {
+            w.WriteString("id", e.PhraseId);
+            w.WriteStartArray("args");
+            foreach (ChatArg a in e.Args)
+            {
+                if (a.Kind == ChatArgKind.Seat)
+                {
+                    w.WriteNumberValue((int)a.Seat);
+                }
+                else
+                {
+                    w.WriteStringValue(a.Zone);
+                }
+            }
+
+            w.WriteEndArray();
+        }
+
+        if (e.Ghost)
+        {
+            w.WriteBoolean("ghost", true);
         }
     }
 
@@ -578,26 +654,7 @@ public static class Wire
                 });
 
             case ChatEvent e:
-                return JsonOut.Build(w =>
-                {
-                    w.WriteString("t", "chat");
-                    w.WriteNumber("seat", (int)e.Seat);
-                    w.WriteString("id", e.PhraseId);
-                    w.WriteStartArray("args");
-                    foreach (ChatArg a in e.Args)
-                    {
-                        if (a.Kind == ChatArgKind.Seat)
-                        {
-                            w.WriteNumberValue((int)a.Seat);
-                        }
-                        else
-                        {
-                            w.WriteStringValue(a.Zone);
-                        }
-                    }
-
-                    w.WriteEndArray();
-                });
+                return JsonOut.Build(w => WriteChat(w, e));
 
             case VotingStartedEvent e:
                 return JsonOut.Build(w =>
