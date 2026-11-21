@@ -130,6 +130,11 @@ namespace Sim.Match
                 return Reject(RejectReason.NotAllowed);
             }
 
+            if (Machine.Jammed)
+            {
+                return Reject(RejectReason.MachineJammed);
+            }
+
             if (p.Bags <= 0)
             {
                 return Reject(RejectReason.NoBags);
@@ -853,6 +858,7 @@ namespace Sim.Match
 
             List<byte> witnesses = WitnessesOf(p);
             spot.State = SpotState.Dirty;
+            CloseCleanSessions(spot.Id);
             Meter.Add(-Config.RepolluteMeterSub);
             p.RepolluteReadyAt = ActiveTime + Config.RepolluteCooldownS;
             p.Repollutes++;
@@ -869,6 +875,24 @@ namespace Sim.Match
             }
 
             return CommandResult.Ok;
+        }
+
+        /// <summary>A re-pollute closes every open clean session on the spot: a stale spot_done must not undo it (the Cleaner uses the spot again).</summary>
+        private void CloseCleanSessions(string spotId)
+        {
+            var stale = new List<byte>();
+            foreach (KeyValuePair<byte, TaskSession> s in _sessions)
+            {
+                if (s.Value.TaskId == -1 && s.Value.ConsoleId == spotId)
+                {
+                    stale.Add(s.Key);
+                }
+            }
+
+            foreach (byte seat in stale)
+            {
+                _sessions.Remove(seat);
+            }
         }
 
         private CommandResult ApplyPickAbility(PlayerState p, PickAbilityCommand c)

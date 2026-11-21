@@ -189,7 +189,6 @@ public static class ContentLoader
             GhostWelcomeMaxBytes = (int)Num(t, "meeting", "ghost_welcome_max_bytes", d.GhostWelcomeMaxBytes),
             LostSightGraceS = Num(t, "visibility", "lost_sight_grace_s", d.LostSightGraceS),
             SabotageSharedCooldownS = Num(t, "sabotage", "shared_cooldown_s", d.SabotageSharedCooldownS),
-            SabotageStartCooldownS = Num(t, "sabotage", "start_cooldown_s", d.SabotageStartCooldownS),
             SmogFixS = Num(t, "sabotage", "smog_fix_s", d.SmogFixS),
             FireCountdownS = Num(t, "sabotage", "fire_countdown_s", d.FireCountdownS),
             BagCap = (int)Num(t, "bags", "cap", d.BagCap),

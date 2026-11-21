@@ -81,12 +81,12 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
-        public void Sabotage_start_cooldown_is_read_and_defaults_to_10()
+        public void The_start_cooldown_is_one_key_under_trasher_and_defaults_to_10()
         {
-            using JsonDocument set = JsonDocument.Parse("{\"sabotage\":{\"start_cooldown_s\":12}}");
-            Assert.Equal(12f, ContentLoader.ReadConfig(set.RootElement).SabotageStartCooldownS);
+            using JsonDocument set = JsonDocument.Parse("{\"trasher\":{\"start_cooldown_s\":12}}");
+            Assert.Equal(12f, ContentLoader.ReadConfig(set.RootElement).TrasherStartCooldownS);
             using JsonDocument none = JsonDocument.Parse("{}");
-            Assert.Equal(10f, ContentLoader.ReadConfig(none.RootElement).SabotageStartCooldownS);
+            Assert.Equal(10f, ContentLoader.ReadConfig(none.RootElement).TrasherStartCooldownS);
         }
 
         [Fact]
@@ -105,11 +105,12 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
-        public void The_real_tuning_json_holds_the_sabotage_start_cooldown()
+        public void The_real_tuning_json_holds_the_start_cooldown_only_under_trasher()
         {
             ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null));
             using JsonDocument doc = JsonDocument.Parse(content.TuningJson);
-            Assert.Equal(10f, doc.RootElement.GetProperty("sabotage").GetProperty("start_cooldown_s").GetSingle());
+            Assert.Equal(10f, doc.RootElement.GetProperty("trasher").GetProperty("start_cooldown_s").GetSingle());
+            Assert.False(doc.RootElement.GetProperty("sabotage").TryGetProperty("start_cooldown_s", out _));
         }
 
         [Fact]

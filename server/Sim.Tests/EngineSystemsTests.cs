@@ -11,7 +11,7 @@ namespace Sim.Tests
         /// <summary>The sabotage opening lock is not what these tests are about: they sabotage at once.</summary>
         private static MatchConfig NoOpeningLock()
         {
-            return new MatchConfig { SabotageStartCooldownS = 0f };
+            return new MatchConfig { TrasherStartCooldownS = 0f };
         }
 
         private static MatchConfig ShortMeetings(float emergencyMin = 15f)
@@ -266,7 +266,7 @@ namespace Sim.Tests
         [Fact(Skip = "v1 rule, out of play in v2")]
         public void Sabotage_opening_lock_comes_from_the_config()
         {
-            MatchEngine e = Playing(new MatchConfig { SabotageStartCooldownS = 0f });
+            MatchEngine e = Playing(new MatchConfig { TrasherStartCooldownS = 0f });
             Assert.True(e.Apply(Polluter(e), new SabotageCommand(SabotageKind.Fire)).IsOk);
         }
 

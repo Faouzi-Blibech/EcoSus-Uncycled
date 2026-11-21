@@ -105,7 +105,7 @@ namespace Sim.Match
             Smog = new SmogSystem(smogPanels.Count > 0 ? smogPanels[0].Id : null);
             List<ConsoleDef> machines = map.ConsolesOfKind(ConsoleKind.Machine);
             Machine = new MachineSystem(machines.Count > 0 ? machines[0].Id : null);
-            SabotageTimer = new SabotageCooldown(config.SabotageSharedCooldownS, config.SabotageStartCooldownS);
+            SabotageTimer = new SabotageCooldown(config.SabotageSharedCooldownS, config.TrasherStartCooldownS);
             Meter = new PollutionMeter();
             Piles = new PileRegistry();
             Witnesses = new WitnessLog();
