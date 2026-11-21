@@ -137,3 +137,34 @@ func test_spot_cleaned_updates_bags_and_the_spot_at_once() -> bool:
 	assert_eq(s.spots.get("market_bins"), "clean", "spot clean before the next snapshot")
 	assert_eq(s.bags, 1, "bag count from the event")
 	return true
+
+
+func test_delivery_offer_and_jam_events() -> bool:
+	var s: Object = _session()
+	s._on_snapshot(_cleaner_snapshot())
+	s._on_event({"t": "delivered", "bags": 1, "meter": 40.0})
+	assert_eq(s.bags, 0, "bags handed in")
+	assert_near(s.meter, 40.0, 0.001, "meter from the event")
+	s._on_event({"t": "upgrade_offer", "items": ["heal", "mask"]})
+	assert_eq(s.upgrade_offer, ["heal", "mask"], "offer kept for the picker")
+	s._on_event({"t": "sabotage_started", "kind": "machine"})
+	assert_true(s.machine_jammed, "jam shows before the next snapshot")
+	assert_true(s.sabotage.is_empty(), "a jam is not the smog object")
+	s._on_event({"t": "sabotage_ended", "kind": "machine", "result": "fixed"})
+	assert_true(not s.machine_jammed, "fixed")
+	s._on_match_started({"role": "citizen", "spawn": Vector2.ZERO})
+	assert_eq(s.upgrade_offer, [], "a new match has no open offer")
+	_cleanup_save()
+	return true
+
+
+func test_machine_repair_time_only_while_counting() -> bool:
+	var s: Object = _session()
+	var snap: Dictionary = _cleaner_snapshot()
+	snap["machine"] = {"jammed": true, "repair_t": 1.5}
+	s._on_snapshot(snap)
+	assert_near(s.machine_repair_t, 1.5, 0.001, "counted")
+	snap["machine"] = {"jammed": true}
+	s._on_snapshot(snap)
+	assert_near(s.machine_repair_t, -1.0, 0.001, "not counting")
+	return true

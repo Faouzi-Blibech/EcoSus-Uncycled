@@ -15,6 +15,7 @@ const SESSION_FIELDS: Array[String] = [
 	"map_id", "map_version", "seat_id", "role", "phase", "partner_seat", "tuning", "task_types",
 	"my_tasks", "piles", "out_seats", "is_out", "spawn", "spawn_pending", "has_me_pos", "seats",
 	"cooldowns", "emergencies_left", "move_seq", "sabotage", "spots", "bags", "bag_cap",
+	"machine_jammed", "machine_repair_t", "upgrade_offer",
 ]
 
 var _saved: Dictionary = {}
@@ -75,7 +76,7 @@ func _round(role: String, at: String, offset: float) -> RoundScene:
 	r._player.position = map.marker(at).position + Vector2(offset, 0.0)
 	r._minigames = load("res://minigames/minigame_layer.tscn").instantiate() as MinigameLayer
 	r.add_child(r._minigames)
-	for kind in ["use", "report", "hit", "dump", "call_meeting", "sabotage", "clean_start", "clean_cancel"]:
+	for kind in ["use", "report", "hit", "dump", "call_meeting", "sabotage", "clean_start", "clean_cancel", "pick_upgrade"]:
 		r.senders[kind] = _record(kind)
 	r.senders["fix"] = func(console: String, holding: bool) -> void: _sent.append(["fix", console, holding])
 	return r
@@ -699,5 +700,78 @@ func test_spot_views_follow_the_session_state() -> bool:
 	r._update_spots()
 	assert_eq(v.state, "clean", "follows the snapshot")
 	assert_eq(v.modulate, Color.WHITE, "no dirt tint once clean")
+	_restore()
+	return true
+
+
+const MACHINE_ID: String = "machine"
+
+
+func test_deliver_at_the_machine_sends_use_machine() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.machine_jammed = false
+	Session.bags = 1
+	r.perform_action("use")
+	assert_eq(_sent, [["use", MACHINE_ID]], "deliver")
+	Session.bags = 0
+	_sent.clear()
+	r.perform_action("use")
+	assert_eq(_sent.size(), 0, "no bags, no delivery")
+	_restore()
+	return true
+
+
+func test_machine_fix_hold_sends_true_once_then_false() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.machine_jammed = true
+	r.begin_hold("fix")
+	r.begin_hold("fix")
+	assert_eq(_sent, [["fix", MACHINE_ID, true]], "one hold, repeat press sends nothing")
+	r.end_hold("fix")
+	assert_eq(_sent[_sent.size() - 1], ["fix", MACHINE_ID, false], "release")
+	_restore()
+	return true
+
+
+func test_machine_fix_released_when_walking_away_and_dropped_once_fixed() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.machine_jammed = true
+	r.begin_hold("fix")
+	r._player.position += Vector2(200.0, 0.0)
+	r._sync_holds(0.1)
+	assert_eq(_sent[_sent.size() - 1], ["fix", MACHINE_ID, false], "walked away: release")
+	r._player.position -= Vector2(200.0, 0.0)
+	r.begin_hold("fix")
+	Session.machine_jammed = false
+	_sent.clear()
+	r._sync_holds(0.1)
+	assert_eq(_sent.size(), 0, "fixed by the server: nothing to release")
+	assert_true(not r.is_holding_machine(), "hold cleared")
+	_restore()
+	return true
+
+
+func test_machine_repair_progress_from_the_server_count() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.machine_jammed = true
+	Session.tuning = {"machine": {"fix_s": 4.0}}
+	r.begin_hold("fix")
+	Session.machine_repair_t = 1.0
+	var p: Dictionary = r.machine_repair_progress()
+	assert_true(bool(p["active"]), "counting")
+	assert_near(float(p["elapsed"]), 1.0, 0.001, "elapsed")
+	assert_near(float(p["duration"]), 4.0, 0.001, "fix_s")
+	Session.machine_repair_t = -1.0
+	assert_true(not bool(r.machine_repair_progress()["active"]), "not counting")
+	_restore()
+	return true
+
+
+func test_pick_upgrade_sends_and_closes_the_offer() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.upgrade_offer = ["heal", "mask"]
+	r.pick_upgrade("heal")
+	assert_eq(_sent, [["pick_upgrade", "heal"]], "pick sent")
+	assert_eq(Session.upgrade_offer, [], "offer closed")
 	_restore()
 	return true

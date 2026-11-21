@@ -34,7 +34,11 @@ const SMOG_REPAIR_GRACE_S: float = 1.0
 ## The joystick draws above the smog haze (layer 1) and below the HUD (layer 10).
 const JOYSTICK_LAYER: int = 5
 ## Map marker kinds the player can stand at to act.
-const CONSOLE_KINDS: Array[String] = ["task", "emergency", "fire_fix", "smog_fix"]
+const CONSOLE_KINDS: Array[String] = ["task", "emergency", "fire_fix", "smog_fix", "machine"]
+## The Recycling Machine's marker id (map special of kind "machine").
+const MACHINE_ID: String = "machine"
+## Used while Session.tuning has no machine.fix_s; equals the server default (4 s).
+const MACHINE_FIX_FALLBACK_S: float = 4.0
 
 var _map: MapRoot = null
 var _player: LocalPlayer = null
@@ -54,6 +58,8 @@ var _leaving: bool = false
 ## The fire console the local player holds ("" when none) and the smog panel being repaired.
 var _held_console: String = ""
 var _repairing: bool = false
+## True while FIX is held at a jammed Recycling Machine (the server counts machine.fix_s).
+var _holding_machine: bool = false
 var _repair_console: String = ""
 var _repair_age_s: float = 0.0
 ## True once a snapshot carried sabotage.repair_t (the server is counting this player's repair).
@@ -81,6 +87,7 @@ var senders: Dictionary = {
 	"clean_cancel": Net.send_clean_cancel,
 	"move": Net.send_move,
 	"call_meeting": Net.send_call_meeting,
+	"pick_upgrade": Net.send_pick_upgrade,
 }
 var _hud: Hud = null
 var _minigames: MinigameLayer = null
@@ -448,6 +455,8 @@ func action_states() -> Dictionary:
 	ctx["is_out"] = Session.is_out
 	ctx["cd"] = Session.cooldowns
 	ctx["emergencies_left"] = Session.emergencies_left
+	ctx["bags"] = Session.bags
+	ctx["machine_jammed"] = Session.machine_jammed
 	return ActionRules.button_states(ctx)
 
 
@@ -493,6 +502,11 @@ func begin_hold(action: String) -> void:
 	if not bool(fix["visible"]):
 		return
 	var id: String = str(Net.as_dict(interaction_context().get("near_console")).get("id", ""))
+	if str(fix["kind"]) == "machine":
+		if not _holding_machine:
+			_holding_machine = true
+			senders["fix"].call(id, true)
+		return
 	if str(fix["kind"]) == "fire":
 		if _held_console != id:
 			_held_console = id
@@ -513,6 +527,7 @@ func begin_hold(action: String) -> void:
 func end_hold(action: String) -> void:
 	if action == "fix":
 		_release_fire()
+		_release_machine()
 	elif action == "clean":
 		_cancel_clean()
 
@@ -566,6 +581,31 @@ func is_repairing() -> bool:
 	return _repairing
 
 
+## {active, elapsed, duration} of the machine fix, from the server's own count (snapshot
+## machine.repair_t, sent to the repairer only): active only while the server counts this hold.
+func machine_repair_progress() -> Dictionary:
+	var duration: float = float(Net.as_dict(Session.tuning.get("machine")).get("fix_s", MACHINE_FIX_FALLBACK_S))
+	var active: bool = _holding_machine and Session.machine_repair_t >= 0.0
+	return {"active": active, "elapsed": minf(Session.machine_repair_t, duration) if active else 0.0, "duration": duration}
+
+
+func is_holding_machine() -> bool:
+	return _holding_machine
+
+
+## The player chose a card of the upgrade offer (UpgradePicker.picked).
+func pick_upgrade(item: String) -> void:
+	senders["pick_upgrade"].call(item)
+	Session.upgrade_offer = []
+
+
+func _release_machine() -> void:
+	if not _holding_machine:
+		return
+	_holding_machine = false
+	senders["fix"].call(MACHINE_ID, false)
+
+
 func _release_fire() -> void:
 	if _held_console.is_empty():
 		return
@@ -577,6 +617,7 @@ func _release_fire() -> void:
 ## Every hold this scene owes the server a release for; called before the scene leaves.
 func _release_holds() -> void:
 	_release_fire()
+	_release_machine()
 	_cancel_clean()
 	_repairing = false
 
@@ -590,6 +631,7 @@ func _sync_holds(delta: float = 0.0) -> void:
 		_cancel_clean()
 	_sync_fire_hold(delta)
 	_sync_repair(delta)
+	_sync_machine_hold()
 
 
 func _pile_in_clean_range(id: int) -> bool:
@@ -625,6 +667,17 @@ func _sync_fire_hold(delta: float) -> void:
 	_hold_resent = true
 	_hold_missing_s = 0.0
 	senders["fix"].call(_held_console, true)
+
+
+## A machine hold ends when the jam is over (the server fixed it: nothing to release) or when the
+## player walks out of the machine's range (release, so the server stops counting).
+func _sync_machine_hold() -> void:
+	if not _holding_machine:
+		return
+	if not Session.machine_jammed:
+		_holding_machine = false
+	elif not _console_in_reach(MACHINE_ID):
+		_release_machine()
 
 
 func _sync_repair(delta: float) -> void:

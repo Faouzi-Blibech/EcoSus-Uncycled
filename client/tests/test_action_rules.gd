@@ -177,3 +177,20 @@ func test_citizen_no_fix_at_fire_console_held_by_another_seat() -> bool:
 	var other: Dictionary = {"id": "fire_b", "kind": "fire_fix"}
 	assert_eq(_states({"near_console": other, "sabotage": fire})["fix"]["visible"], true, "the free console is offered")
 	return true
+
+
+const MACHINE: Dictionary = {"id": "machine", "kind": "machine"}
+
+
+## v2: USE at the Recycling Machine delivers the bags; a jammed machine offers a FIX hold instead.
+func test_machine_deliver_and_fix_table() -> bool:
+	assert_eq(_states({"near_console": MACHINE, "bags": 1})["use"], true, "deliver with a bag")
+	assert_eq(_states({"near_console": MACHINE, "bags": 0})["use"], false, "nothing to deliver")
+	var jammed: Dictionary = _states({"near_console": MACHINE, "bags": 1, "machine_jammed": true})
+	assert_eq(jammed["use"], false, "no delivery while jammed")
+	assert_eq(jammed["fix"], {"visible": true, "kind": "machine"}, "hold to fix")
+	var trasher: Dictionary = _states({"role": "polluter", "near_console": MACHINE, "machine_jammed": true})
+	assert_eq(trasher["use"], false, "a Trasher has nothing to deliver")
+	assert_eq(trasher["fix"]["visible"], false, "a Trasher does not fix")
+	assert_eq(_states({"phase": "meeting", "near_console": MACHINE, "bags": 1})["use"], false, "not in a meeting")
+	return true
