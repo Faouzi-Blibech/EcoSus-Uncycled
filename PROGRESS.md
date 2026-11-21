@@ -56,7 +56,7 @@ Read this first when resuming. Keep it short: done, next, known issues, decision
 | `reference` stays a separate repo, used as read-only reference | Decided 2026-11-13 |
 | Vote kick-out + poison hits (34%/hit = 3 hits, 25 s per-victim immunity, out at 100%, becomes a reportable pollution pile) | Decided 2026-11-13 |
 | Free dump + witness; one report per pile; clue = zone, time, waste type | Decided 2026-11-13 |
-| Humans talk aloud; bots use quick-chat testimony, polluter bots lie | Decided 2026-11-13 |
+| Humans chat by phrases or typed text (120 characters, 5 typed lines per meeting, word filter, 2 s gap); out players have a ghost chat living players never receive; bots use quick-chat testimony, polluter bots lie | Decided 2026-11-13, free text added 2026-11-21 |
 | 8 seats, 2 polluters, ~6 min round, 60 s talk + 30 s vote | Decided 2026-11-13 |
 | Server on .NET 10 LTS (not 9) | Decided 2026-11-13 |
 | **Event scope: the full design, built as a complete game.** The 28-hour cut (review s5) is dropped | Decided 2026-11-18 |

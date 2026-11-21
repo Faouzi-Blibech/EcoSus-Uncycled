@@ -6,7 +6,7 @@ table-driven tests. Numbers are **starting values** in `content/tuning.json`; pl
 change them.
 
 Status of the rules: the owner decided the core (2 polluters of 8, vote kick-out, poison hits,
-free dump + witness, talk aloud + bot phrases, 60 s talk + 30 s vote). Everything else here is a
+free dump + witness, humans chat by phrases or typed text + bot phrases, 60 s talk + 30 s vote). Everything else here is a
 **proposal for the team to confirm** (see `PROGRESS.md`).
 
 ## 0. Three clocks
@@ -232,7 +232,7 @@ flowchart TD
 | Emergencies | **2 per match in total** (shared), not in the first 15 s after a meeting, not during fire |
 | Discussion | Up to 60 s. Ends early (after a 10 s minimum) when every active **human** has tapped Ready; bots are always ready |
 | Voting / results | 30 s (ends early when everyone voted) / 5 s |
-| Talking | Humans talk out loud. Bots post short phrases. Humans can also tap a player card to post an accusation phrase: that is how humans **tell the bots** what they saw (see 06) |
+| Talking | Humans chat by phrases or typed text. Bots post short phrases. A typed line is at most 120 characters, 5 typed lines per seat per meeting (separate from the 5 phrases), at least 2 s between two chat lines of a seat, and listed words are replaced by `***`. Humans can also tap a player card to post an accusation phrase: that is how humans **tell the bots** what they saw (see 06). Out players have a ghost chat among themselves (typed or phrases, any time of the match); living players never receive it |
 | Who votes | Active seats (bots included). `Out` seats get `VoteKind.Dead` |
 | Timed-out votes | Count as **skip** (change in `MeetingSession.Tally`, which ignores `Missed` today), so two polluters cannot eject a citizen while others time out |
 | Result | Plurality kicks out; a tie or a skip majority kicks out nobody |

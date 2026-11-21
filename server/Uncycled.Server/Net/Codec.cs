@@ -21,10 +21,11 @@ public sealed class ClientMessage
 /// <summary>Client message parsing and the small server messages that do not need room state.</summary>
 public static class Codec
 {
-    public const int ProtocolVersion = 0;
+    public const int ProtocolVersion = 1;
     public const string ServerBuild = "0.1.0";
     public const int MaxMessageBytes = 4096;
     public const int MaxNameLength = 16;
+    public const int MaxChatTextRawChars = 1024;
 
     private static readonly JsonDocumentOptions ParseOptions = new JsonDocumentOptions { MaxDepth = 8 };
 
@@ -350,6 +351,20 @@ public static class Codec
                 }
 
                 cmd = new ChatPhraseCommand(id, args);
+                return true;
+            }
+
+            case "chat_text":
+            {
+                // size guard only: the engine normalises, filters and rejects over-length text
+                string? text = GetString(r, "text");
+                if (text == null || text.Length > MaxChatTextRawChars)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new ChatTextCommand(text);
                 return true;
             }
 

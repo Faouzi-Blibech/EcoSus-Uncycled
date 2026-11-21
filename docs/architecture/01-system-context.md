@@ -156,5 +156,5 @@ flowchart LR
 | Walk speed | 2.5 tiles/s (`MovementSpeed.BaseSpeed`) = 80 px/s | Reference value, playtest later |
 | Screen | 20 x 11.25 tiles visible (640x360 at 32 px); citizen vision radius 4 tiles | A 60 x 40 map takes about 24 s to cross |
 | Max rooms per instance | 20 | Event needs 1-3 |
-| Message size cap | 4 KB | No free text exists |
+| Message size cap | 4 KB | Typed chat is 120 characters at most (the server also drops raw text over 1024 characters) |
 | Rate limit | 40 messages/s per connection, burst 80 | 20 moves/s plus actions and pings |
