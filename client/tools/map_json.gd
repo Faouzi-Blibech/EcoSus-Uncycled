@@ -74,7 +74,7 @@ static func build(root: MapRoot) -> Dictionary:
 				pass  # written from dark_of / gas_rooms_of (sorted by id) below
 			_:
 				special.append(_entry(m))
-	return {
+	var d: Dictionary = {
 		"id": root.map_id,
 		"tile_px": TILE_PX,
 		"width": rect.end.x,
@@ -87,6 +87,13 @@ static func build(root: MapRoot) -> Dictionary:
 		"special": special,
 		"spawns": spawns,
 	}
+	# A layout map separates furniture (blocks walking) from walls (block sight too): the server
+	# reads the optional "sight" grid for line of sight.
+	if root.has_method("sight_rows"):
+		var sight: Array[String] = root.call("sight_rows")
+		if not sight.is_empty():
+			d["sight"] = sight
+	return d
 
 
 ## The dark rooms of a map scene as [{"id", "rect": [x, y, w, h]}] in tiles, sorted by id. They go to

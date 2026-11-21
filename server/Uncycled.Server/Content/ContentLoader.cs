@@ -52,7 +52,11 @@ public sealed class ContentBundle
 
 public static class ContentLoader
 {
+    /// <summary>The map tests and tools load by default (their fixtures are laid out on it).</summary>
     public const string DefaultMapId = "greybox_01";
+
+    /// <summary>The map rooms play (UNCYCLED_MAP overrides it): the TBS campus.</summary>
+    public const string PlayMapId = "tbs_01";
 
     /// <summary>
     /// UNCYCLED_CONTENT_DIR when set, else the first "content" folder holding tuning.json found in

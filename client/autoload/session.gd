@@ -39,6 +39,9 @@ var seat_id: int = -1
 var room_code: String = ""
 var reconnect_token: String = ""
 var host_seat: int = -1
+## Seats in the room (lobby "size") and the sizes the host may pick ("sizes").
+var room_size: int = 0
+var room_sizes: Array = []
 var map_id: String = ""
 var phase: String = "lobby"
 var tuning: Dictionary = {}
@@ -334,6 +337,8 @@ func clear_room() -> void:
 	room_code = ""
 	reconnect_token = ""
 	host_seat = -1
+	room_size = 0
+	room_sizes = []
 	phase = "lobby"
 	seats = []
 	my_tasks = []
@@ -462,6 +467,7 @@ func _on_welcome(data: Dictionary) -> void:
 	room_code = str(data.get("room", ""))
 	reconnect_token = str(data.get("token", ""))
 	host_seat = int(data.get("host_seat", -1))
+	_read_room_size(data)
 	map_id = str(data.get("map_id", ""))
 	tuning = Net.as_dict(data.get("tuning"))
 	speed_px_per_s = float(tuning.get("speed_px_per_s", Net.tiles_to_px(Net.DEFAULT_SPEED_TILES_PER_S)))
@@ -530,9 +536,16 @@ func _on_welcome(data: Dictionary) -> void:
 	_save_saved()
 
 
+func _read_room_size(data: Dictionary) -> void:
+	room_size = int(data.get("size", room_size))
+	if data.has("sizes"):
+		room_sizes = Net.as_array(data.get("sizes"))
+
+
 func _on_lobby(data: Dictionary) -> void:
 	seats = Net.as_array(data.get("seats"))
 	host_seat = int(data.get("host_seat", host_seat))
+	_read_room_size(data)
 	_mark_out_from_seats()
 	phase = "lobby"
 	_save_saved()

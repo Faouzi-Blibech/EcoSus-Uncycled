@@ -108,6 +108,12 @@ EJECTION_PENDING,Ejection in progress...,Éjection en cours...,الطرد جار
 ZONE_MARKET,Market,Marché,السوق
 ZONE_GARDEN,Garden,Jardin,الحديقة
 ZONE_DEPOT,Depot,Dépôt,المستودع
+ZONE_OFFICE,Office,Bureau,المكتب
+ZONE_CLUB,Club room,Salle du club,قاعة النادي
+ZONE_AMPHI,Amphitheatre,Amphithéâtre,المدرج
+ZONE_HALLWAY,Hallway,Couloir,الممر
+ZONE_LOUNGE,Lounge,Salon,الاستراحة
+ZONE_PARKING,Parking,Parking,موقف السيارات
 WASTE_PLASTIC,plastic,plastique,بلاستيك
 WASTE_GLASS,glass,verre,زجاج
 WASTE_PAPER,paper,papier,ورق
@@ -302,3 +308,22 @@ ACT_ALERT,Alert,Alerter,نبّه
 HUD_HEALED,You were healed.,Tu as été soigné.,تم علاجك.
 HUD_MASK_USED,Your gas mask saved you!,Ton masque à gaz t'a sauvé !,قناع الغاز أنقذك!
 GAS_WARNING,Toxic gas: %s in %d s!,Gaz toxique : %s dans %d s !,غاز سام: %s بعد %d ث!
+COMMON_BACK,Back,Retour,رجوع
+COMMON_CONFIRM,Confirm,Confirmer,تأكيد
+CREATE_MAP,Map :,Carte :,الخريطة:
+CREATE_BUTTON,Create,Créer,إنشاء
+MAP_TBS,TBS,TBS,TBS
+MAP_INSAT,INSAT,INSAT,INSAT
+MAP_SIDI_BOU_SAID,Sidi Bou Said,Sidi Bou Saïd,سيدي بوسعيد
+MAP_SOON,Coming soon,Bientôt,قريبًا
+MAP_LOCKED,This map is coming soon.,Cette carte arrive bientôt.,هذه الخريطة قادمة قريبًا.
+LOBBY_COPY,Copy the code,Copier le code,انسخ الرمز
+LOBBY_COPIED,Code copied.,Code copié.,تم نسخ الرمز.
+LOBBY_CHARACTER,Character,Personnage,الشخصية
+LOBBY_START_SHORT,Start,Lancer,ابدأ
+CHAR_TITLE,Choose your character,Choisis ton personnage,اختر شخصيتك
+CHAR_UNLOCK_HINT,Keep a daily scan streak to unlock more characters.,Garde ta série de scans quotidiens pour débloquer d'autres personnages.,حافظ على سلسلة المسح اليومية لفتح شخصيات أخرى.
+CHAR_SPROUT,Sprouty,Sprouty,Sprouty
+CHAR_ROBOT,Abdo,Abdo,Abdo
+CHAR_EAGLE,Enactor,Enactor,Enactor
+CHAR_RABBIT,Timi,Timi,Timi

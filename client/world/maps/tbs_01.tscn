@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://world/maps/layout_map.gd" id="1_layout"]
+
+[node name="Tbs01" type="Node2D"]
+script = ExtResource("1_layout")
+map_id = "tbs_01"
+layout_path = "res://world/maps/tbs_01.layout.json"
