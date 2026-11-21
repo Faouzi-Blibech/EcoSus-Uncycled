@@ -12,6 +12,7 @@ namespace Sim.Tests
     public class VirusTests
     {
         private const float BinsMinS = 1f;
+        private const float CompostMinS = 2f;
 
         [Theory]
         [InlineData(0f, 60f)]
@@ -323,6 +324,144 @@ namespace Sim.Tests
             Assert.Equal(RejectReason.NoItem, e.Apply(cleaner, new HealCommand(cleaner)).Reason);
 
             Assert.NotNull(e.ViewFor(cleaner).Me.InfectedS);
+        }
+
+        /// <summary>The test map with a wall at x = 5, y = 6..8: a seat at (6.5, 7.5) is 3 tiles from the bins and cannot see them.</summary>
+        private static MatchEngine WalledRig(out byte pol, out byte cleaner)
+        {
+            string[] rows = (string[])Rows.Clone();
+            for (int y = 6; y <= 8; y++)
+            {
+                char[] row = rows[y].ToCharArray();
+                row[5] = '#';
+                rows[y] = new string(row);
+            }
+
+            MapData basis = Map();
+            MapData map = FromAscii(rows, new List<ConsoleDef>(basis.Consoles), new List<ZoneDef>(basis.Zones), new List<Vec2>(basis.Spawns));
+            MatchConfig cfg = Open();
+            var e = new MatchEngine(cfg, map, Seats(cfg.Seats), TaskTypes(), new XorShiftRandom(42));
+            e.Tick(e.Config.IntroS);
+            pol = Polluter(e);
+            cleaner = Citizen(e);
+            P(e, pol).Ability = TrasherAbility.Virus;
+            ParkOthers(e, pol);
+            StandAt(e, pol, "bins");
+            e.Tick(0f);
+            return e;
+        }
+
+        [Fact]
+        public void Heal_ReplyDoesNotTellWhetherAFarSeatIsInfected()
+        {
+            MatchEngine e = Rig(out byte pol, out byte infected);
+            byte healer = Citizen(e, 1);
+            byte healthy = Citizen(e, 2);
+            Infect(e, pol, infected);
+            P(e, healer).Heals = 1;
+            e.TestTeleport(healer, new Vec2(15.5f, 8.5f));
+            e.TestTeleport(healthy, new Vec2(3.5f, 2.5f));
+
+            RejectReason far = e.Apply(healer, new HealCommand(infected)).Reason;
+            RejectReason farHealthy = e.Apply(healer, new HealCommand(healthy)).Reason;
+            RejectReason farTrasher = e.Apply(healer, new HealCommand(pol)).Reason;
+
+            Assert.Equal(RejectReason.OutOfRange, far);
+            Assert.Equal(far, farHealthy);
+            Assert.Equal(far, farTrasher);
+            Assert.Equal(1, P(e, healer).Heals);
+            Assert.NotNull(P(e, infected).InfectedDeathAt);
+        }
+
+        [Fact]
+        public void Heal_BehindAWall_SameReplyInfectedOrNot()
+        {
+            MatchEngine e = WalledRig(out byte pol, out byte infected);
+            byte healer = Citizen(e, 1);
+            byte healthy = Citizen(e, 2);
+            Infect(e, pol, infected);
+            P(e, healer).Heals = 1;
+            // the wall fills x 5..6: both targets are within heal range of the healer but cannot be seen
+            Vec2 healerAt = new Vec2(6.1f, 7.5f);
+            e.TestTeleport(infected, new Vec2(4.9f, 7.5f));
+            e.TestTeleport(healthy, new Vec2(4.9f, 8.0f));
+            e.TestTeleport(healer, healerAt);
+            Assert.True(Vec2.Distance(healerAt, P(e, infected).Position) <= e.Config.HealRange);
+            Assert.True(Vec2.Distance(healerAt, P(e, healthy).Position) <= e.Config.HealRange);
+
+            RejectReason sick = e.Apply(healer, new HealCommand(infected)).Reason;
+            RejectReason well = e.Apply(healer, new HealCommand(healthy)).Reason;
+
+            Assert.Equal(RejectReason.WallBetween, sick);
+            Assert.Equal(sick, well);
+            Assert.Equal(1, P(e, healer).Heals);
+            Assert.NotNull(P(e, infected).InfectedDeathAt);
+        }
+
+        [Fact]
+        public void Heal_OnATrasherInReach_TargetInvalid()
+        {
+            MatchEngine e = Rig(out byte pol, out byte cleaner);
+            P(e, cleaner).Heals = 1;
+            e.TestTeleport(cleaner, new Vec2(BinsPos.X + 1f, BinsPos.Y));
+
+            Assert.Equal(RejectReason.TargetInvalid, e.Apply(cleaner, new HealCommand(pol)).Reason);
+
+            Assert.Equal(1, P(e, cleaner).Heals);
+        }
+
+        [Fact]
+        public void SecondVirusOnAnInfectedCleaner_KeepsTheRunningCountdown_NoNewInfectedEvent()
+        {
+            MatchEngine e = Rig(out byte pol, out byte cleaner);
+            Infect(e, pol, cleaner);
+            Advance(e, 5f);
+            float running = e.ViewFor(cleaner).Me.InfectedS!.Value;
+            byte pol2 = Polluter(e, 1);
+            P(e, pol2).Ability = TrasherAbility.Virus;
+            Plant(e, pol2, "compost");
+            Advance(e, 40f); // a replacing virus (47 s old) would restart the countdown at about 34 s
+
+            P(e, cleaner).Bags = 0;
+            Clean(e, cleaner, "compost", CompostMinS + 0.1f);
+
+            Assert.Empty(Of<InfectedEvent>(e.Tick(0f)));
+            Assert.Null(e.Spots.Find("compost")!.VirusBy);
+            Assert.True(P(e, cleaner).IsActive);
+            // the first countdown kept running (42.1 s passed since the reading), it was not replaced by the second virus
+            Assert.InRange(e.ViewFor(cleaner).Me.InfectedS!.Value, 0f, running - 42f);
+        }
+
+        [Fact]
+        public void InfectedThenGassed_IsNotPutOutASecondTime()
+        {
+            MatchEngine e = Rig(out byte pol, out byte cleaner);
+            Infect(e, pol, cleaner);
+            byte pol2 = Polluter(e, 1);
+            P(e, pol2).Ability = TrasherAbility.Gas;
+            e.TestTeleport(cleaner, new Vec2(2.5f, 2.5f));
+            Assert.True(e.Apply(pol2, new GasCommand("gas_w")).IsOk);
+
+            List<GameEvent> events = Advance(e, e.Config.GasWarningS + 1f);
+            Assert.False(P(e, cleaner).IsActive);
+            Assert.Equal(OutCause.Gas, P(e, cleaner).OutCause);
+            Assert.Null(P(e, cleaner).InfectedDeathAt);
+            Assert.Single(Of<YouAreOutEvent>(events));
+
+            List<GameEvent> later = Advance(e, 70f); // past the old countdown
+
+            Assert.Empty(Of<YouAreOutEvent>(later));
+            Assert.Equal(OutCause.Gas, P(e, cleaner).OutCause);
+            int bodies = 0;
+            foreach (Pile pile in e.Piles.All)
+            {
+                if (pile.Kind == PileKind.Body)
+                {
+                    bodies++;
+                }
+            }
+
+            Assert.Equal(1, bodies);
         }
 
         // ---------- infected meeting ----------

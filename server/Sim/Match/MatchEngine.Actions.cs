@@ -1072,11 +1072,12 @@ namespace Sim.Match
             }
 
             PlayerState? target = Find(c.Target);
-            if (target == null || !target.IsActive || !target.IsCitizen || target.InfectedDeathAt == null)
+            if (target == null || !target.IsActive)
             {
                 return Reject(RejectReason.TargetInvalid);
             }
 
+            // Reach and sight come before the infection check: the reply must not tell whether a far seat is infected.
             if (target != p)
             {
                 RejectReason? reach = CheckReach(p.Position, target.Position, Config.HealRange);
@@ -1084,6 +1085,11 @@ namespace Sim.Match
                 {
                     return Reject(reach.Value);
                 }
+            }
+
+            if (!target.IsCitizen || target.InfectedDeathAt == null)
+            {
+                return Reject(RejectReason.TargetInvalid);
             }
 
             p.Heals--;
