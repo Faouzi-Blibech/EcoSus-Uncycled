@@ -336,13 +336,13 @@ namespace Uncycled.Bots.Tests
 
         // ---------- m5, m9: observation safety ----------
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Observation_NoNaNWithZeroedConfig()
         {
             TestMatch m = TestMatch.Create();
             m.TickFor(11f);
             byte polluter = m.FirstSeatOf(Role.Polluter);
-            Assert.True(m.Engine.Apply(polluter, new SabotageCommand(SabotageKind.Fire)).IsOk);
+            Assert.True(m.Engine.Apply(polluter, new SabotageCommand(SabotageKind.Smog)).IsOk);
             m.Tick();
             var zero = new MatchConfig
             {

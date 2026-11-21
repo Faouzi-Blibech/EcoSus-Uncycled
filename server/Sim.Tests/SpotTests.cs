@@ -80,6 +80,24 @@ namespace Sim.Tests
         }
 
         [Fact]
+        public void TwoConsolesOfOneType_GetTheirIndexAsStep_AndUseOkCarriesIt()
+        {
+            // one two-step type: compost is step 0, tap is step 1 (the client picks the mini-game by type and step)
+            var types = new List<TaskTypeDef> { new TaskTypeDef("turn_compost", TaskCategory.Long, 2, 2f, new[] { "compost", "tap" }) };
+            var e = Playing(tasks: types);
+            Assert.Equal(0, e.Spots.Find("compost")!.Step);
+            Assert.Equal(1, e.Spots.Find("tap")!.Step);
+
+            byte c = Citizen(e);
+            StandAt(e, c, "tap");
+            Assert.True(e.Apply(c, new UseCommand("tap")).IsOk);
+            UseOkEvent ev = Assert.Single(Of<UseOkEvent>(e.Tick(0f)));
+            Assert.Equal("turn_compost", ev.TaskType);
+            Assert.Equal(1, ev.Step);
+            Assert.Null(ev.TaskId);
+        }
+
+        [Fact]
         public void SpotDone_BeforeMinSeconds_OnCooldown()
         {
             var e = Playing();
@@ -259,6 +277,7 @@ namespace Sim.Tests
             Assert.Equal(RejectReason.NotAllowed, e.Apply(p, new SabotageCommand(SabotageKind.Fire)).Reason);
             Assert.False(e.Fire.Active);
             Assert.Equal(RejectReason.NotAllowed, e.Apply(c, new CleanStartCommand(1)).Reason);
+            Assert.Equal(RejectReason.NotAllowed, e.Apply(c, new CleanCancelCommand(1)).Reason);
             Assert.Equal(RejectReason.NotAllowed, e.Apply(c, new TaskStepCommand(1)).Reason);
         }
     }

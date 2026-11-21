@@ -91,7 +91,7 @@ follows on the next tick.
 | S->C | `snapshot` | see 4.1 | 20 Hz, filtered per seat |
 | S->C | `phase_changed` | `phase` ("playing"/"meeting"/"ejection"/"ended"), `stage?` ("discussion"/"voting"/"results") | to everyone, once per phase or meeting-stage change; `stage` only in a meeting. Snapshots also carry `phase` |
 | C->S | `use` | `console` | Cleaner: a spot id opens a clean session (dirty spot, free bag slot); `"machine"` delivers all carried bags. A Trasher sending `use` on a spot is rejected with `not_allowed`: Trashers fake-clean on the client only and send nothing |
-| S->C | `use_ok` | `console`, `kind` ("task"/"emergency"/"fire_fix"/"smog_fix"/"spot"/"machine"), `task?`, `type?`, `step?` | to the sender; opens the minigame or action. `spot` comes with the minigame `type`. `task` and `fire_fix` are out of play in v2 |
+| S->C | `use_ok` | `console`, `kind` ("task"/"emergency"/"fire_fix"/"smog_fix"/"spot"/"machine"), `task?`, `type?`, `step?` | to the sender; opens the minigame or action. `spot` comes with the minigame `type` and `step` (the console's index in its task type's `consoles`, which picks the minigame variant), and no `task`. `task` and `fire_fix` are out of play in v2 |
 | C->S | `task_step` | `task` | out of play in v2: rejected with `not_allowed` (replaced by `spot_done`) |
 | C->S | `spot_done` | `spot` | Cleaner with an open session on that spot, after at least `min_s` of its task (times `spots.tool_time_mult` with the tool); a Trasher sending it is rejected with `not_allowed` |
 | S->C | `spot_cleaned` | `spot`, `bags` | the cleaner; `bags` = bags the cleaner carries now (after this clean) |

@@ -115,7 +115,7 @@ namespace Sim.Match
 
             // One open session per seat; the spot can stay dirty for several seats at once, the first spot_done wins.
             _sessions[p.Seat] = new TaskSession(-1, 0, spot.Id, ActiveTime);
-            Emit(new UseOkEvent(p.Seat, spot.Id, ConsoleKind.Task, null, spot.TaskType, null));
+            Emit(new UseOkEvent(p.Seat, spot.Id, ConsoleKind.Task, null, spot.TaskType, spot.Step));
             return CommandResult.Ok;
         }
 

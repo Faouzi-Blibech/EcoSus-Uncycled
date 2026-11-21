@@ -200,11 +200,65 @@ namespace Sim.Tests
             Assert.Contains(TimelineKind.Ejection, kinds);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        /// <summary>A v2 match: three spots cleaned, a smog sabotage fixed, an emergency meeting, a vote-out, then the deadline.</summary>
+        private static Driver V2Match(ulong seed)
+        {
+            var cfg = new MatchConfig
+            {
+                DiscussionS = 2f,
+                VotingS = 5f,
+                ResultsS = 1f,
+                EmergencyMinSinceMeetingS = 0f,
+                DeadlineS = 90f,
+            };
+            var d = new Driver(new MatchEngine(cfg, TestWorld.Map(), TestWorld.Seats(8), TestWorld.TaskTypes(), new XorShiftRandom(seed)));
+            d.WaitFor(MatchPhase.Playing, 6f);
+            List<byte> polluters = TestWorld.SeatsWithRole(d.E, Role.Polluter);
+            List<byte> citizens = TestWorld.SeatsWithRole(d.E, Role.Citizen);
+
+            string[] spots = { "bins", "compost", "tap" };
+            for (int i = 0; i < spots.Length; i++)
+            {
+                d.WalkTo(citizens[i], d.E.Map.FindConsole(spots[i])!.Position);
+                Assert.True(d.Do(citizens[i], new UseCommand(spots[i])).IsOk);
+                d.Wait(2.1f);
+                Assert.True(d.Do(citizens[i], new SpotDoneCommand(spots[i])).IsOk);
+            }
+
+            d.Wait(10f);
+            Assert.True(d.Do(polluters[0], new SabotageCommand(SabotageKind.Smog)).IsOk);
+            d.WalkTo(citizens[3], d.E.Map.FindConsole("smog_panel")!.Position);
+            Assert.True(d.Do(citizens[3], new FixCommand("smog_panel", true)).IsOk);
+            d.Wait(3.2f);
+
+            d.WalkTo(citizens[4], d.E.Map.FindConsole("button")!.Position);
+            Assert.True(d.Do(citizens[4], new CallMeetingCommand()).IsOk);
+            d.WaitFor(MatchPhase.Meeting, 1f);
+            d.Wait(2.1f);
+            Assert.Equal(MeetingStage.Voting, d.E.Meeting!.Stage);
+            foreach (PlayerState p in d.E.Players)
+            {
+                Assert.True(d.Do(p.Seat, new VoteCommand(polluters[0])).IsOk);
+            }
+
+            d.WaitFor(MatchPhase.Ejection, 3f);
+            d.WaitFor(MatchPhase.Playing, 6f);
+            d.Wait(100f);
+            return d;
+        }
+
+        [Fact]
         public void Same_seed_and_commands_give_the_same_events()
         {
-            List<string> a = Describe(PollutersWinByMeter(9).Events);
-            List<string> b = Describe(PollutersWinByMeter(9).Events);
+            Driver first = V2Match(9);
+            Assert.Equal(MatchPhase.Ended, first.E.Phase);
+            Assert.Equal(GameOverReason.Deadline, Assert.Single(TestWorld.Of<GameOverEvent>(first.Events)).Reason);
+            Assert.Equal(3, TestWorld.Of<SpotCleanedEvent>(first.Events).Count);
+            Assert.Single(TestWorld.Of<EjectionEvent>(first.Events));
+            Assert.NotEmpty(TestWorld.Of<SabotageEndedEvent>(first.Events));
+
+            List<string> a = Describe(first.Events);
+            List<string> b = Describe(V2Match(9).Events);
             Assert.Equal(a.Count, b.Count);
             for (int i = 0; i < a.Count; i++)
             {

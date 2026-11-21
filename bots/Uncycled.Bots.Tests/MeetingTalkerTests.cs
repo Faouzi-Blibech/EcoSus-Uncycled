@@ -452,8 +452,7 @@ namespace Uncycled.Bots.Tests
                 SeatView pv = _m.Engine.ViewFor(polluter);
                 PlayerView witness = pv.Players.First(p => Vec2.Distance(p.Position, pv.Me.Position) <= 1.0f && !pv.Me.Partners.Contains(p.Seat));
                 Reporter = witness.Seat;
-                Assert.True(_m.Engine.Apply(polluter, new DumpCommand()).IsOk);
-                int pile = _m.Engine.Piles.All[0].Id;
+                int pile = _m.SeedDump(polluter).Id;
                 Assert.True(_m.Engine.Apply(Reporter, new ReportCommand(pile)).IsOk);
                 Assert.Equal(MatchPhase.Meeting, _m.Engine.Phase);
                 _log = new MeetingLog(_m.Content.Phrases!);
@@ -542,7 +541,7 @@ namespace Uncycled.Bots.Tests
             return new MeetingTalker(primary, fallback, floor ?? new MeetingFloor(), new Random(seed));
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_AtMostThreeLinesWithHumanGaps()
         {
             var rig = new Rig();
@@ -563,7 +562,7 @@ namespace Uncycled.Bots.Tests
             Assert.All(rig.Chat, c => Assert.Equal(MeetingStage.Discussion, c.Stage));
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_SharedFloorKeepsBotLines2sApart()
         {
             var rig = new Rig();
@@ -598,7 +597,7 @@ namespace Uncycled.Bots.Tests
             }
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_PassesTheMatchIdToTheDecider()
         {
             var rig = new Rig();
@@ -613,7 +612,7 @@ namespace Uncycled.Bots.Tests
             Assert.All(spy.MatchIds, id => Assert.Equal("ROOM7", id));
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_RepliesToAnAccusationWithin3To8s()
         {
             var rig = new Rig();
@@ -641,7 +640,7 @@ namespace Uncycled.Bots.Tests
             Assert.All(rig.Chat, c => Assert.True(c.Result.IsOk));
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_VotesBetween3And20sIntoVoting()
         {
             var rig = new Rig();
@@ -655,7 +654,7 @@ namespace Uncycled.Bots.Tests
             Assert.InRange(vote.Time - rig.VotingStart, 3f, 20f + 0.1f);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_UsesFallbackWhenPrimaryIsLate()
         {
             var rig = new Rig();
@@ -757,7 +756,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(e.Apply(accuser, new ChatPhraseCommand("sus", new[] { ChatArg.ForSeat(target) })).IsOk);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_UsesAPrimaryDecisionThatFinishesOnALaterTick()
         {
             var rig = new Rig();
@@ -779,7 +778,7 @@ namespace Uncycled.Bots.Tests
             Assert.Equal("delayed", talker.LastSource);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_LeadSIsTheModelCallTimeout()
         {
             Func<float, List<string>> run = lead =>
@@ -804,7 +803,7 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(new[] { "rule" }, run(1f)); // started 1 s ahead, still pending at the planned moment
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_ARefusedReplyFallsBackToTheRulePath()
         {
             var rig = new Rig();
@@ -829,7 +828,7 @@ namespace Uncycled.Bots.Tests
             Assert.InRange(first.Time - accusedAt, 3f, 8f + 0.1f);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_AnAccusationDropsALineStillWaitingForTheFloor()
         {
             var rig = new Rig();
@@ -862,7 +861,7 @@ namespace Uncycled.Bots.Tests
             Assert.InRange(after[0].Time - accusedAt, 3f, 8f + 0.1f);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_AnswersAnAccusationAfterTheHostClearedTheLog()
         {
             var rig = new Rig();
@@ -896,7 +895,7 @@ namespace Uncycled.Bots.Tests
             Assert.Equal("not_me", ((ChatPhraseCommand)reply.Command).PhraseId);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_AnswersAnAccusationInALogThatWasClearedAndRefilledBetweenTwoSteps()
         {
             var rig = new Rig();
@@ -954,7 +953,7 @@ namespace Uncycled.Bots.Tests
             }
         }
 
-        [Theory(Skip = "v1 rule, out of play in v2")]
+        [Theory]
         [InlineData("vote")]
         [InlineData("sus")] // an accusation in the chat is an announcement too: a bot votes the seat it accused
         [InlineData("skip_no_proof")]
@@ -979,7 +978,7 @@ namespace Uncycled.Bots.Tests
 
         // ---------- decision log ----------
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_ReportsEverySentDecisionToTheSinkWithItsReason()
         {
             Func<IMeetingDecider, ListSink> run = primary =>
@@ -1006,7 +1005,7 @@ namespace Uncycled.Bots.Tests
             Assert.All(late.Items, i => Assert.Equal("late", i.Sent.Reason));
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_LogsAReplyTheModelDeclinedAsReplyDeclined()
         {
             var rig = new Rig();
@@ -1048,7 +1047,7 @@ namespace Uncycled.Bots.Tests
             }
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Talker_LogLineShowsTheClefFallbackReasonAndLatency()
         {
             var rig = new Rig();
