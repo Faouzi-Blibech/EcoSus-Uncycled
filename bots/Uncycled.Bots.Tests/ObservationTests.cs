@@ -76,8 +76,8 @@ namespace Uncycled.Bots.Tests
             // Seat 7 walks to opposite ends of the map in the two runs and ends out of seat 0's sight.
             TestMatch west = TestMatch.Create(seed: 5);
             TestMatch east = TestMatch.Create(seed: 5);
-            WalkTo(west, 7, "fire_a", 14f);
-            WalkTo(east, 7, "fire_b", 14f);
+            WalkTo(west, 7, "machine", 14f);
+            WalkTo(east, 7, "smog_panel", 14f);
 
             Vec2 westPos = west.Engine.ViewFor(7).Me.Position;
             Vec2 eastPos = east.Engine.ViewFor(7).Me.Position;

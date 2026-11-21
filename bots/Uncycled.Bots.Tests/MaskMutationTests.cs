@@ -27,8 +27,8 @@ namespace Uncycled.Bots.Tests
             var polluters = m.Engine.Players.Where(p => p.Role == Role.Polluter).Select(p => p.Seat).ToList();
             Assert.Equal(2, polluters.Count);
 
-            // both polluters meet at the far fire console while the citizens stay at the spawn
-            Crowd.Do(m, polluters, BotAction.GoFireA, 14f);
+            // both polluters meet at the far smog panel while the citizens stay at the spawn
+            Crowd.Do(m, polluters, BotAction.GoSmogPanel, 14f);
             m.TickFor(2f);
 
             byte p = polluters[0];

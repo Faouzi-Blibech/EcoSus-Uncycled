@@ -108,7 +108,7 @@ namespace Uncycled.Bots.Tests
 
         // ---------- I2 and m10: fire holds ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Mask_HoldFireFalseOnConsoleHeldByOther()
         {
             TestMatch m = TestMatch.Create();
@@ -123,7 +123,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(bot.Mask()[(int)BotAction.HoldFire]);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Mask_ReleaseFireTrueOnlyForMyOwnHold()
         {
             TestMatch m = TestMatch.Create();
@@ -139,7 +139,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(mask[(int)BotAction.ReleaseFire]);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Executor_HoldFireSkipsConsoleHeldByOther()
         {
             TestMatch m = TestMatch.Create();
