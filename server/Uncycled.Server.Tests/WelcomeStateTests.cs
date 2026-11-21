@@ -153,6 +153,33 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void Rejoin_KeepsInfectedCountdown()
+        {
+            SnapshotLeakTests.VirusRig rig = SnapshotLeakTests.VirusRig.Planted(5UL);
+            rig.Infect();
+            MatchEngine engine = rig.Engine;
+            engine.Tick(2f); // two more seconds of the countdown pass before the rejoin
+
+            SeatView view = engine.ViewFor(rig.Victim);
+            Assert.NotNull(view.Me.InfectedS);
+            string welcome = Wire.Welcome("BCDF", rig.Victim, "tok", 0, SnapshotLeakTests.MinimalBundle(), "playing", view, new List<Seat>(), _ => false);
+            string snapshot = Wire.Snapshot(view, 1, 1.0);
+
+            using JsonDocument w = JsonDocument.Parse(welcome);
+            double inWelcome = w.RootElement.GetProperty("state").GetProperty("infected_s").GetDouble();
+            using JsonDocument s = JsonDocument.Parse(snapshot);
+            double inSnapshot = s.RootElement.GetProperty("me").GetProperty("infected_s").GetDouble();
+            Assert.Equal(view.Me.InfectedS!.Value, inWelcome, 2);
+            Assert.Equal(inSnapshot, inWelcome, 2);
+            Assert.InRange(inWelcome, 40.0, 58.5);
+
+            // a seat that is not infected gets none
+            SeatView other = engine.ViewFor(rig.First);
+            string otherWelcome = Wire.Welcome("BCDF", rig.First, "tok", 0, SnapshotLeakTests.MinimalBundle(), "playing", other, new List<Seat>(), _ => false);
+            Assert.DoesNotContain("infected_s", otherWelcome);
+        }
+
+        [Fact]
         public void Trasher_welcome_and_snapshot_carry_no_bag_fields()
         {
             MatchEngine engine = SnapshotLeakTests.BuildEngine(3UL);

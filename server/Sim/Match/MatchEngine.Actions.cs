@@ -292,6 +292,11 @@ namespace Sim.Match
             spot.State = SpotState.Clean;
             p.Bags++;
             Emit(new SpotCleanedEvent(p.Seat, spot.Id, p.Bags));
+            if (spot.VirusBy != null)
+            {
+                TriggerVirus(p, spot);
+            }
+
             return CommandResult.Ok;
         }
 
@@ -610,6 +615,14 @@ namespace Sim.Match
             if (!p.IsActive)
             {
                 return Reject(RejectReason.NotAllowed);
+            }
+
+            if (p.InfectedDeathAt != null && !p.InfectedMeetingUsed)
+            {
+                // An infected Cleaner may call one meeting from anywhere; it does not use up an emergency.
+                p.InfectedMeetingUsed = true;
+                StartMeeting(p, MeetingCause.Emergency, null);
+                return CommandResult.Ok;
             }
 
             if (Fire.Active)
@@ -939,6 +952,143 @@ namespace Sim.Match
             p.Ability = c.Ability;
             p.AbilityChoiceOpen = false;
             Emit(new AbilityOkEvent(p.Seat, c.Ability));
+            return CommandResult.Ok;
+        }
+
+        // ---------- virus and heal (spec section 6) ----------
+
+        private CommandResult ApplyPlantVirus(PlayerState p, PlantVirusCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsPolluter)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (p.Ability != TrasherAbility.Virus)
+            {
+                return Reject(RejectReason.NotUnlocked);
+            }
+
+            Spot? spot = Spots.Find(c.SpotId);
+            if (spot == null)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (ActiveTime + Epsilon < p.VirusReadyAt || HasPlantedVirus(p.Seat))
+            {
+                return Reject(RejectReason.OnCooldown);
+            }
+
+            RejectReason? reach = CheckReach(p.Position, spot.Position, spot.Range);
+            if (reach != null)
+            {
+                return Reject(reach.Value);
+            }
+
+            if (spot.State != SpotState.Dirty)
+            {
+                return Reject(RejectReason.SpotClean);
+            }
+
+            if (spot.VirusBy != null)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            spot.VirusBy = p.Seat;
+            spot.VirusPlantedAt = ActiveTime;
+            Emit(new VirusPlantedEvent(p.Seat, spot.Id));
+            return CommandResult.Ok;
+        }
+
+        private bool HasPlantedVirus(byte seat)
+        {
+            foreach (Spot s in Spots.All)
+            {
+                if (s.VirusBy == seat)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>A Cleaner finished a spot with a virus on it: infect them with a countdown that grows deadlier with the virus age.</summary>
+        private void TriggerVirus(PlayerState victim, Spot spot)
+        {
+            PlayerState? planter = spot.VirusBy == null ? null : Find(spot.VirusBy.Value);
+            float age = ActiveTime - spot.VirusPlantedAt;
+            spot.VirusBy = null;
+            if (planter != null)
+            {
+                planter.VirusReadyAt = ActiveTime + Config.VirusCooldownS;
+            }
+
+            if (victim.InfectedDeathAt != null)
+            {
+                return; // already infected: the virus is used up, the running countdown stays
+            }
+
+            float countdown = VirusRule.Countdown(age, Config.VirusStartS, Config.VirusFatalS, Config.VirusGrowS);
+            victim.InfectedDeathAt = ActiveTime + countdown;
+            victim.InfectedMeetingUsed = false;
+            Emit(new InfectedEvent(victim.Seat, countdown));
+        }
+
+        /// <summary>Active time only: a meeting or ejection freezes ActiveTime, so the countdown waits with it.</summary>
+        private void TickInfections()
+        {
+            foreach (PlayerState p in _players)
+            {
+                if (p.IsActive && p.InfectedDeathAt != null && ActiveTime + Epsilon >= p.InfectedDeathAt.Value)
+                {
+                    MakeOut(p, OutCause.Virus);
+                }
+            }
+        }
+
+        private CommandResult ApplyHeal(PlayerState p, HealCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsCitizen)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (p.Heals <= 0)
+            {
+                return Reject(RejectReason.NoItem);
+            }
+
+            PlayerState? target = Find(c.Target);
+            if (target == null || !target.IsActive || !target.IsCitizen || target.InfectedDeathAt == null)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (target != p)
+            {
+                RejectReason? reach = CheckReach(p.Position, target.Position, Config.HealRange);
+                if (reach != null)
+                {
+                    return Reject(reach.Value);
+                }
+            }
+
+            p.Heals--;
+            target.InfectedDeathAt = null;
+            Emit(new HealedEvent(target.Seat, p.Seat));
             return CommandResult.Ok;
         }
 

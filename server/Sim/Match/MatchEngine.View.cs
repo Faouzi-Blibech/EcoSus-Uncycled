@@ -99,6 +99,7 @@ namespace Sim.Match
                     Math.Max(0f, me.DumpReadyAt - ActiveTime),
                     SabotageTimer.Remaining(ActiveTime),
                     Math.Max(0f, me.RepolluteReadyAt - ActiveTime),
+                    HasPlantedVirus(me.Seat) ? Config.VirusCooldownS : Math.Max(0f, me.VirusReadyAt - ActiveTime),
                     gas: Math.Max(0f, me.GasReadyAt - ActiveTime));
             }
 
@@ -119,7 +120,8 @@ namespace Sim.Match
                 me.Repollutes,
                 me.Ability,
                 me.Heals,
-                me.Masks);
+                me.Masks,
+                me.InfectedDeathAt == null ? (float?)null : Math.Max(0f, me.InfectedDeathAt.Value - ActiveTime));
 
             var spots = new List<SpotView>();
             foreach (Spot spot in Spots.All)

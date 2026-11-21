@@ -309,6 +309,8 @@ namespace Sim.Match
                 case CleanCancelCommand _: return Reject(RejectReason.NotAllowed);
                 case ChatPhraseCommand c: return ApplyChat(p, c);
                 case ChatTextCommand c: return ApplyChatText(p, c);
+                case PlantVirusCommand c: return ApplyPlantVirus(p, c);
+                case HealCommand c: return ApplyHeal(p, c);
                 default: return CommandResult.Rejected(RejectReason.NotAllowed);
             }
         }
@@ -385,6 +387,7 @@ namespace Sim.Match
             TickGas(dt);
             TickFire(dt);
             TickCleaning(dt);
+            TickInfections();
             UpdateSightMemory();
             TryEndMatch();
         }
@@ -602,11 +605,12 @@ namespace Sim.Match
                 _smogRepairConsole = null;
             }
 
-            if (cause == OutCause.Poison)
+            p.InfectedDeathAt = null;
+            if (cause == OutCause.Poison || cause == OutCause.Virus)
             {
                 string zone = Map.ZoneAt(p.Position);
                 Piles.AddBody(p.Position, zone, MatchTime, p.Seat);
-                AddTimeline(TimelineKind.PoisonedOut, p.Seat, null, zone);
+                AddTimeline(cause == OutCause.Virus ? TimelineKind.Infected : TimelineKind.PoisonedOut, p.Seat, null, zone);
             }
             else if (cause == OutCause.Gas)
             {

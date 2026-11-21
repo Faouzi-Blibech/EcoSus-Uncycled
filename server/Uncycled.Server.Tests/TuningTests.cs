@@ -105,6 +105,20 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void The_virus_keys_are_read_and_the_real_file_holds_them()
+        {
+            using JsonDocument set = JsonDocument.Parse("{\"virus\":{\"start_s\":50,\"fatal_s\":8,\"grow_s\":70,\"heal_range\":2}}");
+            MatchConfig c = ContentLoader.ReadConfig(set.RootElement);
+            Assert.Equal((50f, 8f, 70f, 2f), (c.VirusStartS, c.VirusFatalS, c.VirusGrowS, c.HealRange));
+            using JsonDocument none = JsonDocument.Parse("{}");
+            MatchConfig d = ContentLoader.ReadConfig(none.RootElement);
+            Assert.Equal((60f, 10f, 90f, 1.5f), (d.VirusStartS, d.VirusFatalS, d.VirusGrowS, d.HealRange));
+
+            MatchConfig real = ContentLoader.Load(ContentLoader.ResolveDir(null)).Config;
+            Assert.Equal((60f, 10f, 90f, 1.5f), (real.VirusStartS, real.VirusFatalS, real.VirusGrowS, real.HealRange));
+        }
+
+        [Fact]
         public void The_real_tuning_json_holds_the_start_cooldown_only_under_trasher()
         {
             ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null));

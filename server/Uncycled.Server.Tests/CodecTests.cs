@@ -342,6 +342,47 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void VirusCommands_Parse()
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"plant_virus\",\"spot\":\"market_bins\"}"), out ICommand? cmd, out _));
+            Assert.Equal("market_bins", Assert.IsType<PlantVirusCommand>(cmd).SpotId);
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"plant_virus\"}"), out _, out string? error));
+            Assert.Equal("bad_field", error);
+
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"heal\",\"target\":3}"), out cmd, out _));
+            Assert.Equal((byte)3, Assert.IsType<HealCommand>(cmd).Target);
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"heal\"}"), out _, out error));
+            Assert.Equal("bad_field", error);
+        }
+
+        [Fact]
+        public void VirusEvents_HaveTheirWireShape()
+        {
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new InfectedEvent(2, 35.5f))!))
+            {
+                Assert.Equal("infected", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal(35.5f, d.RootElement.GetProperty("countdown").GetSingle());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new HealedEvent(2, 4))!))
+            {
+                Assert.Equal("healed", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal(4, d.RootElement.GetProperty("by").GetInt32());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new VirusPlantedEvent(1, "market_bins"))!))
+            {
+                Assert.Equal("virus_planted", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("market_bins", d.RootElement.GetProperty("spot").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new YouAreOutEvent(2, OutCause.Virus))!))
+            {
+                Assert.Equal("virus", d.RootElement.GetProperty("cause").GetString());
+            }
+        }
+
+        [Fact]
         public void TrasherEvents_HaveTheirWireShape()
         {
             using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new RepolluteOkEvent(1, 20f, 2))!))
