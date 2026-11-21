@@ -78,7 +78,7 @@ namespace Uncycled.Bots.Tests
             return o;
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
         public void WholeMatch_EightScriptedBotsReachGameOver()
         {
             foreach (Outcome o in All.Value)
