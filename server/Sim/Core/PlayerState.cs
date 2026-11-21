@@ -75,8 +75,11 @@ namespace Sim.Core
         /// <summary>Masks held (citizens only, at most one).</summary>
         public int Masks { get; internal set; }
 
+        /// <summary>The items of the open Recycling Machine offer; null when no offer waits for a pick.</summary>
+        public System.Collections.Generic.IReadOnlyList<UpgradeKind>? UpgradeOffer { get; internal set; }
+
         /// <summary>True while a Recycling Machine upgrade offer waits for a pick.</summary>
-        public bool UpgradeOfferOpen { get; internal set; }
+        public bool UpgradeOfferOpen => UpgradeOffer != null;
 
         /// <summary>Movement distance budget in tiles.</summary>
         public float MoveBudget { get; internal set; }

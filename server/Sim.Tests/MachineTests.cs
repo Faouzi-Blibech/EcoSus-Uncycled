@@ -124,32 +124,67 @@ namespace Sim.Tests
         }
 
         [Fact]
-        public void PickUpgrade_Heal_MaxOne()
+        public void Offer_OmitsAHeldHealAndAHeldMask()
+        {
+            MatchEngine e = Deliverer(out byte c, 1);
+            P(e, c).Heals = 1;
+            Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
+            UpgradeOfferEvent offer = Assert.Single(Of<UpgradeOfferEvent>(e.Tick(0f)));
+            Assert.Equal(new[] { UpgradeKind.Backpack, UpgradeKind.Tool, UpgradeKind.Mask }, new List<UpgradeKind>(offer.Items));
+        }
+
+        [Fact]
+        public void Deliver_WithEverythingOwned_AddsMeterAndOpensNoOffer()
+        {
+            MatchEngine e = Deliverer(out byte c, 2);
+            P(e, c).HasBackpack = true;
+            P(e, c).HasTool = true;
+            P(e, c).Heals = 1;
+            P(e, c).Masks = 1;
+            Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
+
+            Assert.Equal(20f, e.Meter.Value, 3);
+            IReadOnlyList<GameEvent> events = e.Tick(0f);
+            Assert.Single(Of<DeliveredEvent>(events));
+            Assert.Empty(Of<UpgradeOfferEvent>(events));
+            Assert.False(P(e, c).UpgradeOfferOpen);
+            Assert.Null(e.OpenUpgradeOffer(c));
+        }
+
+        [Fact]
+        public void PickUpgrade_ItemNotInTheOffer_NoItem_AndTheOfferStaysOpen()
+        {
+            MatchEngine e = Deliverer(out byte c, 1);
+            P(e, c).HasTool = true;
+            P(e, c).Heals = 1;
+            Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
+
+            foreach (UpgradeKind notOffered in new[] { UpgradeKind.Tool, UpgradeKind.Heal })
+            {
+                CommandResult r = e.Apply(c, new PickUpgradeCommand(notOffered));
+                Assert.False(r.IsOk);
+                Assert.Equal(RejectReason.NoItem, r.Reason);
+            }
+
+            Assert.Equal(1, P(e, c).Heals);
+            Assert.True(P(e, c).UpgradeOfferOpen);
+            Assert.True(e.Apply(c, new PickUpgradeCommand(UpgradeKind.Mask)).IsOk);
+        }
+
+        [Fact]
+        public void PickUpgrade_HealThenSecondDelivery_HealIsNotOfferedAgain()
         {
             MatchEngine e = Deliverer(out byte c, 1);
             Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
             Assert.True(e.Apply(c, new PickUpgradeCommand(UpgradeKind.Heal)).IsOk);
             Assert.Equal(1, P(e, c).Heals);
+            e.Tick(0f);
 
-            // a second delivery, a second offer, a second heal: refused, the offer stays open
             P(e, c).Bags = 1;
             Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
-            CommandResult again = e.Apply(c, new PickUpgradeCommand(UpgradeKind.Heal));
-            Assert.False(again.IsOk);
-            Assert.Equal(RejectReason.NotAllowed, again.Reason);
-            Assert.Equal(1, P(e, c).Heals);
-            Assert.True(P(e, c).UpgradeOfferOpen);
-        }
-
-        [Fact]
-        public void PickUpgrade_AnOwnedTool_NotAllowed()
-        {
-            MatchEngine e = Deliverer(out byte c, 1);
-            Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
-            P(e, c).HasTool = true;
-            CommandResult r = e.Apply(c, new PickUpgradeCommand(UpgradeKind.Tool));
-            Assert.False(r.IsOk);
-            Assert.Equal(RejectReason.NotAllowed, r.Reason);
+            UpgradeOfferEvent offer = Assert.Single(Of<UpgradeOfferEvent>(e.Tick(0f)));
+            Assert.DoesNotContain(UpgradeKind.Heal, offer.Items);
+            Assert.Equal(RejectReason.NoItem, e.Apply(c, new PickUpgradeCommand(UpgradeKind.Heal)).Reason);
         }
 
         [Fact]
@@ -173,19 +208,42 @@ namespace Sim.Tests
         }
 
         [Fact]
-        public void SecondDeliveryWhileOfferOpen_AddsMeter_NoSecondOffer()
+        public void SecondDeliveryWhileOfferOpen_AddsMeter_ResendsTheSameOffer()
         {
             MatchEngine e = Deliverer(out byte c, 1);
             Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
-            e.Tick(0f);
+            UpgradeOfferEvent first = Assert.Single(Of<UpgradeOfferEvent>(e.Tick(0f)));
             P(e, c).Bags = 2;
             Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
 
             Assert.Equal(30f, e.Meter.Value, 3);
             IReadOnlyList<GameEvent> events = e.Tick(0f);
             Assert.Single(Of<DeliveredEvent>(events));
-            Assert.Empty(Of<UpgradeOfferEvent>(events));
-            Assert.True(P(e, c).UpgradeOfferOpen);
+            UpgradeOfferEvent again = Assert.Single(Of<UpgradeOfferEvent>(events));
+            Assert.Equal(new List<UpgradeKind>(first.Items), new List<UpgradeKind>(again.Items));
+            Assert.Equal(new[] { c }, Arr(again.Recipients));
+
+            // still one offer: a single pick closes it
+            Assert.True(e.Apply(c, new PickUpgradeCommand(UpgradeKind.Mask)).IsOk);
+            Assert.False(P(e, c).UpgradeOfferOpen);
+            Assert.Null(e.OpenUpgradeOffer(c));
+        }
+
+        [Fact]
+        public void OpenUpgradeOffer_ReturnsTheStoredItemsUntilPicked()
+        {
+            MatchEngine e = Deliverer(out byte c, 1);
+            Assert.Null(e.OpenUpgradeOffer(c));
+            Assert.True(e.Apply(c, new UseCommand("machine")).IsOk);
+            Assert.Equal(
+                new[] { UpgradeKind.Backpack, UpgradeKind.Tool, UpgradeKind.Heal, UpgradeKind.Mask },
+                new List<UpgradeKind>(e.OpenUpgradeOffer(c)!));
+        }
+
+        [Fact]
+        public void MatchConfig_DefaultMeterPassiveIsZero()
+        {
+            Assert.Equal(0f, new MatchConfig().MeterPassivePerS);
         }
 
         [Fact]

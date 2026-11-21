@@ -80,7 +80,7 @@ namespace Sim.Match
         public float CleanRange { get; set; } = 1.0f;
 
         // meter
-        public float MeterPassivePerS { get; set; } = 0.08f;
+        public float MeterPassivePerS { get; set; } = 0f;
         public float FireExpiredAdd { get; set; } = 20f;
 
         // match
