@@ -10,6 +10,9 @@ const METER_COLOR: Color = Color(0.85, 0.5, 0.2)
 const MUTED: Color = Color(0.7, 0.8, 0.75)
 const TITLE_SIZE: int = 28
 const METER_WIDTH: float = 220.0
+## The ghost chat panel sits at the right edge (ghost_chat_panel.gd PANEL_WIDTH plus its margin): the
+## text is centred in the space left of it.
+const GHOST_PANEL_RESERVED_PX: float = 262.0
 
 var _cause: Label
 var _meter_label: Label
@@ -27,6 +30,7 @@ func _ready() -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(box)
 	UIKit.fill(box)
+	box.offset_right = -GHOST_PANEL_RESERVED_PX
 	var title: Label = UIKit.make_label(tr("SPECTATOR_TITLE"), TITLE_SIZE)
 	_cause = UIKit.make_label("")
 	_meter_label = UIKit.make_label("", 14, MUTED)

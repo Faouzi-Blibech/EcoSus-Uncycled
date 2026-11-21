@@ -3,6 +3,8 @@ extends RefCounted
 ## Blocking test client for the server's WebSocket protocol. Not Net: `--script` runs have no
 ## autoloads. Every call polls the socket itself, so no scene tree or frames are needed.
 
+## The wire protocol version of the hello (Net.PROTOCOL_VERSION; a test keeps the two equal).
+const PROTOCOL_VERSION: int = 1
 const MOVE_HZ: float = 10.0
 const MAX_SPEED_TILES_PER_S: float = 2.4
 const ARRIVE_EPS: float = 0.01
@@ -14,14 +16,21 @@ var seq: int = 0
 var companions: Array[ProbeClient] = []
 ## Time.get_ticks_msec() after which every call here returns at once (0 = no deadline).
 var deadline_ms: int = 0
-var _ws: WebSocketPeer = WebSocketPeer.new()
+var _ws: WebSocketPeer = _new_socket()
 var _by_type: Dictionary = {}
 var _cursor: Dictionary = {}
 
 
+## A welcome can be larger than the 64 KB default (same size as Net).
+static func _new_socket() -> WebSocketPeer:
+	var ws: WebSocketPeer = WebSocketPeer.new()
+	ws.inbound_buffer_size = 1 << 20
+	return ws
+
+
 ## Opens the socket, waits for it to be open and sends `hello`. False on timeout or failure.
 func connect_to(url: String) -> bool:
-	_ws = WebSocketPeer.new()
+	_ws = _new_socket()
 	if _ws.connect_to_url(url) != OK:
 		return false
 	var deadline: int = _limit(Time.get_ticks_msec() + 6000)
@@ -29,7 +38,7 @@ func connect_to(url: String) -> bool:
 		_ws.poll()
 		var s: int = _ws.get_ready_state()
 		if s == WebSocketPeer.STATE_OPEN:
-			send("hello", {"proto": 0, "client": "windows", "build": "probe"})
+			send("hello", {"proto": PROTOCOL_VERSION, "client": "windows", "build": "probe"})
 			return true
 		if s == WebSocketPeer.STATE_CLOSED:
 			return false
