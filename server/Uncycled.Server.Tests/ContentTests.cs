@@ -141,9 +141,21 @@ namespace Uncycled.Server.Tests
             ContentBundle content = LoadReal();
 
             Assert.Equal(
-                new[] { "gas_amphi", "gas_club", "gas_lounge", "gas_office" },
+                new[] { "gas_dark", "gas_depot", "gas_garden", "gas_market" },
                 content.Map.GasRooms.Select(z => z.Id).OrderBy(x => x, System.StringComparer.Ordinal).ToArray());
             Assert.All(content.Map.GasRooms, z => Assert.True(z.Width > 0 && z.Height > 0));
+        }
+
+        [Fact]
+        public void The_play_map_loads_with_its_sight_grid_and_gas_rooms()
+        {
+            ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null), ContentLoader.PlayMapId);
+
+            Assert.Equal(ContentLoader.PlayMapId, content.MapId);
+            Assert.Equal(
+                new[] { "gas_amphi", "gas_club", "gas_lounge", "gas_office" },
+                content.Map.GasRooms.Select(z => z.Id).OrderBy(x => x, System.StringComparer.Ordinal).ToArray());
+            Assert.Equal(10, content.Map.Spawns.Count);
         }
 
         [Fact]

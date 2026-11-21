@@ -11,7 +11,8 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 }
 
 string contentDir = ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));
-ContentBundle content = ContentLoader.Load(contentDir);
+string mapId = Environment.GetEnvironmentVariable("UNCYCLED_MAP") is { Length: > 0 } m ? m : ContentLoader.PlayMapId;
+ContentBundle content = ContentLoader.Load(contentDir, mapId);
 
 int maxRooms = 20;
 if (int.TryParse(Environment.GetEnvironmentVariable("UNCYCLED_MAX_ROOMS"), out int parsedMax) && parsedMax > 0)
