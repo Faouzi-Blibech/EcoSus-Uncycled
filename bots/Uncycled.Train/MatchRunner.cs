@@ -146,6 +146,8 @@ namespace Uncycled.Train
 
         public BotMemory AgentMemory(int agent) => _agents[agent].Memory;
 
+        public ActionExecutor AgentExecutor(int agent) => _agents[agent].Executor;
+
         /// <summary>Writes the current frame of every agent (AgentCount * FrameSize bytes).</summary>
         public void WriteFrames(Span<byte> dest)
         {
@@ -197,10 +199,9 @@ namespace Uncycled.Train
 
                 Agent agent = _agents[a];
                 SeatView view = _engine.ViewFor(agent.Seat);
-                // the policy index becomes a BotAction plus the executor hints (spot, upgrade, ability, room) for this view
-                PolicyChoice choice = PolicyActionsV2.Resolve(action, view, agent.Memory, _engine.Map);
-                choice.ApplyTo(agent.Executor);
-                agent.Executor.Begin(choice.Action, view, _engine.Map, _engine.MatchTime);
+                // the policy index becomes a BotAction plus the executor hints (spot, upgrade, ability, room, zone) for this view;
+                // the same index while its action still runs keeps its target (see PolicyDriver)
+                agent.Policy.Begin(action, view, agent.Memory, _engine.Map, agent.Executor, _engine.MatchTime);
             }
 
             Decisions += asked;
@@ -568,6 +569,8 @@ namespace Uncycled.Train
             public BotMemory Memory { get; }
 
             public ActionExecutor Executor { get; }
+
+            public PolicyDriver Policy { get; } = new PolicyDriver();
 
             public MeetingVoter Voter { get; }
 

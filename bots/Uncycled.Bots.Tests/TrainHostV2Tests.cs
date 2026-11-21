@@ -16,8 +16,12 @@ namespace Uncycled.Bots.Tests
     /// <summary>The training host plays the v2 policy list: v2 observation, 35-action mask, hints reach the executor, v1 networks refused.</summary>
     public sealed class TrainHostV2Tests
     {
-        private const int CleanNearest = 17;
-        private const int CleanSecond = 18;
+        private static int Index(string name)
+        {
+            int i = Array.IndexOf(PolicyActionsV2.Names.ToArray(), name);
+            Assert.True(i >= 0, "no policy action named " + name);
+            return i;
+        }
 
         private static readonly string ContentDir = ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));
 
@@ -133,21 +137,23 @@ namespace Uncycled.Bots.Tests
         }
 
         [Theory]
-        [InlineData(CleanNearest, 0)]
-        [InlineData(CleanSecond, 1)]
-        public void ChosenHint_ReachesTheExecutor(int index, int rank)
+        [InlineData("CleanNearest", 0)]
+        [InlineData("CleanSecond", 1)]
+        public void ChosenHint_ReachesTheExecutor(string name, int rank)
         {
+            int index = Index(name);
             MatchRunner r = NewRunner(Options("--rw-win", "0"));
             ConsoleDef target = DirtyByDistance(r, 0)[rank];
             ConsoleDef other = DirtyByDistance(r, 0)[1 - rank];
             Assert.NotEqual(target.Id, other.Id);
 
             // agent 0 asks for the clean-spot index every decision, the others stay: it must walk to the spot the hint names
+            // and keep walking to it (the k-th nearest changes while it walks; it must not turn around)
             bool reached = false;
             for (int d = 0; d < 80 && !reached; d++)
             {
                 byte[] f = Frames(r);
-                Assert.True(r.AgentCommitted(0) || f[r.MaskOffset + index] != 0, "index " + index + " must be valid at decision " + d);
+                Assert.True(r.AgentCommitted(0) || f[r.MaskOffset + index] != 0, name + " must be valid at decision " + d);
                 var actions = new int[r.AgentCount];
                 actions[0] = index;
                 r.Advance(actions);
@@ -157,7 +163,66 @@ namespace Uncycled.Bots.Tests
             }
 
             Assert.Equal(0, r.InvalidActions);
-            Assert.True(reached, "agent 0 never reached " + target.Id + " for policy index " + index);
+            Assert.True(reached, "agent 0 never reached " + target.Id + " for " + name);
+        }
+
+        [Theory]
+        [InlineData("GoZoneNear0", 0)]
+        [InlineData("GoZoneNear1", 1)]
+        [InlineData("GoZoneNear2", 2)]
+        public void ChosenZone_IsReachedWithoutTurningBack(string name, int rank)
+        {
+            int index = Index(name);
+            MatchRunner r = NewRunner(Options("--rw-win", "0"));
+            SeatView start = r.Engine.ViewFor(r.AgentSeat(0));
+            MapData map = r.Engine.Map;
+            MapDistances dist = MapDistances.For(map);
+            ZoneDef target = Enumerable.Range(0, 3)
+                .Select(z => new { z = map.Zones[z], d = dist.Path(start.Me.Position, dist.NearestWalkable(new Vec2(map.Zones[z].X + map.Zones[z].Width / 2f, map.Zones[z].Y + map.Zones[z].Height / 2f))) })
+                .OrderBy(x => x.d).ThenBy(x => x.z.Id, StringComparer.Ordinal)
+                .Select(x => x.z).ElementAt(rank);
+
+            bool reached = false;
+            for (int d = 0; d < 200 && !reached; d++)
+            {
+                byte[] f = Frames(r);
+                Assert.True(r.AgentCommitted(0) || f[r.MaskOffset + index] != 0, name + " must be valid at decision " + d);
+                var actions = new int[r.AgentCount];
+                actions[0] = index;
+                r.Advance(actions);
+                reached = target.Contains(r.Engine.ViewFor(r.AgentSeat(0)).Me.Position);
+            }
+
+            Assert.Equal(0, r.InvalidActions);
+            Assert.True(reached, "agent 0 never entered zone " + target.Id + " for " + name);
+        }
+
+        [Fact]
+        public void ChangingTheIndex_ResolvesTheNewTarget()
+        {
+            int second = Index("CleanSecond");
+            int nearest = Index("CleanNearest");
+            MatchRunner r = NewRunner(Options("--rw-win", "0"));
+            Step(r, second);
+            Step(r, second);
+
+            // a different index re-resolves now: the nearest spot at this moment is the target
+            ConsoleDef target = DirtyByDistance(r, 0)[0];
+            bool reached = false;
+            for (int d = 0; d < 80 && !reached; d++)
+            {
+                Step(r, nearest);
+                reached = Vec2.Distance(r.Engine.ViewFor(r.AgentSeat(0)).Me.Position, target.Position) <= target.Range;
+            }
+
+            Assert.True(reached, "agent 0 never reached " + target.Id + " after switching to CleanNearest");
+        }
+
+        private static void Step(MatchRunner r, int index)
+        {
+            var actions = new int[r.AgentCount];
+            actions[0] = index;
+            r.Advance(actions);
         }
 
         [Fact]

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Sim.Core;
 using Sim.Match;
 using Sim.Uncycled;
@@ -155,17 +156,31 @@ namespace Uncycled.Bots.Tests
         [Fact]
         public void Host_InvalidActionActsAsStay()
         {
-            MatchRunner r = NewRunner(Options());
-            byte[] f = Frames(r);
-            var actions = new int[r.AgentCount];
-            for (int a = 0; a < actions.Length; a++)
+            // out of range, and in range but masked (a Trasher-only action for a Cleaner learner): both count and run as Stay
+            int blocked = Array.IndexOf(PolicyActionsV2.Names.ToArray(), "SabotageSmog");
+            foreach (int bad in new[] { 9999, -1, blocked })
             {
-                actions[a] = 9999;
-            }
+                MatchRunner r = NewRunner(Options());
+                byte[] f = Frames(r);
+                var actions = new int[r.AgentCount];
+                for (int a = 0; a < actions.Length; a++)
+                {
+                    actions[a] = bad;
+                    if (bad == blocked)
+                    {
+                        Assert.Equal(0, f[a * r.FrameSize + r.MaskOffset + blocked]);
+                    }
+                }
 
-            r.Advance(actions);
-            Assert.Equal(r.AgentCount, r.InvalidActions);
-            Assert.Equal(r.AgentCount * r.FrameSize, Frames(r).Length);
+                r.Advance(actions);
+                Assert.True(r.InvalidActions == r.AgentCount, "index " + bad + ": invalid actions " + r.InvalidActions);
+                for (int a = 0; a < r.AgentCount; a++)
+                {
+                    Assert.Equal(BotAction.Stay, r.AgentExecutor(a).Current);
+                }
+
+                Assert.Equal(r.AgentCount * r.FrameSize, Frames(r).Length);
+            }
         }
 
         [Fact]
