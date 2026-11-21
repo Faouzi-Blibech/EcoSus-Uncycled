@@ -79,7 +79,8 @@ namespace Uncycled.Bots.Neural
         {
             private readonly IPolicy _policy;
             private readonly float _temperature;
-            private readonly float[] _obs = new float[ObservationBuilder.Size];
+            private readonly float[] _obs = new float[ObservationBuilderV2.Size];
+            private PolicyChoice _resolved;
 
             public NeuralCore(IPolicy policy, BotsSettings settings, IRandom rng, IReadOnlyList<TaskTypeDef>? taskTypes)
                 : base(settings, rng, taskTypes)
@@ -93,18 +94,26 @@ namespace Uncycled.Bots.Neural
 
             internal override Choice Choose(SeatView view, bool[] mask)
             {
-                ObservationBuilder.Build(view, Mem, Mem.Map, Engine!.Config, view.MatchTime, _obs);
-                // the network knows the first ActionCatalogue.Count actions only; the v2 actions are scripted-only
-                var known = new bool[ActionCatalogue.Count];
-                Array.Copy(mask, known, ActionCatalogue.Count);
-                int action = _policy.Act(_obs, known, _temperature, Rng);
-                if (action < 0 || action >= known.Length || !known[action])
+                // the scripted FullMask is not the network's: it picks among the v2 policy list, valid ones only
+                ObservationBuilderV2.Build(view, Mem, Mem.Map, Engine!.Config, view.MatchTime, _obs);
+                bool[] policyMask = PolicyActionsV2.Mask(view, Mem, Mem.Map);
+                int index = _policy.Act(_obs, policyMask, _temperature, Rng);
+                if (index < 0 || index >= policyMask.Length || !policyMask[index])
                 {
-                    throw new InvalidOperationException("the policy chose invalid action " + action);
+                    throw new InvalidOperationException("the policy chose invalid action " + index);
                 }
 
+                // the hint (spot, upgrade, ability, room) is resolved once, now; Prepare hands it to the executor
+                _resolved = PolicyActionsV2.Resolve(index, view, Mem, Mem.Map);
+
                 // Urgent: the network may change its mind while an action runs (the same action again just continues).
-                return Choice.Now((BotAction)action);
+                return Choice.Now(_resolved.Action);
+            }
+
+            internal override void Prepare(BotAction action, SeatView view)
+            {
+                // always all four hints, so none of an earlier choice is left over; a stale spot is the executor's to handle
+                (_resolved.Action == action ? _resolved : new PolicyChoice(action)).ApplyTo(Exec);
             }
         }
     }

@@ -21,7 +21,7 @@ namespace Uncycled.Bots.Neural
         }
 
         /// <summary>
-        /// Neural when s.Brain is "neural" and the role's model loads with the current observation schema
+        /// Neural when s.Brain is "neural" and the role's model loads with the v2 schema
         /// hash; scripted otherwise (switch off, file missing, corrupt, other schema). Never throws for a bad model.
         /// </summary>
         public static IBotBrain For(Role role, BotsSettings s, string modelsDir, IRandom rng, IReadOnlyList<TaskTypeDef>? taskTypes = null, Action<string>? log = null)
@@ -36,7 +36,7 @@ namespace Uncycled.Bots.Neural
             string key = Path.GetFullPath(path);
             if (!Loaded.TryGetValue(key, out OnnxPolicy? policy))
             {
-                if (!OnnxPolicy.TryLoad(path, ObservationBuilder.SchemaHash, out policy, out string reason) || policy == null)
+                if (!OnnxPolicy.TryLoad(path, SchemaV2.Hash, out policy, out string reason) || policy == null)
                 {
                     if (Reported.TryAdd(key, true))
                     {
