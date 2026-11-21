@@ -107,6 +107,9 @@ namespace Uncycled.Train
         /// <summary>Decisions where Stay was the only valid action (out seats, mostly).</summary>
         public long ForcedDecisions { get; private set; }
 
+        /// <summary>The engine of the match running now (it is replaced when a match ends): lets a test stage a situation.</summary>
+        public MatchEngine Engine => _engine;
+
         public MatchPhase Phase => _engine.Phase;
 
         public float MatchTime => _engine.MatchTime;
