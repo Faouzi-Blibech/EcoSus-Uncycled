@@ -74,7 +74,7 @@ answers `use_ok` (kind `spot`, with the mini-game `type`). The client plays the 
 Bags are private: only the carrier sees them (a visible bag would prove who is a Cleaner).
 
 **Recycling Machine.** A `special` of kind `machine` at the map edge. `use` on it with bags delivers all of
-them: meter `+ spots.bag_meter_add` per bag (5: 20 deliveries to win). Then the server offers an upgrade (`upgrade_offer`) and the
+them: meter `+ spots.bag_meter_add` per bag (6: 17 deliveries to win). Then the server offers an upgrade (`upgrade_offer`) and the
 Cleaner picks one (`pick_upgrade`). One open offer at a time; a delivery while an offer is open adds meter but
 no second offer.
 
@@ -91,11 +91,13 @@ no second offer.
 `fix` at the machine for `machine.fix_s` (4 s).
 
 **Litter comes back.** A spot left clean for `spots.relitter_s` (60 s) turns dirty again: Cleaners always
-have work, and 20 deliveries need the spots to cycle.
+have work, and 17 deliveries need the spots to cycle.
 
-**Balance (21 Nov, night).** 20 simulated matches with 8 scripted bots each: with 10 per bag and no litter the
-Cleaners won 17/20 in about 4.4 min; with 5 per bag, 5 per re-pollute and litter after 60 s they win 11/20
-(Trashers 9/20) in about 6.6 min of the 7. Humans clean slower than bots: retune `relitter_s` after a real match.
+**Balance (22 Nov, night, map tbs_01).** 20 simulated matches with 8 scripted bots per setting. Old values
+(10 per bag, 10 per re-pollute, no litter): Cleaners 7/20. Chosen (6 per bag, 5 per re-pollute, litter after
+60 s): Cleaners 13/20, Trashers 7/20, about 5.7 min of the 7. The re-pollute value moves it most (6 instead of
+5 drops the Cleaners to 6/20). Slightly Cleaner-sided on purpose: humans clean slower than bots. Retune after a
+real match with people.
 
 **Dash (every seat).** One charge: the server moves the seat up to `dash.tiles` (6 tiles, about 10 m at the
 game's walking pace) along the chosen direction and stops it before a wall. Ready `dash.cooldown_s` (20 s) after
@@ -176,7 +178,7 @@ Goal: show, with measured numbers, how the organisers' networks (Ooredoo, Tunisi
 
 ```json
 "rooms":   { "sizes": [6, 8, 10], "default_size": 8, "trashers": { "6": 1, "8": 2, "10": 2 } },
-"spots":   { "bag_meter_add": 5, "repollute_meter_sub": 5, "tool_time_mult": 0.5, "relitter_s": 60 },
+"spots":   { "bag_meter_add": 6, "repollute_meter_sub": 5, "tool_time_mult": 0.5, "relitter_s": 60 },
 "dash":    { "tiles": 6, "cooldown_s": 20, "cleans_refill": 5 },
 "bags":    { "cap": 1, "backpack_cap": 3 },
 "trasher": { "repollute_cooldown_s": 20, "unlock_after": 3, "virus_cooldown_s": 30,

@@ -135,7 +135,7 @@ namespace Uncycled.Server.Tests
             Assert.Equal(1, c.BagCap);
             Assert.Equal(3, c.BackpackCap);
             Assert.Equal(0.5f, c.ToolTimeMult);
-            Assert.Equal(5f, c.BagMeterAdd);          // 20 deliveries to win (balance pass, 21 Nov)
+            Assert.Equal(6f, c.BagMeterAdd);          // 17 deliveries to win (balance pass on tbs_01, 22 Nov)
             Assert.Equal(5f, c.RepolluteMeterSub);
             Assert.Equal(60f, c.SpotRelitterS);
             Assert.Equal((6f, 20f, 5), (c.DashTiles, c.DashCooldownS, c.DashCleansRefill));
