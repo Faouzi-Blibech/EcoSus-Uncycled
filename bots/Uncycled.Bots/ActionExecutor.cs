@@ -280,6 +280,12 @@ namespace Uncycled.Bots
                 case BotAction.GoSmogPanel:
                     StartWalk(me, ActionQuery.NthOfKind(map, ConsoleKind.SmogFix, 0)?.Position, map, now);
                     break;
+                case BotAction.LeaveGas:
+                {
+                    ZoneDef? warned = Memory != null ? ActionQuery.WarnedGasRoomHere(view, Memory, map) : null;
+                    StartWalk(me, warned != null ? ActionQuery.NearestCellOutside(map, warned, me) : (Vec2?)null, map, now);
+                    break;
+                }
 
                 case BotAction.GoDirtySpot:
                 case BotAction.FinishSpot:
@@ -455,6 +461,7 @@ namespace Uncycled.Bots
                 case BotAction.GoFireA:
                 case BotAction.GoFireB:
                 case BotAction.GoSmogPanel:
+                case BotAction.LeaveGas:
                     WalkStep(view, dt, now, send);
                     break;
 
@@ -507,12 +514,12 @@ namespace Uncycled.Bots
                     Busy = false;
                     if (_upgrade != null || (Memory?.UpgradeOffer != null && Memory.UpgradeOffer.Count > 0))
                     {
-                        send(new PickUpgradeCommand(_upgrade ?? Memory!.UpgradeOffer![0]));
+                        send(new PickUpgradeCommand(_upgrade ?? ActionQuery.UpgradeByRule(Memory!.UpgradeOffer!)));
                     }
 
                     break;
                 case BotAction.PickAbility:
-                    send(new PickAbilityCommand(_ability ?? TrasherAbility.Virus));
+                    send(new PickAbilityCommand(_ability ?? ActionQuery.AbilityByRule(view, _map ?? Memory!.Map)));
                     Busy = false;
                     break;
                 case BotAction.HealSelf:
@@ -521,9 +528,11 @@ namespace Uncycled.Bots
                     break;
                 case BotAction.GasRoom:
                     Busy = false;
-                    if (_room != null)
+                    // no brain hint (a policy): the gas room holding the most players, as the scripted brain picks it
+                    string? gasRoom = _room ?? ActionQuery.GasRoomWithPlayers(view, _map ?? Memory!.Map, out _)?.Id;
+                    if (gasRoom != null)
                     {
-                        send(new GasCommand(_room));
+                        send(new GasCommand(gasRoom));
                     }
 
                     break;
@@ -1129,15 +1138,17 @@ namespace Uncycled.Bots
         }
 
         /// <summary>
-        /// A committed step ends when an alarm starts (fire or smog turns active) or the bot is hit (own
-        /// poison rises). Only the own SeatView is read; a meeting is handled by Step (not Playing).
+        /// A committed step ends when an alarm starts (fire or smog turns active), the room it stands in is
+        /// warned of gas (no mask), or the bot is hit (own poison rises). Only the own SeatView is read; a meeting is handled by Step (not Playing).
         /// </summary>
         private bool StopTriggered(SeatView view)
         {
             bool fire = ActionQuery.FireActive(view);
             bool smog = ActionQuery.SmogActive(view);
             int poison = view.Me.Poison ?? 0;
-            bool stop = (fire && !_prevFire) || (smog && !_prevSmog) || poison > _prevPoison;
+            // the gas warning of the room this Cleaner stands in (no mask): the step is dropped, leave the room
+            bool gas = Memory != null && ActionQuery.WarnedGasRoomHere(view, Memory, _map ?? Memory.Map) != null;
+            bool stop = (fire && !_prevFire) || (smog && !_prevSmog) || poison > _prevPoison || gas;
             _prevFire = fire;
             _prevSmog = smog;
             _prevPoison = poison;
@@ -1166,10 +1177,12 @@ namespace Uncycled.Bots
         /// </summary>
         private ConsoleDef? ChooseSpot(SeatView view, MapData map, SpotState state, bool inRangeOnly, bool polluter, string? hint)
         {
+            // a Cleaner without a mask keeps out of the room whose gas warning runs
+            ZoneDef? avoid = !polluter && Memory != null ? ActionQuery.WarnedRoomToAvoid(view, Memory, map) : null;
             if (hint != null)
             {
                 ConsoleDef? hinted = map.FindConsole(hint);
-                if (hinted != null && SpotIs(view, hint, state))
+                if (hinted != null && SpotIs(view, hint, state) && (avoid == null || !avoid.Contains(hinted.Position)))
                 {
                     return hinted;
                 }
@@ -1177,10 +1190,16 @@ namespace Uncycled.Bots
 
             if (inRangeOnly)
             {
-                return ActionQuery.SpotInRange(view, map, state);
+                ConsoleDef? inRange = ActionQuery.SpotInRange(view, map, state);
+                return inRange != null && avoid != null && avoid.Contains(inRange.Position) ? null : inRange;
             }
 
             List<ConsoleDef> spots = ActionQuery.SpotsNearestFirst(view, map, state);
+            if (avoid != null)
+            {
+                spots = spots.FindAll(c => !avoid.Contains(c.Position));
+            }
+
             foreach (ConsoleDef c in spots)
             {
                 if (polluter || !ActionQuery.SomeoneNear(view, c.Position, SpotCrowdRadius))
@@ -1191,6 +1210,9 @@ namespace Uncycled.Bots
 
             return spots.Count > 0 ? spots[0] : null;
         }
+
+        /// <summary>True while a walk is under way whose goal lies inside the zone (a Cleaner heading into a warned gas room).</summary>
+        public bool WalksInto(ZoneDef zone) => Busy && _nav.HasGoal && zone.Contains(_nav.Goal);
 
         private void BeginSpotAction(ConsoleDef? spot, SeatView view, MapData map, float now)
         {

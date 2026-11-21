@@ -10,7 +10,9 @@ const SERVER_PORT: int = 5000
 const SERVER_PATH: String = "/ws"
 const DEFAULT_SERVER_URL: String = "ws://localhost:%d%s" % [SERVER_PORT, SERVER_PATH]
 const SETTINGS_PATH: String = "user://settings.cfg"
-const LANGUAGES: Array[String] = ["en", "fr"]
+const LANGUAGES: Array[String] = ["en", "fr", "ar"]
+## Godot's default font has no Arabic letters; this one is added behind it (see _add_font_fallbacks).
+const ARABIC_FONT_PATH: String = "res://assets/fonts/NotoSansArabic.ttf"
 
 var player_name: String = ""
 var language: String = "en"
@@ -20,7 +22,8 @@ var server_url: String = DEFAULT_SERVER_URL
 func _ready() -> void:
 	I18nLoader.load_csv()
 	_register_input_actions()
-	language = "fr" if OS.get_locale_language() == "fr" else "en"
+	_add_font_fallbacks()
+	# English until the player picks a language in Settings (not the computer's language).
 	load_settings()
 	apply_language()
 	if OS.has_feature("web") or OS.has_feature("mobile"):
@@ -80,6 +83,20 @@ func save() -> void:
 	var err: int = cfg.save(SETTINGS_PATH)
 	if err != OK:
 		push_warning("Settings: could not save %s (error %d)" % [SETTINGS_PATH, err])
+
+
+## Adds the Arabic font as a fallback of the default font, so every Label can show Arabic (the text
+## server shapes it right to left). Missing font file: nothing happens.
+func _add_font_fallbacks() -> void:
+	if not ResourceLoader.exists(ARABIC_FONT_PATH):
+		return
+	var arabic: Font = load(ARABIC_FONT_PATH) as Font
+	var base: Font = ThemeDB.fallback_font
+	if arabic == null or base == null or base.fallbacks.has(arabic):
+		return
+	var list: Array[Font] = base.fallbacks.duplicate()
+	list.append(arabic)
+	base.fallbacks = list
 
 
 func apply_language() -> void:

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Sim.Core;
 using Sim.Match;
+using Sim.Uncycled;
 using Uncycled.Bots;
 using Uncycled.Server.Content;
 using Uncycled.Train;
@@ -301,24 +302,73 @@ namespace Uncycled.Bots.Tests
         [Fact]
         public void Host_MeetingResultsAndAccusationsReachTheLearnersHeat()
         {
-            // random polluters dump and hit in sight, so scripted citizens and the learner's own voter accuse
+            // v2 premise: nobody hits or dumps and a v1-action learner never re-pollutes, so the test stages it.
+            // The learner Trasher re-pollutes a clean spot in sight of a scripted Cleaner (a witness record), the
+            // Cleaner calls the meeting, and its talker (the rule decider, as in the live room) accuses the learner
+            // and votes for it. The meeting result and the accusation must reach the learner's heat input.
             MatchRunner r = NewRunner(Options("--learner", "polluter", "--matches", "8", "--seed", "8"));
+            ContentBundle content = ContentLoader.Load(ContentDir);
             var rng = new XorShiftRandom(21);
-            bool sawAccusation = false;
-            for (int d = 0; d < 1500 && !sawAccusation; d++)
+            float ready = content.Config.EmergencyMinSinceMeetingS + 2f;
+            byte witness = 255;
+            foreach (PlayerState p in r.Engine.Players)
             {
-                r.AdvanceRandom(rng);
-                for (int a = 0; a < r.AgentCount; a++)
+                if (witness == 255 && p.Role == Role.Citizen)
                 {
-                    BotMemory mem = r.AgentMemory(a);
-                    for (byte s = 0; s < 8; s++)
-                    {
-                        sawAccusation |= mem.HeatAccusations(s) > 0f;
-                    }
+                    witness = p.Seat;
                 }
             }
 
-            Assert.True(sawAccusation, "no accusation ever reached a learner memory");
+            // the random learner may have turned the smog on (vision 1): wait for a clear moment to stage the act
+            for (int d = 0; d < 4000 && (r.Engine.ActiveTime < ready || r.Engine.Smog.Active || r.Engine.ViewFor(witness).Me.Vision < 3f); d++)
+            {
+                r.AdvanceRandom(rng);
+            }
+
+            Assert.True(r.Engine.ViewFor(witness).Me.Vision >= 3f, "no clear moment to stage the act");
+
+            Assert.Equal(0, r.MeetingsHeld); // nothing staged yet: the learner has not been accused
+            MatchEngine e = r.Engine;
+            byte learner = r.AgentSeat(0);
+            BotMemory heat = r.AgentMemory(0);
+            Assert.Equal(0f, heat.HeatAccusations(learner));
+            Assert.Equal(0f, heat.HeatOf(learner));
+
+            Sim.World.ConsoleDef spot = content.Map.ConsolesOfKind(ConsoleKind.Task)[0];
+            e.Spots.Find(spot.Id)!.State = SpotState.Clean;
+            e.TestTeleport(learner, spot.Position);
+            e.TestTeleport(witness, NearAndInSight(content.Map, spot.Position));
+            Assert.True(e.Apply(learner, new RepolluteCommand(spot.Id)).IsOk);
+
+            r.AdvanceRandom(rng); // the Cleaner's brain takes the record into its memory
+            Assert.NotEmpty(e.Witnesses.SeenBy(witness)); // the scripted Cleaner saw it
+            e.TestTeleport(witness, content.Map.ConsolesOfKind(ConsoleKind.Emergency)[0].Position);
+            Assert.True(e.Apply(witness, new CallMeetingCommand()).IsOk);
+
+            for (int d = 0; d < 4000 && !(r.MeetingsHeld >= 1 && r.Phase == MatchPhase.Playing); d++)
+            {
+                r.AdvanceRandom(rng);
+            }
+
+            Assert.True(r.MeetingsHeld >= 1, "the staged meeting did not finish");
+            Assert.True(heat.HeatAccusations(learner) > 0f, "the accusation did not reach the learner's heat");
+            Assert.True(heat.HeatOf(learner) > 0f, "the learner's heat did not rise");
+        }
+
+        private static Vec2 NearAndInSight(Sim.World.MapData map, Vec2 spot)
+        {
+            MapDistances dist = MapDistances.For(map);
+            for (int i = 0; i < 16; i++)
+            {
+                double a = 2 * Math.PI * i / 16;
+                Vec2 cell = dist.NearestWalkable(new Vec2(spot.X + (float)Math.Cos(a) * 2f, spot.Y + (float)Math.Sin(a) * 2f));
+                if (Vec2.Distance(cell, spot) <= 2.6f && map.Sight.HasLineOfSight(cell, spot))
+                {
+                    return cell;
+                }
+            }
+
+            return dist.NearestWalkable(spot);
         }
 
         [Fact(Skip = "the learners still play the 30 v1 actions with a random policy, so in v2 no polluter is seen or voted out often enough to check this; restore when the networks are retrained on the v2 actions")]

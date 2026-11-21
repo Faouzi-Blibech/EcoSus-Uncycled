@@ -39,6 +39,9 @@ namespace Uncycled.Bots
         public const float FakeCleanDwellS = 3.5f;
         private const float SpotDwellMargin = 0.4f;
 
+        /// <summary>A fake-clean tell is dropped when the leaver shows up at the smog panel or the jammed machine within this many seconds: it left to repair.</summary>
+        private const float RepairDropWindowS = 25f;
+
         private readonly Dictionary<byte, List<Sighting>> _sightings = new Dictionary<byte, List<Sighting>>();
         private readonly List<Sighting> _own = new List<Sighting>();
         private readonly Dictionary<byte, float> _hitAtPlay = new Dictionary<byte, float>();
@@ -47,6 +50,10 @@ namespace Uncycled.Bots
         private readonly List<WitnessRecord> _fakeCleans = new List<WitnessRecord>();
         private readonly Dictionary<byte, KeyValuePair<string, float>> _dwell = new Dictionary<byte, KeyValuePair<string, float>>();
         private MatchPhase? _prevPhase;
+        private bool _prevAlarm;
+        private bool _prevRepairAlarm;
+        private float _repairAlarmAt;
+        private string? _prevGasRoom;
         private float? _lastMeetingEnd;
         private float? _prevMatchTime;
         private float _playTime;
@@ -80,6 +87,18 @@ namespace Uncycled.Bots
 
         /// <summary>The upgrade offer open for this seat (set by the brain from the engine before it decides: the popup a human sees); null when none.</summary>
         public IReadOnlyList<UpgradeKind>? UpgradeOffer { get; set; }
+
+        /// <summary>
+        /// The room whose gas warning runs (the public gas warning, set by the brain from the engine's
+        /// wire extras before Observe, the same for every seat); null when none runs.
+        /// </summary>
+        public string? GasWarnedRoom { get; set; }
+
+        /// <summary>Match time at which the meeting in progress started, as this bot saw it (the phase turning to Meeting); null before the first meeting.</summary>
+        public float? MeetingStartedAt { get; private set; }
+
+        /// <summary>Match time of this bot's first sighting of the current machine jam; null while the machine runs.</summary>
+        public float? MachineJamSeenAt { get; private set; }
 
         /// <summary>True once this seat called its one free meeting for the current infection (cleared when it is no longer infected).</summary>
         public bool InfectedCallUsed { get; set; }
@@ -119,12 +138,45 @@ namespace Uncycled.Bots
                 _lastMeetingEnd = matchTime;
             }
 
+            if (view.Phase == MatchPhase.Meeting && _prevPhase != MatchPhase.Meeting)
+            {
+                MeetingStartedAt = matchTime;
+            }
+
             _prevPhase = view.Phase;
             _inMeeting = view.Phase == MatchPhase.Meeting && view.Meeting != null;
             if (_inMeeting)
             {
                 _livingNow = view.Meeting!.Living.Count > 0 ? view.Meeting.Living.Count : Math.Max(1, Config.Seats - _out.Count);
             }
+
+            // an alarm (smog, fire, machine jam) or a gas warning that starts pulls honest Cleaners off their
+            // spots: what they were cleaning is interrupted, not faked, so every dwell restarts from now
+            bool alarm = view.Sabotage != null || view.MachineJammed;
+            bool gasStarted = GasWarnedRoom != null && GasWarnedRoom != _prevGasRoom;
+            if ((alarm && !_prevAlarm) || gasStarted)
+            {
+                _dwell.Clear();
+            }
+
+            if (!view.MachineJammed)
+            {
+                MachineJamSeenAt = null;
+            }
+            else if (MachineJamSeenAt == null)
+            {
+                MachineJamSeenAt = matchTime;
+            }
+
+            bool repairAlarm = (view.Sabotage != null && view.Sabotage.Kind == SabotageKind.Smog) || view.MachineJammed;
+            if (repairAlarm && !_prevRepairAlarm)
+            {
+                _repairAlarmAt = matchTime;
+            }
+
+            _prevRepairAlarm = repairAlarm;
+            _prevAlarm = alarm;
+            _prevGasRoom = GasWarnedRoom;
 
             if (view.Phase == MatchPhase.Playing)
             {
@@ -208,6 +260,13 @@ namespace Uncycled.Bots
                 }
 
                 present.Add(p.Seat);
+                if (_fakeCleans.Count > 0 && AtRepairConsole(view, p.Position))
+                {
+                    // the leaver went to repair the smog or the jam: it left its spot for the alarm, not to fake (only a leave made after
+                    // the alarm began: a Trasher cannot wipe an earlier record by jamming and standing at the machine)
+                    _fakeCleans.RemoveAll(r => r.Actor == p.Seat && r.At >= _repairAlarmAt && matchTime - r.At <= RepairDropWindowS);
+                }
+
                 string? spot = null;
                 foreach (SpotView s in view.Spots)
                 {
@@ -264,6 +323,27 @@ namespace Uncycled.Bots
             {
                 _dwell.Remove(seat);
             }
+        }
+
+        /// <summary>True when a position is in range of the smog panel while smog is on, or of the machine while it is jammed.</summary>
+        private bool AtRepairConsole(SeatView view, Vec2 at)
+        {
+            bool smog = view.Sabotage != null && view.Sabotage.Kind == SabotageKind.Smog;
+            if (!smog && !view.MachineJammed)
+            {
+                return false;
+            }
+
+            foreach (Sim.World.ConsoleDef c in Map.Consoles)
+            {
+                bool repair = (smog && c.Kind == ConsoleKind.SmogFix) || (view.MachineJammed && c.Kind == ConsoleKind.Machine);
+                if (repair && Vec2.Distance(at, c.Position) <= c.Range + SpotDwellMargin)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>Seconds since this seat was last in sight; null when never seen.</summary>

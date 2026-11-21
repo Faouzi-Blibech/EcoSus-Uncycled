@@ -14,7 +14,9 @@ const TILE_PX: float = 32.0
 const SESSION_FIELDS: Array[String] = [
 	"map_id", "map_version", "seat_id", "role", "phase", "partner_seat", "tuning", "task_types",
 	"my_tasks", "piles", "out_seats", "is_out", "spawn", "spawn_pending", "has_me_pos", "seats",
-	"cooldowns", "emergencies_left", "move_seq", "sabotage",
+	"cooldowns", "emergencies_left", "move_seq", "sabotage", "spots", "bags", "bag_cap",
+	"machine_jammed", "machine_repair_t", "upgrade_offer", "ability", "repollutes", "ability_choices",
+	"ability_pick_sent", "heals", "infected_s", "alert_used",
 ]
 
 var _saved: Dictionary = {}
@@ -50,6 +52,9 @@ func _round(role: String, at: String, offset: float) -> RoundScene:
 	Session.out_seats = {}
 	Session.piles = []
 	Session.sabotage = {}
+	Session.spots = {CONSOLE: "dirty", OTHER_CONSOLE: "dirty"}
+	Session.bags = 0
+	Session.bag_cap = 1
 	Session.cooldowns = {}
 	Session.emergencies_left = 1
 	Session.tuning = {"poison": {"hit_range": HIT_RANGE_TILES, "hit_cooldown_s": 25}, "dump": {"cooldown_s": 40}}
@@ -72,7 +77,7 @@ func _round(role: String, at: String, offset: float) -> RoundScene:
 	r._player.position = map.marker(at).position + Vector2(offset, 0.0)
 	r._minigames = load("res://minigames/minigame_layer.tscn").instantiate() as MinigameLayer
 	r.add_child(r._minigames)
-	for kind in ["use", "report", "hit", "dump", "call_meeting", "sabotage", "clean_start", "clean_cancel"]:
+	for kind in ["use", "report", "repollute", "plant_virus", "gas", "pick_ability", "call_meeting", "sabotage", "clean_start", "clean_cancel", "pick_upgrade", "heal"]:
 		r.senders[kind] = _record(kind)
 	r.senders["fix"] = func(console: String, holding: bool) -> void: _sent.append(["fix", console, holding])
 	return r
@@ -98,13 +103,17 @@ func test_near_console_only_inside_its_range() -> bool:
 	return true
 
 
-func test_has_task_here_only_with_my_task_at_that_console() -> bool:
+## v2: the near task console is a spot; its state and the bag load come from Session.
+func test_near_spot_state_and_bags_full_come_from_session() -> bool:
 	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
-	assert_true(bool(r.interaction_context()["has_task_here"]), "my task is here")
-	Session.my_tasks = [{"id": 1, "type": "check_meter", "steps": 1, "steps_done": 0, "console": OTHER_CONSOLE}]
-	assert_true(not bool(r.interaction_context()["has_task_here"]), "my task is elsewhere")
-	Session.my_tasks = [{"id": 1, "type": "sort_waste", "steps": 1, "steps_done": 1, "console": CONSOLE}]
-	assert_true(not bool(r.interaction_context()["has_task_here"]), "task already done")
+	assert_eq(r.interaction_context()["near_spot_state"], "dirty", "dirty spot")
+	assert_true(not bool(r.interaction_context()["bags_full"]), "0 of 1 bag")
+	Session.spots[CONSOLE] = "clean"
+	Session.bags = 1
+	assert_eq(r.interaction_context()["near_spot_state"], "clean", "clean spot")
+	assert_true(bool(r.interaction_context()["bags_full"]), "1 of 1 bag")
+	Session.bag_cap = 0
+	assert_true(not bool(r.interaction_context()["bags_full"]), "no cap (a Trasher): never full")
 	_restore()
 	return true
 
@@ -113,26 +122,7 @@ func test_emergency_console_is_near_with_its_kind() -> bool:
 	var r: RoundScene = _round("citizen", EMERGENCY, 0.0)
 	var near: Dictionary = r.interaction_context()["near_console"]
 	assert_eq(str(near.get("kind", "")), "emergency", "kind")
-	assert_true(not bool(r.interaction_context()["has_task_here"]), "no task at the emergency console")
-	_restore()
-	return true
-
-
-func test_hit_target_skips_partner_out_hidden_and_far_seats() -> bool:
-	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
-	var here: Vector2 = r._player.position
-	Session.partner_seat = 2
-	Session.out_seats = {3: true}
-	_remote(r, 2, here + Vector2(4.0, 0.0))
-	_remote(r, 3, here + Vector2(6.0, 0.0))
-	_remote(r, 4, here + Vector2(HIT_RANGE_TILES * TILE_PX + 8.0, 0.0))
-	assert_eq(r._nearest_hit_target(here), -1, "partner, out seat and far seat are no targets")
-	_remote(r, 5, here + Vector2(20.0, 0.0))
-	assert_eq(r._nearest_hit_target(here), 5, "the one valid seat in range")
-	_remote(r, 6, here + Vector2(10.0, 0.0))
-	assert_eq(r._nearest_hit_target(here), 6, "the nearest valid seat")
-	r._update_remote({2: {"pos": here, "color": 0, "out": false}, 3: {"pos": here, "color": 0, "out": false}})
-	assert_eq(r._nearest_hit_target(here), -1, "a hidden avatar is no target")
+	assert_eq(r.interaction_context()["near_spot_state"], "", "the emergency console is no spot")
 	_restore()
 	return true
 
@@ -156,11 +146,23 @@ func test_citizen_use_sends_use_for_the_console() -> bool:
 	return true
 
 
-func test_citizen_without_the_task_cannot_use() -> bool:
+func test_cleaner_with_full_bags_cannot_use_a_spot() -> bool:
 	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
-	Session.my_tasks = []
+	Session.bags = 1
 	r.perform_action("use")
-	assert_eq(_sent.size(), 0, "no use without the task")
+	assert_eq(_sent.size(), 0, "no clean while carrying a full load")
+	_restore()
+	return true
+
+
+func test_clean_spot_offers_no_use_to_anyone() -> bool:
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
+	Session.spots[CONSOLE] = "clean"
+	r.perform_action("use")
+	assert_eq(_sent.size(), 0, "a Cleaner sends nothing at a clean spot")
+	Session.role = "polluter"
+	r.perform_action("use")
+	assert_true(not r._minigames.is_open(), "a Trasher fakes only on dirty spots")
 	_restore()
 	return true
 
@@ -177,44 +179,71 @@ func test_use_at_the_emergency_console_calls_the_meeting() -> bool:
 	return true
 
 
-func test_hit_sends_the_nearest_target_only_when_ready() -> bool:
+func test_repollute_sends_the_clean_spot_only_when_ready() -> bool:
 	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
-	_remote(r, 5, r._player.position + Vector2(10.0, 0.0))
-	r.perform_action("hit")
-	assert_eq(_sent, [["hit", 5]], "hit on the target")
+	Session.spots[CONSOLE] = "clean"
+	Session.cooldowns = {"repollute": 0.0}
+	r.perform_action("repollute")
+	assert_eq(_sent, [["repollute", CONSOLE]], "re-pollute the clean spot")
 	_sent.clear()
-	Session.cooldowns = {"hit": 3.0}
-	r.perform_action("hit")
-	assert_eq(_sent.size(), 0, "no hit on cooldown")
+	Session.cooldowns = {"repollute": 3.0}
+	r.perform_action("repollute")
+	assert_eq(_sent.size(), 0, "not on cooldown")
 	_restore()
 	return true
 
 
-func test_report_and_dump_send_their_requests() -> bool:
+func test_ability_virus_plants_and_gas_sends_the_room() -> bool:
+	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
+	Session.ability = "virus"
+	Session.cooldowns = {}
+	r.perform_action("ability")
+	assert_eq(_sent, [["plant_virus", CONSOLE]], "virus planted in the dirty spot")
+	_sent.clear()
+	Session.ability = "gas"
+	r.send_gas("gas_market")
+	assert_eq(_sent, [["gas", "gas_market"]], "gas the picked room")
+	assert_eq(r.gas_room_ids(), ["gas_dark", "gas_depot", "gas_garden", "gas_market"] as Array[String], "rooms from the map, sorted")
+	_restore()
+	return true
+
+
+func test_pick_ability_sends_once_and_closes_the_choice() -> bool:
+	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
+	Session.ability_choices = ["virus", "gas"]
+	r.pick_ability("gas")
+	assert_eq(_sent, [["pick_ability", "gas"]], "pick sent")
+	assert_eq(Session.ability_choices, [], "choice closed")
+	assert_true(Session.ability_pick_sent, "no re-offer before ability_ok")
+	_restore()
+	return true
+
+
+func test_report_sends_the_nearest_fresh_pile() -> bool:
 	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
 	Session.piles = [
 		{"id": 9, "pos": r._player.position + Vector2(40.0, 0.0), "kind": "dump", "state": "fresh"},
 		{"id": 8, "pos": r._player.position + Vector2(10.0, 0.0), "kind": "dump", "state": "old"},
 	]
 	r.perform_action("report")
-	r.perform_action("dump")
-	assert_eq(_sent, [["report", 9], ["dump", null]], "nearest fresh pile, then a dump")
+	assert_eq(_sent, [["report", 9]], "nearest fresh pile")
 	_restore()
 	return true
 
 
-func test_report_hit_dump_do_nothing_while_a_game_is_open() -> bool:
+func test_trasher_actions_do_nothing_while_a_game_is_open() -> bool:
 	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
-	_remote(r, 5, r._player.position + Vector2(10.0, 0.0))
-	Session.piles = [{"id": 9, "pos": r._player.position + Vector2(10.0, 0.0), "kind": "dump", "state": "fresh"}]
+	Session.ability = "virus"
+	Session.cooldowns = {}
+	Session.piles = [{"id": 9, "pos": r._player.position + Vector2(10.0, 0.0), "kind": "body", "state": "fresh"}]
 	r.perform_action("use")
 	assert_true(r._minigames.is_open(), "fake open")
-	for action in ["report", "hit", "dump"]:
+	for action in ["report", "repollute", "ability"]:
 		r.perform_action(action)
-	assert_eq(_sent.size(), 0, "keys Q, F and R are dead under the fake")
+	assert_eq(_sent.size(), 0, "action keys are dead under the fake")
 	r._minigames.close_all()
-	r.perform_action("hit")
-	assert_eq(_sent, [["hit", 5]], "hit works again once it is closed")
+	r.perform_action("ability")
+	assert_eq(_sent, [["plant_virus", CONSOLE]], "works again once it is closed")
 	_restore()
 	return true
 
@@ -356,12 +385,12 @@ func skipped_v1_test_hold_released_on_leave() -> bool:
 
 func test_sabotage_button_sends_the_kind_when_ready() -> bool:
 	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
-	r.perform_action("sabotage_fire")
+	r.perform_action("sabotage_machine")
 	r.perform_action("sabotage_smog")
-	assert_eq(_sent, [["sabotage", "fire"], ["sabotage", "smog"]], "kinds as sent")
+	assert_eq(_sent, [["sabotage", "machine"], ["sabotage", "smog"]], "kinds as sent")
 	_sent.clear()
 	Session.cooldowns = {"sabotage": 5.0}
-	r.perform_action("sabotage_fire")
+	r.perform_action("sabotage_machine")
 	assert_eq(_sent.size(), 0, "no sabotage on cooldown")
 	Session.cooldowns = {}
 	Session.sabotage = FIRE.duplicate()
@@ -664,5 +693,126 @@ func test_a_repeat_tap_does_not_restart_the_smog_repair() -> bool:
 	r.begin_hold("fix")
 	assert_eq(_sent, [["fix", SMOG_PANEL, false]], "the second tap sends nothing: the server keeps its timer")
 	assert_eq(r.repair_progress()["elapsed"], 1.5, "and the progress stays")
+	_restore()
+	return true
+
+
+## One SpotView per task console of the map (11 on greybox_01), each following Session.spots.
+func test_spot_views_follow_the_session_state() -> bool:
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
+	r._build_spots()
+	assert_eq(r._spot_views.size(), 11, "one per task console")
+	var v: SpotView = r._spot_views[CONSOLE] as SpotView
+	assert_eq(v.state, "dirty", "starts dirty")
+	assert_eq(v.art_type, "sort_waste", "art named after the mini-game")
+	Session.spots[CONSOLE] = "clean"
+	r._update_spots()
+	assert_eq(v.state, "clean", "follows the snapshot")
+	assert_eq(v.modulate, Color.WHITE, "no dirt tint once clean")
+	_restore()
+	return true
+
+
+const MACHINE_ID: String = "machine"
+
+
+func test_deliver_at_the_machine_sends_use_machine() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.machine_jammed = false
+	Session.bags = 1
+	r.perform_action("use")
+	assert_eq(_sent, [["use", MACHINE_ID]], "deliver")
+	Session.bags = 0
+	_sent.clear()
+	r.perform_action("use")
+	assert_eq(_sent.size(), 0, "no bags, no delivery")
+	_restore()
+	return true
+
+
+func test_machine_fix_hold_sends_true_once_then_false() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.machine_jammed = true
+	r.begin_hold("fix")
+	r.begin_hold("fix")
+	assert_eq(_sent, [["fix", MACHINE_ID, true]], "one hold, repeat press sends nothing")
+	r.end_hold("fix")
+	assert_eq(_sent[_sent.size() - 1], ["fix", MACHINE_ID, false], "release")
+	_restore()
+	return true
+
+
+func test_machine_fix_released_when_walking_away_and_dropped_once_fixed() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.machine_jammed = true
+	r.begin_hold("fix")
+	r._player.position += Vector2(200.0, 0.0)
+	r._sync_holds(0.1)
+	assert_eq(_sent[_sent.size() - 1], ["fix", MACHINE_ID, false], "walked away: release")
+	r._player.position -= Vector2(200.0, 0.0)
+	r.begin_hold("fix")
+	Session.machine_jammed = false
+	_sent.clear()
+	r._sync_holds(0.1)
+	assert_eq(_sent.size(), 0, "fixed by the server: nothing to release")
+	assert_true(not r.is_holding_machine(), "hold cleared")
+	_restore()
+	return true
+
+
+func test_machine_repair_progress_from_the_server_count() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.machine_jammed = true
+	Session.tuning = {"machine": {"fix_s": 4.0}}
+	r.begin_hold("fix")
+	Session.machine_repair_t = 1.0
+	var p: Dictionary = r.machine_repair_progress()
+	assert_true(bool(p["active"]), "counting")
+	assert_near(float(p["elapsed"]), 1.0, 0.001, "elapsed")
+	assert_near(float(p["duration"]), 4.0, 0.001, "fix_s")
+	Session.machine_repair_t = -1.0
+	assert_true(not bool(r.machine_repair_progress()["active"]), "not counting")
+	_restore()
+	return true
+
+
+func test_pick_upgrade_sends_and_closes_the_offer() -> bool:
+	var r: RoundScene = _round("citizen", MACHINE_ID, 0.0)
+	Session.upgrade_offer = ["heal", "mask"]
+	r.pick_upgrade("heal")
+	assert_eq(_sent, [["pick_upgrade", "heal"]], "pick sent")
+	assert_eq(Session.upgrade_offer, [], "offer closed")
+	_restore()
+	return true
+
+
+func test_heal_myself_when_infected_else_the_nearest_player() -> bool:
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
+	Session.tuning = {"virus": {"heal_range": 1.5}}
+	Session.heals = 1
+	Session.infected_s = 20.0
+	_remote(r, 5, r._player.position + Vector2(20.0, 0.0))
+	r.perform_action("heal")
+	assert_eq(_sent, [["heal", Session.seat_id]], "infected: heal myself first")
+	_sent.clear()
+	Session.infected_s = -1.0
+	r.perform_action("heal")
+	assert_eq(_sent, [["heal", 5]], "the player in reach")
+	_sent.clear()
+	_remote(r, 5, r._player.position + Vector2(200.0, 0.0))
+	r.perform_action("heal")
+	assert_eq(_sent.size(), 0, "nobody in reach")
+	_restore()
+	return true
+
+
+func test_alert_calls_the_meeting_once_per_infection() -> bool:
+	var r: RoundScene = _round("citizen", OTHER_CONSOLE, 0.0)
+	Session.infected_s = 20.0
+	Session.alert_used = false
+	r.perform_action("alert")
+	r.perform_action("alert")
+	assert_eq(_sent, [["call_meeting", null]], "one meeting call")
+	assert_true(Session.alert_used, "used")
 	_restore()
 	return true

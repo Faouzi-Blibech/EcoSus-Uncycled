@@ -52,5 +52,8 @@ namespace Uncycled.Bots
         HealSelf,
         FixMachine,
         SabotageMachine,
+
+        /// <summary>Walk out of a gas room whose warning runs (the public gas warning; a Cleaner without a mask).</summary>
+        LeaveGas,
     }
 }

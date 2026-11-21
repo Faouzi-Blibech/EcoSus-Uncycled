@@ -178,6 +178,14 @@ namespace Uncycled.Server.Tests
                         Assert.DoesNotContain("infected", json, StringComparison.OrdinalIgnoreCase);
                     }
                 }
+                else if (p.Seat != rig.Trasher)
+                {
+                    // the planter's partner learns nothing either: no ability, no virus cooldown, no planted marker
+                    Assert.Equal(System.Text.Json.JsonValueKind.Null, s.RootElement.GetProperty("me").GetProperty("ability").ValueKind);
+                    Assert.Equal(0.0, s.RootElement.GetProperty("me").GetProperty("cd").GetProperty("virus").GetDouble());
+                    Assert.DoesNotContain("planted", snapshot);
+                    Assert.DoesNotContain("planted", welcome);
+                }
             }
 
             foreach (GameEvent ev in rig.Events)

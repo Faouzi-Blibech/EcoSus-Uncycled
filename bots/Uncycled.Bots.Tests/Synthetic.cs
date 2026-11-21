@@ -57,6 +57,18 @@ namespace Uncycled.Bots.Tests
 
         public SabotageView? Sabotage { get; set; }
 
+        public bool MachineJammed { get; set; }
+
+        public int Bags { get; set; }
+
+        public int BagCap { get; set; } = 2;
+
+        public TrasherAbility Ability { get; set; }
+
+        public int Heals { get; set; }
+
+        public float? InfectedS { get; set; }
+
         public MeetingView? Meeting { get; set; }
 
         public CooldownView? Cooldowns { get; set; }
@@ -72,9 +84,10 @@ namespace Uncycled.Bots.Tests
         public SeatView View()
         {
             CooldownView? cd = Cooldowns ?? (Role == Role.Polluter ? new CooldownView(0f, 0f, 0f) : null);
-            var me = new MyView(Seat, Role, Partners, null, Status, Position, 4f, Role == Role.Citizen ? Poison : (int?)null, cd, Tasks);
+            var me = new MyView(Seat, Role, Partners, null, Status, Position, 4f, Role == Role.Citizen ? Poison : (int?)null, cd, Tasks,
+                bags: Bags, bagCap: BagCap, ability: Ability, heals: Heals, infectedS: InfectedS);
             return new SeatView(Seat, Phase, 0f, MatchTime, 600f, DeadlineClock.MatchTime, MatchTime, 10f, EmergenciesLeft,
-                me, Players, Piles, Sabotage, Meeting, null, null, Spots);
+                me, Players, Piles, Sabotage, Meeting, null, null, Spots, MachineJammed);
         }
 
         public void Observe()

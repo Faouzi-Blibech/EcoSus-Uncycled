@@ -10,6 +10,7 @@ const Joystick := preload("res://ui/joystick/virtual_joystick.gd")
 const AvatarScene: PackedScene = preload("res://world/player/avatar.tscn")
 const LocalPlayerScene: PackedScene = preload("res://world/player/local_player.tscn")
 const PileScene: PackedScene = preload("res://world/pile/pile.tscn")
+const SpotViewScript: GDScript = preload("res://world/spot/spot_view.gd")
 const CameraScript: GDScript = preload("res://world/camera/follow_camera.gd")
 const VisionScene: PackedScene = preload("res://world/vision/vision.tscn")
 const HudScene: PackedScene = preload("res://ui/hud/hud.tscn")
@@ -33,13 +34,24 @@ const SMOG_REPAIR_GRACE_S: float = 1.0
 ## The joystick draws above the smog haze (layer 1) and below the HUD (layer 10).
 const JOYSTICK_LAYER: int = 5
 ## Map marker kinds the player can stand at to act.
-const CONSOLE_KINDS: Array[String] = ["task", "emergency", "fire_fix", "smog_fix"]
+const CONSOLE_KINDS: Array[String] = ["task", "emergency", "fire_fix", "smog_fix", "machine"]
+## The Recycling Machine's marker id (map special of kind "machine").
+const MACHINE_ID: String = "machine"
+## Used while Session.tuning has no machine.fix_s; equals the server default (4 s).
+const MACHINE_FIX_FALLBACK_S: float = 4.0
+## Used while Session.tuning has no virus.heal_range; equals the server default.
+const HEAL_RANGE_FALLBACK_TILES: float = 1.5
+const GasOverlayScript: GDScript = preload("res://world/vision/gas_overlay.gd")
 
 var _map: MapRoot = null
 var _player: LocalPlayer = null
 var _camera: FollowCamera = null
 var _vision: Vision = null
 var _piles_holder: Node2D = null
+## Cleaning spots by console id (one SpotView per task console of the map).
+var _spot_views: Dictionary = {}
+## The toxic tint over the room a gas warning runs in.
+var _gas_overlay: GasOverlay = null
 var _avatars_holder: Node2D = null
 var _fx_holder: Node2D = null
 var _world_shown: bool = true
@@ -51,6 +63,8 @@ var _leaving: bool = false
 ## The fire console the local player holds ("" when none) and the smog panel being repaired.
 var _held_console: String = ""
 var _repairing: bool = false
+## True while FIX is held at a jammed Recycling Machine (the server counts machine.fix_s).
+var _holding_machine: bool = false
 var _repair_console: String = ""
 var _repair_age_s: float = 0.0
 ## True once a snapshot carried sabotage.repair_t (the server is counting this player's repair).
@@ -70,14 +84,18 @@ var _clean_elapsed: float = 0.0
 var senders: Dictionary = {
 	"use": Net.send_use,
 	"report": Net.send_report,
-	"hit": Net.send_hit,
-	"dump": Net.send_dump,
+	"repollute": Net.send_repollute,
+	"plant_virus": Net.send_plant_virus,
+	"gas": Net.send_gas,
+	"pick_ability": Net.send_pick_ability,
 	"sabotage": Net.send_sabotage,
 	"fix": Net.send_fix,
 	"clean_start": Net.send_clean_start,
 	"clean_cancel": Net.send_clean_cancel,
 	"move": Net.send_move,
 	"call_meeting": Net.send_call_meeting,
+	"pick_upgrade": Net.send_pick_upgrade,
+	"heal": Net.send_heal,
 }
 var _hud: Hud = null
 var _minigames: MinigameLayer = null
@@ -107,6 +125,9 @@ func _ready() -> void:
 		_leave_for_update()
 		return
 	add_child(_map)
+	_build_spots()
+	_gas_overlay = GasOverlayScript.new() as GasOverlay
+	add_child(_gas_overlay)
 	_piles_holder = Node2D.new()
 	add_child(_piles_holder)
 	_avatars_holder = Node2D.new()
@@ -303,6 +324,38 @@ func _update_remote(remote: Dictionary) -> void:
 
 ## Mirrors Session.piles ([{id, pos (px), kind, state}]): adds, updates and removes. Runs once per
 ## snapshot, not per frame; Pile.setup ignores unchanged data.
+## One SpotView per task console of the map, drawn under the piles and players.
+func _build_spots() -> void:
+	var holder: Node2D = Node2D.new()
+	add_child(holder)
+	for m in _map.markers():
+		if m.kind != "task":
+			continue
+		var v: SpotView = SpotViewScript.new() as SpotView
+		v.setup(m.marker_id, MinigameRegistry.base_type(_task_type_at_console(m.marker_id)), m.global_position)
+		holder.add_child(v)
+		_spot_views[m.marker_id] = v
+	_update_spots()
+
+
+## Tints the room of the running gas warning (Session.gas_room), clears it when none.
+func _update_gas() -> void:
+	if _gas_overlay == null:
+		return
+	var m: MapMarker = _map.marker(Session.gas_room) if _map != null and not Session.gas_room.is_empty() else null
+	if m == null:
+		_gas_overlay.clear()
+		return
+	var rect: Rect2 = Rect2(m.position / MapRoot.TILE_PX, Vector2(m.zone_size_tiles))
+	var warning_s: float = float(Net.as_dict(Session.tuning.get("trasher")).get("gas_warning_s", 3.0))
+	_gas_overlay.show_room(rect, Session.gas_in_s, warning_s)
+
+
+func _update_spots() -> void:
+	for id in _spot_views:
+		(_spot_views[id] as SpotView).show_state(str(Session.spots.get(id, "dirty")))
+
+
 func _update_piles() -> void:
 	var present: Dictionary = {}
 	for entry in Session.piles:
@@ -328,9 +381,9 @@ func _update_piles() -> void:
 # ---------------------------------------------------------------- actions
 
 ## What the player can reach right now: `near_console` ({id, kind} of the nearest task, emergency
-## or fire/smog fix marker inside its range, else {}), `has_task_here`, `fresh_pile` (nearest
-## visible fresh pile id or -1), `hit_target` (nearest visible active seat, not me and not my
-## partner, inside the hit range, or -1), `sabotage` (the running one, {} when none) and
+## or fire/smog fix marker inside its range, else {}), `near_spot_state` (Session.spots state of that
+## console when it is a task console: a cleaning spot), `bags_full`, `fresh_pile` (nearest
+## visible fresh pile id or -1), `sabotage` (the running one, {} when none) and
 ## `holding_fire`, `clean_pile` (nearest dump pile, fresh or reported, inside the clean range, or -1). Visibility is the server's: only seats and piles of the latest snapshot are known.
 func interaction_context() -> Dictionary:
 	var pos: Vector2 = local_position_px()
@@ -344,15 +397,14 @@ func interaction_context() -> Dictionary:
 			if d <= Net.tiles_to_px(m.range_tiles) and d < best:
 				best = d
 				near = {"id": m.marker_id, "kind": m.kind}
-	var has_task: bool = (
-		str(near.get("kind", "")) == "task" and not Session.my_task_at_console(str(near["id"])).is_empty()
-	)
+	var spot_state: String = str(Session.spots.get(str(near["id"]), "")) if str(near.get("kind", "")) == "task" else ""
 	return {
 		"near_console": near,
-		"has_task_here": has_task,
+		"near_spot_state": spot_state,
+		"bags_full": Session.bag_cap > 0 and Session.bags >= Session.bag_cap,
 		"fresh_pile": _nearest_fresh_pile(pos),
 		"clean_pile": _nearest_clean_pile(pos),
-		"hit_target": _nearest_hit_target(pos),
+		"heal_target": _nearest_seat_in_reach(pos, heal_range_px()),
 		"sabotage": Session.sabotage,
 		"holding_fire": not _held_console.is_empty(),
 		"held_console": _held_console,
@@ -402,21 +454,6 @@ func _nearest_clean_pile(pos: Vector2) -> int:
 	return found
 
 
-func _nearest_hit_target(pos: Vector2) -> int:
-	var range_px: float = Net.tiles_to_px(float(Net.as_dict(Session.tuning.get("poison")).get("hit_range", 0.0)))
-	var found: int = -1
-	var best: float = INF
-	for seat in _avatars:
-		var a: Avatar = _avatars[seat] as Avatar
-		if not a.visible or int(seat) == Session.seat_id or int(seat) == Session.partner_seat or Session.seat_out(int(seat)):
-			continue
-		var dist: float = pos.distance_to(a.position)
-		if dist <= range_px and dist < best:
-			best = dist
-			found = int(seat)
-	return found
-
-
 ## The button states (ActionRules.button_states) for the current moment.
 func action_states() -> Dictionary:
 	var ctx: Dictionary = interaction_context()
@@ -425,10 +462,17 @@ func action_states() -> Dictionary:
 	ctx["is_out"] = Session.is_out
 	ctx["cd"] = Session.cooldowns
 	ctx["emergencies_left"] = Session.emergencies_left
+	ctx["bags"] = Session.bags
+	ctx["machine_jammed"] = Session.machine_jammed
+	ctx["ability"] = Session.ability
+	ctx["heals"] = Session.heals
+	ctx["infected"] = Session.infected_s >= 0.0
+	ctx["alert_used"] = Session.alert_used
 	return ActionRules.button_states(ctx)
 
 
-## Runs "use", "report", "hit", "dump", "sabotage_fire" or "sabotage_smog" if the rules allow it
+## Runs "use", "report", "repollute", "ability" (the virus; the gas goes through send_gas after the
+## room picker), "sabotage_machine" or "sabotage_smog" if the rules allow it
 ## right now (only "use" while a game is open). The server checks again.
 func perform_action(action: String) -> void:
 	if _leaving or _player == null:
@@ -444,15 +488,78 @@ func perform_action(action: String) -> void:
 		"report":
 			if bool(states["report"]):
 				senders["report"].call(_nearest_fresh_pile(local_position_px()))
-		"hit":
-			if bool(Net.as_dict(states["hit"]).get("ready", false)):
-				senders["hit"].call(_nearest_hit_target(local_position_px()))
-		"dump":
-			if bool(Net.as_dict(states["dump"]).get("ready", false)):
-				senders["dump"].call()
-		"sabotage_fire", "sabotage_smog":
+		"repollute":
+			if bool(Net.as_dict(states["repollute"]).get("ready", false)):
+				senders["repollute"].call(_near_spot_id())
+		"ability":
+			var ability: Dictionary = Net.as_dict(states["ability"])
+			if bool(ability.get("ready", false)) and str(ability.get("kind", "")) == "virus":
+				senders["plant_virus"].call(_near_spot_id())
+		"heal":
+			if bool(states["heal"]):
+				var target: int = Session.seat_id if Session.infected_s >= 0.0 else _nearest_seat_in_reach(local_position_px(), heal_range_px())
+				senders["heal"].call(target)
+		"alert":
+			if bool(states["alert"]):
+				Session.alert_used = true
+				senders["call_meeting"].call()
+		"sabotage_machine", "sabotage_smog":
 			if bool(Net.as_dict(states["sabotage"]).get("ready", false)):
 				senders["sabotage"].call(action.trim_prefix("sabotage_"))
+
+
+## Gases `room` (an id of the map's gas rooms) when the gas is ready.
+func send_gas(room: String) -> void:
+	if _leaving or _player == null:
+		return
+	var ability: Dictionary = Net.as_dict(action_states()["ability"])
+	if bool(ability.get("ready", false)) and str(ability.get("kind", "")) == "gas":
+		senders["gas"].call(room)
+
+
+## The gas room ids of the map (marker kind "gas_room"), sorted.
+func gas_room_ids() -> Array[String]:
+	var ids: Array[String] = []
+	if _map != null:
+		for m in _map.markers():
+			if m.kind == "gas_room":
+				ids.append(m.marker_id)
+	ids.sort()
+	return ids
+
+
+## The Trasher chose the virus or the gas (AbilityPicker.picked). The choice closes at once and is
+## not offered again before ability_ok arrives.
+func pick_ability(ability: String) -> void:
+	senders["pick_ability"].call(ability)
+	Session.ability_choices = []
+	Session.ability_pick_sent = true
+
+
+## How close another player must be to heal them (tuning virus.heal_range, 1.5 tiles by default).
+func heal_range_px() -> float:
+	return Net.tiles_to_px(float(Net.as_dict(Session.tuning.get("virus")).get("heal_range", HEAL_RANGE_FALLBACK_TILES)))
+
+
+## The nearest visible, active other seat within `range_px`, or -1.
+func _nearest_seat_in_reach(pos: Vector2, range_px: float) -> int:
+	var found: int = -1
+	var best: float = INF
+	for seat in _avatars:
+		var a: Avatar = _avatars[seat] as Avatar
+		if not a.visible or int(seat) == Session.seat_id or Session.seat_out(int(seat)):
+			continue
+		var dist: float = pos.distance_to(a.position)
+		if dist <= range_px and dist < best:
+			best = dist
+			found = int(seat)
+	return found
+
+
+## The id of the spot (task console) in range, "" when none.
+func _near_spot_id() -> String:
+	var near: Dictionary = Net.as_dict(interaction_context().get("near_console"))
+	return str(near.get("id", "")) if str(near.get("kind", "")) == "task" else ""
 
 
 ## Presses a hold button. "fix": a fire console is held until end_hold (or until it is no longer
@@ -470,6 +577,11 @@ func begin_hold(action: String) -> void:
 	if not bool(fix["visible"]):
 		return
 	var id: String = str(Net.as_dict(interaction_context().get("near_console")).get("id", ""))
+	if str(fix["kind"]) == "machine":
+		if not _holding_machine:
+			_holding_machine = true
+			senders["fix"].call(id, true)
+		return
 	if str(fix["kind"]) == "fire":
 		if _held_console != id:
 			_held_console = id
@@ -490,6 +602,7 @@ func begin_hold(action: String) -> void:
 func end_hold(action: String) -> void:
 	if action == "fix":
 		_release_fire()
+		_release_machine()
 	elif action == "clean":
 		_cancel_clean()
 
@@ -543,6 +656,31 @@ func is_repairing() -> bool:
 	return _repairing
 
 
+## {active, elapsed, duration} of the machine fix, from the server's own count (snapshot
+## machine.repair_t, sent to the repairer only): active only while the server counts this hold.
+func machine_repair_progress() -> Dictionary:
+	var duration: float = float(Net.as_dict(Session.tuning.get("machine")).get("fix_s", MACHINE_FIX_FALLBACK_S))
+	var active: bool = _holding_machine and Session.machine_repair_t >= 0.0
+	return {"active": active, "elapsed": minf(Session.machine_repair_t, duration) if active else 0.0, "duration": duration}
+
+
+func is_holding_machine() -> bool:
+	return _holding_machine
+
+
+## The player chose a card of the upgrade offer (UpgradePicker.picked).
+func pick_upgrade(item: String) -> void:
+	senders["pick_upgrade"].call(item)
+	Session.upgrade_offer = []
+
+
+func _release_machine() -> void:
+	if not _holding_machine:
+		return
+	_holding_machine = false
+	senders["fix"].call(MACHINE_ID, false)
+
+
 func _release_fire() -> void:
 	if _held_console.is_empty():
 		return
@@ -554,6 +692,7 @@ func _release_fire() -> void:
 ## Every hold this scene owes the server a release for; called before the scene leaves.
 func _release_holds() -> void:
 	_release_fire()
+	_release_machine()
 	_cancel_clean()
 	_repairing = false
 
@@ -567,6 +706,7 @@ func _sync_holds(delta: float = 0.0) -> void:
 		_cancel_clean()
 	_sync_fire_hold(delta)
 	_sync_repair(delta)
+	_sync_machine_hold()
 
 
 func _pile_in_clean_range(id: int) -> bool:
@@ -602,6 +742,17 @@ func _sync_fire_hold(delta: float) -> void:
 	_hold_resent = true
 	_hold_missing_s = 0.0
 	senders["fix"].call(_held_console, true)
+
+
+## A machine hold ends when the jam is over (the server fixed it: nothing to release) or when the
+## player walks out of the machine's range (release, so the server stops counting).
+func _sync_machine_hold() -> void:
+	if not _holding_machine:
+		return
+	if not Session.machine_jammed:
+		_holding_machine = false
+	elif not _console_in_reach(MACHINE_ID):
+		_release_machine()
 
 
 func _sync_repair(delta: float) -> void:
@@ -704,10 +855,14 @@ func _on_correct(data: Dictionary) -> void:
 
 func _on_snapshot(_data: Dictionary) -> void:
 	_update_piles()
+	_update_spots()
+	_update_gas()
 	_leave_if_phase_changed()
 
 
-func _on_event(_data: Dictionary) -> void:
+func _on_event(data: Dictionary) -> void:
+	if str(data.get("t", "")) == "spot_cleaned":
+		_update_spots()
 	_leave_if_phase_changed()
 
 

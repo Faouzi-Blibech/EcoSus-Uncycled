@@ -85,6 +85,7 @@ namespace Uncycled.Bots
             SeatView view = engine.ViewFor(seat);
             EnsureInit(engine, seat, view);
             float now = view.MatchTime;
+            Mem.GasWarnedRoom = engine.ExtrasFor(seat).GasRoom; // the public gas warning every seat gets, as a human sees it
             Mem.Observe(view, now, engine.Witnesses.SeenBy(seat));
             Mem.UpgradeOffer = engine.OpenUpgradeOffer(seat); // the popup a human sees: the offer the seat holds
 
@@ -194,9 +195,9 @@ namespace Uncycled.Bots
             if (_pending == null)
             {
                 _decisionIn -= dt;
-                if (_decisionIn > 0f)
+                if (_decisionIn > 0f && ActionQuery.WarnedRoomToAvoid(view, Mem, Mem.Map) == null)
                 {
-                    return;
+                    return; // a gas warning is not left for the next decision slot: the warning is short
                 }
 
                 _decisionIn = _settings.DecisionIntervalS;

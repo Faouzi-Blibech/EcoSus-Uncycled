@@ -228,13 +228,6 @@ func test_match_started_without_seats_keeps_the_seat_list() -> bool:
 	return true
 
 
-func test_dump_ok_sets_the_dump_cooldown() -> bool:
-	var s: Object = _session()
-	s._on_event({"t": "dump_ok", "pile": 4, "cooldown": 40.0})
-	assert_eq(float(s.cooldowns.get("dump", -1.0)), 40.0, "dump cooldown from dump_ok")
-	return true
-
-
 func test_welcome_tasks_array_fills_task_types() -> bool:
 	var s: Object = _session()
 	var defs: Array = [{"type": "sort_waste", "steps": 1, "min_s": 4.0, "consoles": ["market_bins"]}]

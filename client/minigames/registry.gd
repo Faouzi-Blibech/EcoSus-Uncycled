@@ -14,13 +14,18 @@ const SCENES: Dictionary = {
 
 ## The key equal to task_type, or the longest key k with task_type starting with "k_"; else "".
 static func scene_for(task_type: String) -> String:
+	var key: String = base_type(task_type)
+	return "" if key.is_empty() else SCENES[key]
+
+
+## The mini-game key of a task type: itself, or the longest key it starts with plus "_"
+## ("sort_waste_depot" -> "sort_waste"); "" when none. Spot art is named after it.
+static func base_type(task_type: String) -> String:
 	if SCENES.has(task_type):
-		return SCENES[task_type]
+		return task_type
 	var best: String = ""
 	for k in SCENES:
 		var key: String = k
 		if task_type.begins_with(key + "_") and key.length() > best.length():
 			best = key
-	if best.is_empty():
-		return ""
-	return SCENES[best]
+	return best
