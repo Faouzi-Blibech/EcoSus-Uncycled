@@ -35,6 +35,9 @@ namespace Sim.Uncycled
 
         public SpotState State { get; internal set; }
 
+        /// <summary>ActiveTime of the last clean (litter comes back MatchConfig.SpotRelitterS after it).</summary>
+        public float CleanedAt { get; internal set; }
+
         /// <summary>Seat of the Trasher whose virus is planted here (never sent to clients).</summary>
         public byte? VirusBy { get; internal set; }
 

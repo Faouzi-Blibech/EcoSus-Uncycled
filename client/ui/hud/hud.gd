@@ -55,6 +55,8 @@ var _ability_kind: String = ""
 var _virus_timer: VirusTimer
 var _heal_button: ActionButton
 var _alert_button: ActionButton
+## DASH: every role, left of the action grid.
+var _dash_button: ActionButton
 var _ping_label: Label
 var _buttons: Dictionary = {}
 var _fix_button: ActionButton
@@ -265,6 +267,19 @@ func _build_buttons() -> void:
 	_sabotage_spare.custom_minimum_size = ActionButton.BUTTON_SIZE
 	_sabotage_spare.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	grid.add_child(_sabotage_spare)
+	_dash_button = ActionButton.new()
+	_dash_button.text = action_text(tr("ACT_DASH"), _key_text("act_dash"), DisplayServer.is_touchscreen_available())
+	_dash_button.visible = false
+	_dash_button.pressed.connect(_on_action_pressed.bind("dash"))
+	_dash_button.anchor_left = 1.0
+	_dash_button.anchor_right = 1.0
+	_dash_button.anchor_top = 1.0
+	_dash_button.anchor_bottom = 1.0
+	_dash_button.offset_right = -(MARGIN_PX + GRID_WIDTH_PX + 6.0)
+	_dash_button.offset_left = _dash_button.offset_right - ActionButton.BUTTON_SIZE.x
+	_dash_button.offset_bottom = -(MARGIN_PX + ActionButton.BUTTON_SIZE.y + 6.0)
+	_dash_button.offset_top = _dash_button.offset_bottom - ActionButton.BUTTON_SIZE.y
+	_root.add_child(_dash_button)
 
 
 ## A tap button that fills `slot`, hidden until the rules show it; pressing it runs `action`.
@@ -359,6 +374,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_released("act_clean"):
 		_on_hold_ended("clean")
+	if event.is_action_pressed("act_dash"):
+		_on_action_pressed("dash")
+		get_viewport().set_input_as_handled()
+		return
 	for action in ACTIONS:
 		if event.is_action_pressed(str(ACTION_INPUT[action])):
 			_on_action_pressed(action)
@@ -480,6 +499,10 @@ func _update_buttons() -> void:
 	_heal_button.visible = bool(states["heal"])
 	_alert_button.visible = bool(states["alert"])
 	_set_cooldown(states, "sabotage", "sabotage", "shared_cooldown_s")
+	var dash: Dictionary = Net.as_dict(states.get("dash"))
+	_dash_button.visible = bool(dash.get("visible", false))
+	_dash_button.disabled = not bool(dash.get("ready", false))
+	_dash_button.set_ring(float(dash.get("cooldown", 0.0)), float(Net.as_dict(Session.tuning.get("dash")).get("cooldown_s", 0.0)))
 	_update_fix(Net.as_dict(states["fix"]))
 	# Only polluters have the third row; citizens keep REPORT and USE near the thumb.
 	_sabotage_slot.visible = Session.role == "polluter"

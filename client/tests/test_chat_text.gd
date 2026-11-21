@@ -470,7 +470,7 @@ func test_wire_chat_text_and_protocol_version() -> bool:
 	n.send_chat_text("hello")
 	assert_eq(n.last_type, "chat_text", "message type")
 	assert_eq(n.last_fields, {"text": "hello"}, "the text and nothing else")
-	assert_eq(n.PROTOCOL_VERSION, 2, "protocol version 2")
+	assert_eq(n.PROTOCOL_VERSION, 3, "protocol version 3")
 	assert_eq(ProbeClient.PROTOCOL_VERSION, n.PROTOCOL_VERSION, "the probe client says the same")
 	return true
 

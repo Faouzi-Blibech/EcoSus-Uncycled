@@ -71,7 +71,7 @@ const TYPED_MESSAGES: Array[String] = [
 	"sabotage_ended",
 ]
 
-const PROTOCOL_VERSION: int = 2
+const PROTOCOL_VERSION: int = 3
 const TILE_PX: float = 32.0
 const DEFAULT_SPEED_TILES_PER_S: float = 2.5
 const CONNECT_TIMEOUT_S: float = 6.0
@@ -270,6 +270,11 @@ func send_task_step(task_id: int) -> void:
 
 func send_repollute(spot_id: String) -> void:
 	send("repollute", {"spot": spot_id})
+
+
+## A direction, not a position: the server finds where the dash ends (walls stop it) and says it in dash_ok.
+func send_dash(dir: Vector2) -> void:
+	send("dash", {"dir": [dir.x, dir.y]})
 
 
 func send_plant_virus(spot_id: String) -> void:

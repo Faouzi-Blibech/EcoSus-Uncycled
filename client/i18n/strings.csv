@@ -82,12 +82,11 @@ ITEM_PERFUME_FLASK,Perfume flask,Flacon de parfum,قارورة عطر
 ITEM_APPLE_CORE,Apple core,Trognon de pomme,قلب تفاحة
 ITEM_BANANA_PEEL,Banana peel,Peau de banane,قشرة موز
 ITEM_EGGSHELL,Eggshell,Coquille d'oeuf,قشرة بيض
-MEETING_CAUSE_REPORT,%s reported a waste pile,%s a signalé un tas de déchets,%s أبلغ عن كومة نفايات
+MEETING_CAUSE_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط
 MEETING_CAUSE_EMERGENCY,%s called an emergency meeting,%s a lancé une réunion d'urgence,%s دعا إلى اجتماع طارئ
 MEETING_CLUES,Clues,Indices,أدلة
 MEETING_NO_CLUES,No clues.,Aucun indice.,لا توجد أدلة.
 MEETING_CLUE_PLAIN,%s (%s),%s (%s),%s (%s)
-MEETING_TASK_BAR,Tasks done: %.0f%%,Tâches faites : %.0f%%,المهام المنجزة: %.0f%%
 MEETING_CHAT,Chat,Discussion,الدردشة
 MEETING_DISCUSSION,Discussion,Discussion,نقاش
 MEETING_VOTING,Vote,Vote,تصويت
@@ -142,7 +141,7 @@ RESULT_TL_AT,%s (%s),%s (%s),%s (%s)
 RESULT_TL_DUMP,%s dumped waste,%s a jeté des déchets,%s رمى نفايات
 RESULT_TL_HIT,%s poisoned %s,%s a empoisonné %s,%s سمّم %s
 RESULT_TL_POISONED_OUT,%s was knocked out by toxic gas,%s a été éliminé par le gaz toxique,%s تم إقصاؤه بالغاز السام
-RESULT_TL_REPORT,%s reported a waste pile,%s a signalé un tas de déchets,%s أبلغ عن كومة نفايات
+RESULT_TL_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط
 RESULT_TL_MEETING,%s called a meeting,%s a lancé une réunion,%s دعا إلى اجتماع
 RESULT_TL_EJECTION,%s was ejected,%s a été éjecté,تم طرد %s
 RESULT_FACT_LABEL,Did you know?,Le savais-tu ?,هل تعلم؟
@@ -281,6 +280,7 @@ SABOTAGE_BANNER_MACHINE,The Recycling Machine is jammed! Hold FIX at the machine
 REJECT_NO_BAGS,You carry no bags.,Tu ne portes aucun sac.,لا تحمل أي أكياس.
 REJECT_MACHINE_JAMMED,The machine is jammed. Fix it first.,La machine est bloquée. Répare-la d'abord.,الآلة معطّلة. أصلحها أولًا.
 REJECT_NO_ITEM,That item is not available.,Cet objet n'est pas disponible.,هذا العنصر غير متوفر.
+ACT_DASH,Dash,Élan,اندفاع
 ACT_REPOLLUTE,Re-pollute,Repolluer,إعادة التلويث
 ACT_VIRUS,Virus,Virus,فيروس
 ACT_GAS,Gas,Gaz,غاز

@@ -42,8 +42,8 @@ func _trasher_snapshot() -> Dictionary:
 	}
 
 
-func test_client_speaks_protocol_2() -> bool:
-	assert_eq(Net.PROTOCOL_VERSION, 2, "protocol version sent in hello")
+func test_client_speaks_protocol_3() -> bool:
+	assert_eq(Net.PROTOCOL_VERSION, 3, "protocol version sent in hello")
 	return true
 
 
@@ -220,4 +220,18 @@ func test_infection_heal_mask_and_gas_events() -> bool:
 	assert_near(s.gas_in_s, 3.0, 0.001, "warning time")
 	s._on_event({"t": "gas_done", "room": "gas_depot"})
 	assert_eq(s.gas_room, "", "gas over")
+	return true
+
+
+## me.dash is the dash timer for every role; dash_ok restarts it; unknown (-1) until a snapshot says.
+func test_dash_timer_from_snapshot_and_dash_ok() -> bool:
+	var s: Object = _session()
+	assert_near(s.dash_s, -1.0, 0.001, "unknown before any snapshot")
+	var snap: Dictionary = _cleaner_snapshot()
+	(snap["me"] as Dictionary)["dash"] = 7.5
+	s._on_snapshot(snap)
+	assert_near(s.dash_s, 7.5, 0.001, "from me.dash")
+	s._on_event({"t": "dash_ok", "pos": Vector2(64, 64), "cooldown": 20.0})
+	assert_near(s.dash_s, 20.0, 0.001, "dash_ok restarts it")
+	_cleanup_save()
 	return true

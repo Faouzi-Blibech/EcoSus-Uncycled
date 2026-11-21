@@ -74,7 +74,7 @@ answers `use_ok` (kind `spot`, with the mini-game `type`). The client plays the 
 Bags are private: only the carrier sees them (a visible bag would prove who is a Cleaner).
 
 **Recycling Machine.** A `special` of kind `machine` at the map edge. `use` on it with bags delivers all of
-them: meter `+ spots.bag_meter_add` per bag (10). Then the server offers an upgrade (`upgrade_offer`) and the
+them: meter `+ spots.bag_meter_add` per bag (6: 17 deliveries to win). Then the server offers an upgrade (`upgrade_offer`) and the
 Cleaner picks one (`pick_upgrade`). One open offer at a time; a delivery while an offer is open adds meter but
 no second offer.
 
@@ -90,12 +90,26 @@ no second offer.
 **Machine jammed.** While jammed, deliveries are rejected (`machine_jammed`). A Cleaner fixes it by holding
 `fix` at the machine for `machine.fix_s` (4 s).
 
+**Litter comes back.** A spot left clean for `spots.relitter_s` (60 s) turns dirty again: Cleaners always
+have work, and 17 deliveries need the spots to cycle.
+
+**Balance (22 Nov, night, map tbs_01).** 20 simulated matches with 8 scripted bots per setting. Old values
+(10 per bag, 10 per re-pollute, no litter): Cleaners 7/20. Chosen (6 per bag, 5 per re-pollute, litter after
+60 s): Cleaners 13/20, Trashers 7/20, about 5.7 min of the 7. The re-pollute value moves it most (6 instead of
+5 drops the Cleaners to 6/20). Slightly Cleaner-sided on purpose: humans clean slower than bots. Retune after a
+real match with people.
+
+**Dash (every seat).** One charge: the server moves the seat up to `dash.tiles` (6 tiles, about 10 m at the
+game's walking pace) along the chosen direction and stops it before a wall. Ready `dash.cooldown_s` (20 s) after
+the match start and after each dash; a Cleaner who cleans `dash.cleans_refill` (5) spots gets it back at once.
+The client leaves fading afterimages along the dash, also for the dashes of others it can see.
+
 ## 6. Trashers
 
 - **Fake clean.** A Trasher can open any spot's mini-game; the client plays it locally and sends nothing. The
   spot stays dirty: that is a clue for Cleaners.
 - **Re-pollute.** `repollute` on a clean spot in range: instant, the spot turns dirty, meter
-  `- spots.repollute_meter_sub` (10), cooldown `trasher.repollute_cooldown_s` (20 s). Seats with vision and line
+  `- spots.repollute_meter_sub` (5), cooldown `trasher.repollute_cooldown_s` (20 s). Seats with vision and line
   of sight get a `cue` of kind `repollute`.
 - **Sabotage.** `sabotage` kind `machine` (jam) or `smog` (vision). Shared cooldown, as today.
 - **Unlock.** At `trasher.unlock_after` re-pollutes (3), the server sends `ability_unlocked` with the choices
@@ -164,7 +178,8 @@ Goal: show, with measured numbers, how the organisers' networks (Ooredoo, Tunisi
 
 ```json
 "rooms":   { "sizes": [6, 8, 10], "default_size": 8, "trashers": { "6": 1, "8": 2, "10": 2 } },
-"spots":   { "bag_meter_add": 10, "repollute_meter_sub": 10, "tool_time_mult": 0.5 },
+"spots":   { "bag_meter_add": 6, "repollute_meter_sub": 5, "tool_time_mult": 0.5, "relitter_s": 60 },
+"dash":    { "tiles": 6, "cooldown_s": 20, "cleans_refill": 5 },
 "bags":    { "cap": 1, "backpack_cap": 3 },
 "trasher": { "repollute_cooldown_s": 20, "unlock_after": 3, "virus_cooldown_s": 30,
              "gas_cooldown_s": 90, "gas_warning_s": 3, "start_cooldown_s": 10 },

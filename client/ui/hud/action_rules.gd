@@ -7,23 +7,28 @@ extends RefCounted
 ## smog_fix), held_console (the fire console I hold or ""), near_spot_state ("dirty", "clean" or "" for the
 ## task console in near_console: a v2 cleaning spot), bags_full, bags (carried), machine_jammed,
 ## ability ("", "virus" or "gas"), heals, infected, heal_target (nearest seat in heal reach or -1),
-## alert_used, fresh_pile (pile id or -1), cd ({repollute, virus, gas, sabotage} seconds), emergencies_left, sabotage (Session.sabotage: {} or {kind, ...}), clean_pile (cleanable pile id
+## alert_used, dash_s (seconds until the dash is ready, -1 unknown), fresh_pile (pile id or -1), cd ({repollute, virus, gas, sabotage} seconds), emergencies_left, sabotage (Session.sabotage: {} or {kind, ...}), clean_pile (cleanable pile id
 ## in range or -1).
 ## Result: {"use": bool, "report": bool, "repollute": {visible, ready, cooldown},
 ## "ability": {visible, ready, cooldown, kind ("virus", "gas" or "")}, "heal": bool, "alert": bool,
-## "sabotage": {...}, "fix": {visible, kind ("fire", "smog", "machine" or "")}, "clean": bool}.
+## "sabotage": {...}, "fix": {visible, kind ("fire", "smog", "machine" or "")}, "clean": bool,
+## "dash": {visible, ready, cooldown}}.
 ## The server still validates every action; these rules only decide what the player is offered.
 
 
 static func button_states(ctx: Dictionary) -> Dictionary:
 	var states: Dictionary = {
 		"use": false, "report": false, "repollute": _hidden(), "ability": _hidden_ability(), "sabotage": _hidden(),
-		"fix": {"visible": false, "kind": ""}, "clean": false, "heal": false, "alert": false,
+		"fix": {"visible": false, "kind": ""}, "clean": false, "heal": false, "alert": false, "dash": _hidden(),
 	}
 	if str(ctx.get("phase", "")) != "playing" or bool(ctx.get("is_out", false)):
 		return states
 
 	var polluter: bool = str(ctx.get("role", "")) == "polluter"
+	# DASH: every role, once the server has sent the timer.
+	var dash_s: float = float(ctx.get("dash_s", -1.0))
+	if dash_s >= 0.0:
+		states["dash"] = {"visible": true, "ready": dash_s <= 0.0, "cooldown": dash_s}
 	var near: Dictionary = ctx.get("near_console", {}) as Dictionary
 	match str(near.get("kind", "")):
 		"task":

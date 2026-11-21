@@ -21,7 +21,7 @@ public sealed class ClientMessage
 /// <summary>Client message parsing and the small server messages that do not need room state.</summary>
 public static class Codec
 {
-    public const int ProtocolVersion = 2;
+    public const int ProtocolVersion = 3;
     public const string ServerBuild = "0.1.0";
     public const int MaxMessageBytes = 4096;
     public const int MaxNameLength = 16;
@@ -209,6 +209,22 @@ public static class Codec
                 }
 
                 cmd = new SpotDoneCommand(spot);
+                return true;
+            }
+
+            case "dash":
+            {
+                if (!r.TryGetProperty("dir", out JsonElement dir)
+                    || dir.ValueKind != JsonValueKind.Array
+                    || dir.GetArrayLength() != 2
+                    || !TryFloat(dir[0], out float dx)
+                    || !TryFloat(dir[1], out float dy))
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new DashCommand(new Vec2(dx, dy));
                 return true;
             }
 
