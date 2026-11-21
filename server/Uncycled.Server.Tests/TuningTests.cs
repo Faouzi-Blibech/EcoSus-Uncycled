@@ -8,6 +8,43 @@ namespace Uncycled.Server.Tests
     public class TuningTests
     {
         [Fact]
+        public void Rooms_are_read_and_default_to_6_8_10_with_2_trashers_at_8()
+        {
+            using JsonDocument set = JsonDocument.Parse("{\"rooms\":{\"sizes\":[4,12],\"default_size\":12,\"trashers\":{\"4\":1,\"12\":3}}}");
+            MatchConfig c = ContentLoader.ReadConfig(set.RootElement);
+            Assert.Equal(new[] { 4, 12 }, c.RoomSizes);
+            Assert.Equal(12, c.DefaultSize);
+            Assert.Equal(3, c.TrashersFor(12));
+            Assert.Equal(1, c.TrashersFor(4));
+
+            using JsonDocument none = JsonDocument.Parse("{}");
+            MatchConfig d = ContentLoader.ReadConfig(none.RootElement);
+            Assert.Equal(new[] { 6, 8, 10 }, d.RoomSizes);
+            Assert.Equal(8, d.DefaultSize);
+            Assert.Equal(new[] { 1, 2, 2 }, new[] { d.TrashersFor(6), d.TrashersFor(8), d.TrashersFor(10) });
+        }
+
+        [Fact]
+        public void The_real_tuning_json_holds_the_rooms_section()
+        {
+            ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null));
+            using JsonDocument doc = JsonDocument.Parse(content.TuningJson);
+            Assert.Equal(8, doc.RootElement.GetProperty("rooms").GetProperty("default_size").GetInt32());
+            Assert.Equal(new[] { 6, 8, 10 }, content.Config.RoomSizes);
+        }
+
+        [Fact]
+        public void ForSize_sets_seats_and_polluters_and_leaves_the_shared_config_alone()
+        {
+            var shared = new MatchConfig();
+            MatchConfig six = shared.ForSize(6);
+            Assert.Equal(6, six.Seats);
+            Assert.Equal(1, six.Polluters);
+            Assert.Equal(8, shared.Seats);
+            Assert.Equal(2, shared.Polluters);
+        }
+
+        [Fact]
         public void ReturnToLobby_is_read_from_match_section()
         {
             using JsonDocument doc = JsonDocument.Parse("{\"match\":{\"return_to_lobby_s\":30}}");

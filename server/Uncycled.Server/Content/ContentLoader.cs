@@ -196,7 +196,58 @@ public static class ContentLoader
             TasksShort = (int)Num(t, "tasks", "short", d.TasksShort),
             TasksLong = (int)Num(t, "tasks", "long", d.TasksLong),
         };
+        ReadRooms(t, c);
         return c;
+    }
+
+    /// <summary>rooms.sizes, rooms.default_size and rooms.trashers; anything missing or invalid keeps the MatchConfig default.</summary>
+    private static void ReadRooms(JsonElement t, MatchConfig c)
+    {
+        JsonElement? rooms = Child(t, "rooms");
+        if (!rooms.HasValue)
+        {
+            return;
+        }
+
+        JsonElement? sizes = Child(rooms.Value, "sizes");
+        if (sizes.HasValue && sizes.Value.ValueKind == JsonValueKind.Array)
+        {
+            var list = new List<int>();
+            foreach (JsonElement e in sizes.Value.EnumerateArray())
+            {
+                if (e.ValueKind == JsonValueKind.Number && e.TryGetInt32(out int n) && n > 1 && !list.Contains(n))
+                {
+                    list.Add(n);
+                }
+            }
+
+            if (list.Count > 0)
+            {
+                c.RoomSizes = list.ToArray();
+                c.DefaultSize = list.Contains(c.DefaultSize) ? c.DefaultSize : list[0];
+            }
+        }
+
+        JsonElement? def = Child(rooms.Value, "default_size");
+        if (def.HasValue && def.Value.ValueKind == JsonValueKind.Number && def.Value.TryGetInt32(out int d) && System.Array.IndexOf(c.RoomSizes, d) >= 0)
+        {
+            c.DefaultSize = d;
+        }
+
+        JsonElement? trashers = Child(rooms.Value, "trashers");
+        if (trashers.HasValue && trashers.Value.ValueKind == JsonValueKind.Object)
+        {
+            var map = new Dictionary<int, int>();
+            foreach (JsonProperty p in trashers.Value.EnumerateObject())
+            {
+                if (int.TryParse(p.Name, out int size) && p.Value.ValueKind == JsonValueKind.Number && p.Value.TryGetInt32(out int n) && n >= 0)
+                {
+                    map[size] = n;
+                }
+            }
+
+            c.RoomTrashers = map;
+        }
     }
 
     // ---------- tasks ----------
