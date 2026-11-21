@@ -55,5 +55,8 @@ namespace Uncycled.Bots
 
         /// <summary>Walk out of a gas room whose warning runs (the public gas warning; a Cleaner without a mask).</summary>
         LeaveGas,
+
+        /// <summary>Walk to the zone named by ActionExecutor.ZoneHint (any zone of the map, not only the first three).</summary>
+        GoZoneAt,
     }
 }
