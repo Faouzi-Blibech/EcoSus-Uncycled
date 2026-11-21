@@ -76,6 +76,7 @@ namespace Uncycled.Server.Tests
             Set(me, nameof(PlayerState.Position), engine.Map.FindConsole("machine")!.Position);
 
             // a rejoin before any delivery: no offer follows the welcome
+            Assert.True(WaitUntil(() => first.Socket.Sent("welcome").Count == 1));
             var early = new Human();
             rig.Room.Post(new JoinInput(early.Conn, "Cleaner", first.Token, false));
             rig.Step();

@@ -27,40 +27,38 @@ namespace Uncycled.Bots
     }
 
     /// <summary>
-    /// The scripted polluter's rules. Reads only the SeatView, the action mask and the bot's own
-    /// memory (own heat included). Careful play when the table is suspicious of this seat.
+    /// The scripted Trasher's rules (v2). Reads only the SeatView, the action mask and the bot's own
+    /// memory (own heat included): pick the ability when it unlocks, gas a room with a Cleaner in it,
+    /// jam the machine or fog the room now and then, re-pollute a clean spot (unseen when it can,
+    /// careful when the table is suspicious), plant a virus on a dirty spot, otherwise fake clean and
+    /// wander near the Cleaners. It never hits, dumps or lights a fire (those rules are out of play).
     /// </summary>
     public sealed class PolluterTactics
     {
         /// <summary>Own heat from which the polluter plays careful.</summary>
         public const float CarefulHeat = 0.4f;
 
-        /// <summary>Careful: seconds nobody (but the target) must have been in sight before a hit or dump.</summary>
-        public const float CarefulClearS = 4f;
+        /// <summary>Seconds a Trasher waits at a spot for the watchers to leave before it acts anyway (and is seen).</summary>
+        public const float ImpatientActS = 3f;
 
-        private const float SabotageChance = 0.5f;
-        private const float FireWhenAloneChance = 0.5f;
-        private const float SmogPrepChance = 0.9f;
-        private const float SmogPrepExtraRange = 3.5f;
+        /// <summary>Seconds a careful Trasher waits before it gives the act up.</summary>
+        public const float CarefulActS = 8f;
+
+        private const float SabotageChance = 0.3f;
+        private const float MachineJamShare = 0.6f;
+        private const float RepolluteChance = 0.85f;
+        private const float VirusChance = 0.6f;
+        private const float GasOneVictimChance = 0.5f;
         private const float FakeNearChance = 0.7f;
         private const float FakeNearChanceCareful = 0.95f;
         private const float FakeWanderChance = 0.5f;
         private const float FakeWanderChanceCareful = 0.8f;
-        private const float DumpPileClearance = 5f;
-        private const float DumpSpread = 6f;
-        private const float ImpatientDumpS = 12f;
-        private const float StalkMaxS = 10f;
-        private const float StalkPauseS = 5f;
+        private const float SpotWalkChance = 0.5f;
+        private const float SecondBestChance = 0.25f;
         private const int SlotLimit = 4;
 
         private readonly IRandom _rng;
-        private float _stalkSince = -1f;
-        private float _stalkBlockedUntil;
-        private bool _justActed;
-        private float _lastOthersAt = float.NegativeInfinity;
-        private float _soloSince = -1f;
-        private Vec2? _lastDumpAt;
-        private float _dumpReadySince = -1f;
+        private bool _leaveAfter;
 
         public PolluterTactics(IRandom rng)
         {
@@ -69,33 +67,63 @@ namespace Uncycled.Bots
 
         public void Started(BotAction action, SeatView view)
         {
-            _justActed = action == BotAction.HitNearest || action == BotAction.DumpHere;
-            if (action == BotAction.DumpHere)
-            {
-                _lastDumpAt = view.Me.Position;
-            }
+            _leaveAfter = action == BotAction.Repollute || action == BotAction.PlantVirus || action == BotAction.GasRoom;
         }
+
+        /// <summary>The ability this Trasher picks at its unlock: a coin flip between the two.</summary>
+        public TrasherAbility ChooseAbility() => _rng.NextFloat() < 0.5f ? TrasherAbility.Virus : TrasherAbility.Gas;
+
+        /// <summary>True when the Trasher plays careful (the table is suspicious of it): it waits longer and gives an act up when watched.</summary>
+        public static bool IsCareful(BotMemory mem, SeatView view) => mem.HeatOf(view.Me.Seat) >= CarefulHeat;
+
+        /// <summary>The spot id for a re-pollute (clean spots) or a plant (dirty spots): the least watched, then the nearest; now and then the second best.</summary>
+        public string? ChooseSpot(SeatView view, BotMemory mem, SpotState state)
+        {
+            float range = WitnessRange(view, mem.Config);
+            var scored = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<int, ConsoleDef>>();
+            int order = 0;
+            foreach (ConsoleDef c in ActionQuery.SpotsNearestFirst(view, mem.Map, state))
+            {
+                int watchers = 0;
+                foreach (PlayerView p in ActionQuery.Slots(view))
+                {
+                    if (!ActionQuery.ContainsSeat(view.Me.Partners, p.Seat) && Vec2.Distance(p.Position, c.Position) <= range)
+                    {
+                        watchers++;
+                    }
+                }
+
+                scored.Add(new System.Collections.Generic.KeyValuePair<int, ConsoleDef>(watchers * 1000 + order++, c));
+            }
+
+            if (scored.Count == 0)
+            {
+                return null;
+            }
+
+            scored.Sort((a, b) => a.Key.CompareTo(b.Key));
+            int pick = scored.Count > 1 && _rng.NextFloat() < SecondBestChance ? 1 : 0;
+            return scored[pick].Value.Id;
+        }
+
+        /// <summary>The gas room with the most Cleaners in sight, or null.</summary>
+        public static string? ChooseRoom(SeatView view, MapData map) => ActionQuery.GasRoomWithPlayers(view, map, out _)?.Id;
 
         public PolluterDecision Decide(SeatView view, bool[] mask, BotMemory mem, bool busy, BotAction current)
         {
             MapData map = mem.Map;
-            MatchConfig cfg = mem.Config;
             Vec2 me = view.Me.Position;
-            float now = view.MatchTime;
 
-            // leave the area after an act (the act itself is instant, so it is already over)
-            if (_justActed && !(busy && current == BotAction.HitNearest))
+            // leave the area after an act
+            if (_leaveAfter && !(busy && (current == BotAction.Repollute || current == BotAction.PlantVirus)))
             {
-                _justActed = false;
+                _leaveAfter = false;
                 return PolluterDecision.Now(LeaveAction(me, map));
             }
 
             System.Collections.Generic.List<PlayerView> slots = ActionQuery.Slots(view);
-            float witnessRange = WitnessRange(view, cfg);
             int others = 0;
-            int watchers = 0;
             int nearestOtherSlot = -1;
-            int stalkSlot = -1;
             for (int i = 0; i < slots.Count; i++)
             {
                 if (ActionQuery.ContainsSeat(view.Me.Partners, slots[i].Seat))
@@ -108,108 +136,47 @@ namespace Uncycled.Bots
                 {
                     nearestOtherSlot = i;
                 }
-
-                if (Vec2.Distance(slots[i].Position, me) <= witnessRange)
-                {
-                    watchers++;
-                }
-
-                // the nearest target nobody else could see from where it stands
-                if (stalkSlot < 0 && IsolatedFrom(slots, i, view.Me.Partners, witnessRange))
-                {
-                    stalkSlot = i;
-                }
             }
 
-            if (others > 0)
+            bool careful = IsCareful(mem, view);
+
+            // the ability unlocks after the third re-pollute: pick one at once
+            if (mask[(int)BotAction.PickAbility])
             {
-                _lastOthersAt = now;
+                return PolluterDecision.Now(BotAction.PickAbility);
             }
 
-            if (watchers <= 1)
+            // gas a room with a Cleaner in it (two or more: always; one: now and then)
+            if (mask[(int)BotAction.GasRoom])
             {
-                if (_soloSince < 0f)
+                ActionQuery.GasRoomWithPlayers(view, map, out int victims);
+                if (victims >= 2 || (victims == 1 && _rng.NextFloat() < GasOneVictimChance))
                 {
-                    _soloSince = now;
+                    return PolluterDecision.Now(BotAction.GasRoom);
                 }
             }
-            else
-            {
-                _soloSince = -1f;
-            }
-            bool careful = mem.HeatOf(view.Me.Seat) >= CarefulHeat;
-            bool aloneWithTarget = !careful || (_soloSince >= 0f && now - _soloSince >= CarefulClearS);
-            bool quiet = !careful || now - _lastOthersAt >= CarefulClearS;
 
-            // hit: the target in range and nobody else watching
-            if (mask[(int)BotAction.HitNearest] && watchers <= 1 && aloneWithTarget)
-            {
-                return PolluterDecision.Now(BotAction.HitNearest);
-            }
-
-            // dump out of sight of everyone, away from piles in view and from the last dump
-            if (mask[(int)BotAction.DumpHere])
-            {
-                if (_dumpReadySince < 0f)
-                {
-                    _dumpReadySince = now;
-                }
-            }
-            else
-            {
-                _dumpReadySince = -1f;
-            }
-
-            bool impatient = !careful && _dumpReadySince >= 0f && now - _dumpReadySince >= ImpatientDumpS;
-            if (mask[(int)BotAction.DumpHere] && ((watchers == 0 && quiet && NoPileNear(view, me) && FarFromLastDump(me)) || impatient))
-            {
-                return PolluterDecision.Now(BotAction.DumpHere);
-            }
-
-            // smog before a planned hit: the target is close, the hit is ready, citizens will see less
-            CooldownView? cd = view.Me.Cooldowns;
-            bool hitReady = cd != null && cd.Hit <= 1e-3f;
-            if (hitReady && stalkSlot >= 0 && aloneWithTarget && mask[(int)BotAction.SabotageSmog]
-                && Vec2.Distance(slots[stalkSlot].Position, me) <= cfg.HitRange + SmogPrepExtraRange
-                && _rng.NextFloat() < SmogPrepChance)
-            {
-                return PolluterDecision.Now(BotAction.SabotageSmog);
-            }
-
-            // stalk a lone citizen while the hit is ready
-            if (hitReady && stalkSlot >= 0 && stalkSlot < SlotLimit && now >= _stalkBlockedUntil && aloneWithTarget)
-            {
-                if (_stalkSince < 0f)
-                {
-                    _stalkSince = now;
-                }
-
-                if (now - _stalkSince <= StalkMaxS)
-                {
-                    BotAction follow = BotAction.FollowSlot0 + stalkSlot;
-                    return busy && current == follow ? PolluterDecision.Keep : PolluterDecision.Now(follow);
-                }
-
-                _stalkBlockedUntil = now + StalkPauseS;
-                _stalkSince = -1f;
-            }
-            else
-            {
-                _stalkSince = -1f;
-            }
-
-            // sabotage: a fire when the citizens are spread out (it pulls them away), else now and then
-            bool fire = mask[(int)BotAction.SabotageFire];
+            // sabotage now and then: jam the machine (deliveries stop) or fog the room
+            bool jam = mask[(int)BotAction.SabotageMachine];
             bool smog = mask[(int)BotAction.SabotageSmog];
-            if (fire && others == 0 && _rng.NextFloat() < FireWhenAloneChance)
+            if ((jam || smog) && _rng.NextFloat() < SabotageChance)
             {
-                return PolluterDecision.Now(BotAction.SabotageFire);
+                bool useJam = jam && (!smog || _rng.NextFloat() < MachineJamShare);
+                return PolluterDecision.Now(useJam ? BotAction.SabotageMachine : BotAction.SabotageSmog);
             }
 
-            if ((fire || smog) && others <= 1 && _rng.NextFloat() < SabotageChance)
+            // re-pollute a clean spot
+            bool repolluting = busy && current == BotAction.Repollute;
+            if (mask[(int)BotAction.Repollute] && (repolluting || _rng.NextFloat() < RepolluteChance))
             {
-                bool useFire = fire && (!smog || _rng.NextFloat() < 0.5f);
-                return PolluterDecision.Now(useFire ? BotAction.SabotageFire : BotAction.SabotageSmog);
+                return repolluting ? PolluterDecision.Keep : PolluterDecision.Do(BotAction.Repollute);
+            }
+
+            // plant the virus on a dirty spot
+            bool planting = busy && current == BotAction.PlantVirus;
+            if (mask[(int)BotAction.PlantVirus] && (planting || _rng.NextFloat() < VirusChance))
+            {
+                return planting ? PolluterDecision.Keep : PolluterDecision.Do(BotAction.PlantVirus);
             }
 
             // careful: stay with a group instead of walking alone
@@ -219,7 +186,7 @@ namespace Uncycled.Bots
                 return busy && current == follow ? PolluterDecision.Keep : PolluterDecision.Do(follow);
             }
 
-            // citizens are near: look busy at a task console
+            // Cleaners are near: look busy at a spot
             if (others >= 1 && mask[(int)BotAction.FakeTaskHere] && _rng.NextFloat() < (careful ? FakeNearChanceCareful : FakeNearChance))
             {
                 return busy && current == BotAction.FakeTaskHere ? PolluterDecision.Keep : PolluterDecision.Do(BotAction.FakeTaskHere);
@@ -230,10 +197,15 @@ namespace Uncycled.Bots
                 return PolluterDecision.Keep;
             }
 
-            // fake a task at a console, else wander
+            // fake a clean at the spot in reach, else walk spot to spot, else wander
             if (mask[(int)BotAction.FakeTaskHere] && _rng.NextFloat() < (careful ? FakeWanderChanceCareful : FakeWanderChance))
             {
                 return PolluterDecision.Do(BotAction.FakeTaskHere);
+            }
+
+            if (mask[(int)BotAction.GoDirtySpot] && _rng.NextFloat() < SpotWalkChance)
+            {
+                return PolluterDecision.Do(BotAction.GoDirtySpot);
             }
 
             int pick = _rng.NextInt(5);
@@ -261,40 +233,6 @@ namespace Uncycled.Bots
             level = level < 0f ? 0f : (level > 1f ? 1f : level);
             return cfg.VisionCitizen - level * (cfg.VisionCitizen - cfg.SmogMin);
         }
-
-        /// <summary>True when no other non-partner stands within witness range of the target slot.</summary>
-        private static bool IsolatedFrom(System.Collections.Generic.List<PlayerView> slots, int target, System.Collections.Generic.IReadOnlyList<byte> partners, float range)
-        {
-            for (int j = 0; j < slots.Count; j++)
-            {
-                if (j == target || ActionQuery.ContainsSeat(partners, slots[j].Seat))
-                {
-                    continue;
-                }
-
-                if (Vec2.Distance(slots[j].Position, slots[target].Position) <= range)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private static bool NoPileNear(SeatView view, Vec2 me)
-        {
-            foreach (PileView p in view.Piles)
-            {
-                if (Vec2.Distance(p.Position, me) < DumpPileClearance)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private bool FarFromLastDump(Vec2 me) => _lastDumpAt == null || Vec2.Distance(_lastDumpAt.Value, me) >= DumpSpread;
 
         /// <summary>Walk to a zone other than the one we stand in.</summary>
         private BotAction LeaveAction(Vec2 me, MapData map)

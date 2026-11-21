@@ -283,8 +283,10 @@ namespace Sim.Match
             MeetingView? meeting,
             GameOverEvent? gameOver,
             IReadOnlyList<ChatEvent>? ghostChat = null,
-            IReadOnlyList<SpotView>? spots = null)
+            IReadOnlyList<SpotView>? spots = null,
+            bool machineJammed = false)
         {
+            MachineJammed = machineJammed;
             Spots = spots ?? new List<SpotView>();
             GhostChat = ghostChat ?? new List<ChatEvent>();
             Seat = seat;
@@ -341,6 +343,9 @@ namespace Sim.Match
 
         /// <summary>Every spot and whether it is dirty or clean, for every seat.</summary>
         public IReadOnlyList<SpotView> Spots { get; }
+
+        /// <summary>The Recycling Machine is jammed (public: every seat sees the alarm). Deliveries are refused until it is fixed.</summary>
+        public bool MachineJammed { get; }
 
         /// <summary>Ghost chat so far, oldest first. Non-empty only in the view of an out seat.</summary>
         public IReadOnlyList<ChatEvent> GhostChat { get; }

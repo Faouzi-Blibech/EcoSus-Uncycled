@@ -35,6 +35,9 @@ namespace Uncycled.Train
         private IRandom _rng = null!;
         private Agent[] _agents = Array.Empty<Agent>();
         private IBotBrain?[] _brainBySeat = Array.Empty<IBotBrain?>();
+
+        /// <summary>The scripted seats' brains with meeting talk added (the brain itself when it keeps no memory for a talker); what Think calls.</summary>
+        private IBotBrain?[] _talkBySeat = Array.Empty<IBotBrain?>();
         private Action<ICommand>[] _brainSend = Array.Empty<Action<ICommand>>();
         private int[] _agentOfSeat = Array.Empty<int>();
         private float[][] _obs = Array.Empty<float[]>();
@@ -103,6 +106,9 @@ namespace Uncycled.Train
 
         /// <summary>Decisions where Stay was the only valid action (out seats, mostly).</summary>
         public long ForcedDecisions { get; private set; }
+
+        /// <summary>The engine of the match running now (it is replaced when a match ends): lets a test stage a situation.</summary>
+        public MatchEngine Engine => _engine;
 
         public MatchPhase Phase => _engine.Phase;
 
@@ -297,7 +303,7 @@ namespace Uncycled.Train
                 seats.Add(new SeatSetup((byte)i, "bot" + i, (byte)i));
             }
 
-            _engine = new MatchEngine(cfg, _content.Map, seats, _content.Tasks, _rng);
+            _engine = new MatchEngine(cfg, _content.Map, seats, _content.Tasks, _rng, _content.Phrases);
             while (_engine.Phase == MatchPhase.Intro)
             {
                 _engine.Tick(TickDt);
@@ -337,11 +343,17 @@ namespace Uncycled.Train
                 _feed.Add(agent.Seat, agent.Memory, agent.Voter);
             }
 
+            var floor = new MeetingFloor();
+            _talkBySeat = new IBotBrain?[_brainBySeat.Length];
             for (int s = 0; s < _brainBySeat.Length; s++)
             {
-                if (_brainBySeat[s] is IMeetingObserver observer)
+                IBotBrain? scripted = _brainBySeat[s];
+                // the scripted seats talk in the meetings like in the live room (rule decider, no model call)
+                IBotBrain? talking = scripted == null ? null : OfflineTalk.Wrap(scripted, _feed, floor, (byte)s, Seed);
+                _talkBySeat[s] = talking;
+                if (talking is IMeetingObserver observer)
                 {
-                    _feed.Add((byte)s, observer, _brainBySeat[s] as IAccuser);
+                    _feed.Add((byte)s, observer, talking as IAccuser);
                 }
             }
 
@@ -387,7 +399,7 @@ namespace Uncycled.Train
             float now = _engine.MatchTime;
             for (int s = 0; s < _brainBySeat.Length; s++)
             {
-                IBotBrain? brain = _brainBySeat[s];
+                IBotBrain? brain = _talkBySeat[s];
                 if (brain != null)
                 {
                     byte seat = (byte)s;

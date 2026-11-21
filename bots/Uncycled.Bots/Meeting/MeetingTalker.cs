@@ -80,6 +80,16 @@ namespace Uncycled.Bots.Meeting
         /// <param name="engine">The room's engine; only the seat's own SeatView (view) is read.</param>
         public void Step(MatchEngine engine, byte seat, SeatView view, BotMemory mem, MeetingLog log, float now, Action<ICommand> send)
         {
+            if (_seats == null || _seats.Length != engine.Players.Count)
+            {
+                // the real seat ids of the room (a human may keep a seat id above the room size after it shrank)
+                _seats = new byte[engine.Players.Count];
+                for (int i = 0; i < _seats.Length; i++)
+                {
+                    _seats[i] = engine.Players[i].Seat;
+                }
+            }
+
             MeetingView? meeting = view.Meeting;
             if (view.Phase != MatchPhase.Meeting || meeting == null || view.Me.Status != PlayerStatus.Active)
             {
@@ -289,9 +299,11 @@ namespace Uncycled.Bots.Meeting
             Report(state, d);
         }
 
+        private byte[]? _seats;
+
         private MeetingState BuildState(SeatView view, BotMemory mem, MeetingLog log, bool replying)
         {
-            MeetingState state = MeetingStateBuilder.Build(view, mem, log, _suspicion, HeatOf);
+            MeetingState state = MeetingStateBuilder.Build(view, mem, log, _suspicion, HeatOf, _seats);
             state.MatchId = MatchId;
             state.Replying = replying;
             return state;
