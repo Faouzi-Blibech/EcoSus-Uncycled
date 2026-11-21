@@ -79,23 +79,16 @@ namespace Uncycled.Bots.Tests
             Assert.True(ActionCatalogue.Mask(driver.View, driver.Memory, m.Map)[(int)BotAction.CallMeeting]);
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Mask_OutSeatGetsOnlyStay()
         {
             TestMatch m = TestMatch.Create(2);
             m.TickFor(11f);
-            byte polluter = m.FirstSeatOf(Role.Polluter);
-            SeatView pv = m.Engine.ViewFor(polluter);
-            PlayerView victim = pv.Players.First(p => Vec2.Distance(p.Position, pv.Me.Position) <= m.Config.HitRange
-                && !pv.Me.Partners.Contains(p.Seat));
-            for (int i = 0; i < 3000 && m.Engine.Find(victim.Seat)!.IsActive; i++)
-            {
-                m.Engine.Apply(polluter, new HitCommand(victim.Seat));
-                m.Tick();
-            }
+            byte victim = m.FirstSeatOf(Role.Citizen);
+            m.EjectByVote(victim);
 
-            Assert.Equal(PlayerStatus.Out, m.Engine.ViewFor(victim.Seat).Me.Status);
-            bool[] mask = MaskOf(m, victim.Seat);
+            Assert.Equal(PlayerStatus.Out, m.Engine.ViewFor(victim).Me.Status);
+            bool[] mask = MaskOf(m, victim);
             for (int i = 0; i < mask.Length; i++)
             {
                 Assert.Equal(i == (int)BotAction.Stay, mask[i]);

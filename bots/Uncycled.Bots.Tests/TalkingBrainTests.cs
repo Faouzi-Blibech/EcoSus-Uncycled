@@ -10,7 +10,7 @@ namespace Uncycled.Bots.Tests
 {
     public class TalkingBrainTests
     {
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void TalkingBrain_WhenTheTalkerThrowsTheBrainTakesItsVoteBack()
         {
             TestMatch m = TestMatch.Create(2);
@@ -35,8 +35,8 @@ namespace Uncycled.Bots.Tests
                 m.Tick();
             }
 
-            Assert.True(e.Apply(polluter, new DumpCommand()).IsOk);
-            Assert.True(e.Apply(witness, new ReportCommand(e.Piles.All[0].Id)).IsOk);
+            int pile = m.SeedDump(polluter).Id;
+            Assert.True(e.Apply(witness, new ReportCommand(pile)).IsOk);
             Assert.Equal(MatchPhase.Meeting, e.Phase);
 
             bool voted = false;

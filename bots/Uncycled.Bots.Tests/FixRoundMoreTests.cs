@@ -152,7 +152,7 @@ namespace Uncycled.Bots.Tests
 
         // ---------- the vote retry ----------
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Brain_VotesSkipWhenItsSuspectWasAlreadyEjected()
         {
             TestMatch m = TestMatch.Create(2);
@@ -164,9 +164,8 @@ namespace Uncycled.Bots.Tests
             byte bot = witness.Seat;
 
             // the polluter dumps in front of the bot, who reports the pile
-            Assert.True(m.Engine.Apply(polluter, new DumpCommand()).IsOk);
+            int pile = m.SeedDump(polluter).Id;
             Assert.Contains(m.Engine.Witnesses.SeenBy(bot), r => r.Act == ActKind.Dump && r.Actor == polluter);
-            int pile = m.Engine.Piles.All[0].Id;
             Assert.True(m.Engine.Apply(bot, new ReportCommand(pile)).IsOk);
 
             // meeting 1: everybody votes the polluter out

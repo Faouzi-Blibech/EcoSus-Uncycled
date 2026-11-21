@@ -114,28 +114,20 @@ namespace Uncycled.Bots.Tests
             Assert.All(after, c => Assert.True(c.Result.IsOk, c.Seat + " " + c.Command.GetType().Name + " " + c.Result));
         }
 
-        [Fact(Skip = "v1 rule, out of play in v2")]
+        [Fact]
         public void Brain_OutSeatDoesNothing()
         {
             TestMatch m = TestMatch.Create(2, startPlaying: true);
             m.TickFor(11f);
-            byte polluter = m.FirstSeatOf(Role.Polluter);
-            SeatView pv = m.Engine.ViewFor(polluter);
-            PlayerView victim = pv.Players.First(p => Vec2.Distance(p.Position, pv.Me.Position) <= m.Config.HitRange
-                && !pv.Me.Partners.Contains(p.Seat));
+            byte victim = m.FirstSeatOf(Role.Citizen);
+            m.EjectByVote(victim);
 
-            for (int i = 0; i < 3000 && m.Engine.Find(victim.Seat)!.IsActive; i++)
-            {
-                m.Engine.Apply(polluter, new HitCommand(victim.Seat));
-                m.Tick();
-            }
-
-            Assert.False(m.Engine.Find(victim.Seat)!.IsActive);
+            Assert.False(m.Engine.Find(victim)!.IsActive);
             IBotBrain brain = BrainFactory.Scripted(Role.Citizen, new BotsSettings(), new XorShiftRandom(5));
             int sent = 0;
             for (int i = 0; i < 200; i++)
             {
-                brain.Think(m.Engine, victim.Seat, TestMatch.Dt, _ => sent++);
+                brain.Think(m.Engine, victim, TestMatch.Dt, _ => sent++);
                 m.Tick();
             }
 
