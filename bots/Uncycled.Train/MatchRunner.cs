@@ -25,6 +25,7 @@ namespace Uncycled.Train
         private readonly HostOptions _options;
         private readonly ContentBundle _content;
         private readonly Func<Role, IRandom, IBotBrain> _brains;
+        private readonly OpponentMix? _mix;
         private readonly int _slot;
         private readonly int _ticksPerDecision;
         private readonly BotsSettings _settings;
@@ -47,11 +48,12 @@ namespace Uncycled.Train
         private bool _warnedSeedRange;
         private MeetingFeed _feed = new MeetingFeed();
 
-        public MatchRunner(HostOptions options, int slot, ContentBundle content, Func<Role, IRandom, IBotBrain> brains)
+        public MatchRunner(HostOptions options, int slot, ContentBundle content, Func<Role, IRandom, IBotBrain> brains, OpponentMix? mix = null)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _content = content ?? throw new ArgumentNullException(nameof(content));
             _brains = brains ?? throw new ArgumentNullException(nameof(brains));
+            _mix = mix;
             _slot = slot;
             _settings = options.Settings;
             BotsSettings settings = _settings;
@@ -84,6 +86,9 @@ namespace Uncycled.Train
 
         /// <summary>Seed of the match running now.</summary>
         public ulong Seed { get; private set; }
+
+        /// <summary>Brain playing the seat (null for a learner seat); lets tests see which kind an opponent mix picked.</summary>
+        public IBotBrain? BrainOfSeat(int seat) => _brainBySeat[seat];
 
         public int MatchesFinished { get; private set; }
 
@@ -277,6 +282,13 @@ namespace Uncycled.Train
             }
 
             _nextSeed += (ulong)_options.Matches;
+            int opponentChoice = -1;
+            if (_mix != null)
+            {
+                opponentChoice = _mix.Pick(Seed);
+                _mix.Record(opponentChoice);
+            }
+
             _rng = new XorShiftRandom(Seed);
             MatchConfig cfg = _content.Config;
             var seats = new List<SeatSetup>();
@@ -306,7 +318,7 @@ namespace Uncycled.Train
                 }
                 else
                 {
-                    _brainBySeat[s] = _brains(role, _rng);
+                    _brainBySeat[s] = _mix != null ? _mix.Create(opponentChoice, role, _rng) : _brains(role, _rng);
                     byte brainSeat = (byte)s;
                     _brainSend[s] = cmd => _engine.Apply(brainSeat, cmd);
                 }

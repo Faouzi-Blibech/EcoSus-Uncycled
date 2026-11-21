@@ -51,6 +51,9 @@ def parse_args(argv=None):
     p.add_argument("--seed", type=int)
     p.add_argument("--device", choices=["auto", "cuda", "cpu"])
     p.add_argument("--checkpoint-every", type=int)
+    p.add_argument("--init", type=Path, metavar="CKPT.zip",
+                   help="continue from this checkpoint (weights and network shape come from it; the ppo values of "
+                        "the config / --set replace the saved ones; --steps counts from 0)")
     p.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
                    help="override a config value, dotted path, YAML value (e.g. ppo.n_steps=64); repeatable")
     return p.parse_args(argv)
@@ -90,6 +93,10 @@ def main(argv=None) -> int:
     every = args.checkpoint_every or cfg["checkpoint_every"]
     net_arch = ppo.pop("net_arch")
 
+    if args.init is not None and not args.init.is_file():
+        print(f"error: --init checkpoint not found: {args.init}", file=sys.stderr)
+        return 2
+
     run_runs = args.out_dir / "runs" / args.run
     run_ckpt = args.out_dir / "checkpoints" / args.run
     run_runs.mkdir(parents=True, exist_ok=True)
@@ -109,17 +116,23 @@ def main(argv=None) -> int:
             "versions": {"python": platform.python_version(), "torch": torch.__version__,
                          "stable_baselines3": stable_baselines3.__version__, "sb3_contrib": sb3_contrib.__version__,
                          "gymnasium": gymnasium.__version__},
+            "init": str(args.init) if args.init is not None else None,
             "config": cfg, "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
         (run_ckpt / "run.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
         print(f"device={device} agents={env.num_envs} obs={env.obs_size} actions={env.action_count}", flush=True)
 
-        model = MaskablePPO(
-            "MlpPolicy", venv, seed=seed, device=device, verbose=1,
-            tensorboard_log=None,
-            policy_kwargs={"net_arch": net_arch},
-            **ppo,
-        )
+        if args.init is not None:
+            # The saved network (and its shape) is kept; the current ppo values replace the saved ones.
+            model = MaskablePPO.load(str(args.init), env=venv, device=device, custom_objects=dict(ppo))
+            model.set_random_seed(seed)
+        else:
+            model = MaskablePPO(
+                "MlpPolicy", venv, seed=seed, device=device, verbose=1,
+                tensorboard_log=None,
+                policy_kwargs={"net_arch": net_arch},
+                **ppo,
+            )
         model.set_logger(configure(str(run_runs), ["stdout", "csv", "tensorboard"]))
 
         ckpt_cb = CheckpointCallback(save_freq=max(every // env.num_envs, 1), save_path=str(run_ckpt),
@@ -128,7 +141,8 @@ def main(argv=None) -> int:
         model.learn(total_timesteps=args.steps, callback=ckpt_cb, progress_bar=False)
         elapsed = time.time() - t0
         model.save(str(run_ckpt / "final"))
-        info.update({"elapsed_s": elapsed, "num_timesteps": int(model.num_timesteps),
+        info.update({"net_arch_used": model.policy_kwargs.get("net_arch"), "elapsed_s": elapsed,
+                     "num_timesteps": int(model.num_timesteps),
                      "steps_per_second": model.num_timesteps / elapsed, "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
                      "host_invalid_action_lines": env.invalid_action_lines})
         (run_ckpt / "run.json").write_text(json.dumps(info, indent=2), encoding="utf-8")

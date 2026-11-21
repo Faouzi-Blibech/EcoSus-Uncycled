@@ -46,20 +46,31 @@ namespace Uncycled.Train
                     return 0;
                 }
 
+                OpponentMix? mix = options.Opponents == null ? null : OpponentMix.Parse(options.Opponents, settings, content, line => Console.Error.WriteLine(line));
                 var runners = new MatchRunner[options.Matches];
                 for (int i = 0; i < runners.Length; i++)
                 {
-                    runners[i] = new MatchRunner(options, i, content, brains);
+                    runners[i] = new MatchRunner(options, i, content, brains, mix);
                 }
 
-                return options.BenchSeconds != null
-                    ? Bench(options, runners)
-                    : Serve(options, runners, stdout);
+                try
+                {
+                    return options.BenchSeconds != null
+                        ? Bench(options, runners)
+                        : Serve(options, runners, stdout);
+                }
+                finally
+                {
+                    if (mix != null)
+                    {
+                        Console.Error.WriteLine(mix.Summary());
+                    }
+                }
             }
             catch (ArgumentException e)
             {
                 Console.Error.WriteLine("error: " + e.Message);
-                Console.Error.WriteLine("usage: Uncycled.Train --content <dir> --matches <N> --seed <S> --learner citizen|polluter --threads <T> [--bench <seconds>] [--bots <bots.json>] [--rw-win v] [--rw-task v] [--rw-report v] [--rw-fix v] [--rw-hit v] [--rw-dump v] [--rw-ejected v]");
+                Console.Error.WriteLine("usage: Uncycled.Train --content <dir> --matches <N> --seed <S> --learner citizen|polluter --threads <T> [--bench <seconds>] [--bots <bots.json>] [--opponents onnx:<path>=w,scripted=w,...] [--rw-win v] [--rw-task v] [--rw-report v] [--rw-fix v] [--rw-hit v] [--rw-dump v] [--rw-ejected v]");
                 Console.Error.WriteLine("       Uncycled.Train --bakeoff --content <dir> --meetings N --seeds A-B --out <file.json> [--max-calls N] [--deciders rule,clef,skip] [--bots <bots.json>]");
                 return 2;
             }

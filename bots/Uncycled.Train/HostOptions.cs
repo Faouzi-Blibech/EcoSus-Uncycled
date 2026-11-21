@@ -84,6 +84,9 @@ namespace Uncycled.Train
 
         public string PolluterBrain { get; set; } = "scripted";
 
+        /// <summary>--opponents: weighted mix for the seats the learner does not play, e.g. "onnx:a.onnx=0.6,scripted=0.4" (training only; null = all scripted).</summary>
+        public string? Opponents { get; set; }
+
         public ulong SeedFrom { get; set; } = 1;
 
         public ulong SeedTo { get; set; } = 1;
@@ -140,6 +143,7 @@ namespace Uncycled.Train
                     case "--bots": o.BotsConfig = value; break;
                     case "--citizen": o.CitizenBrain = value; break;
                     case "--polluter": o.PolluterBrain = value; break;
+                    case "--opponents": OpponentMix.ParseSpecs(value); o.Opponents = value; break;
                     case "--seeds": ParseSeeds(o, value); break;
                     case "--meetings": o.Meetings = Positive(flag, value); break;
                     case "--max-calls": o.MaxCalls = Positive(flag, value); break;
