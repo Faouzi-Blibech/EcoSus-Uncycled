@@ -103,7 +103,7 @@ namespace Uncycled.Bots.Tests
             byte target = OtherSeat(seen);
             MeetingLog log = NewLog(m);
             log.Add(Say(seen, "sus", ChatArg.ForSeat(target)), 5f);
-            log.Add(Say(seen, "saw_hit", ChatArg.ForSeat(target), ChatArg.ForZone("depot")), 6f);
+            log.Add(Say(seen, "sus", ChatArg.ForSeat(target)), 6f); // a vague line: one accuser counts once
 
             model.ApplyChat(log, mem, Self);
 

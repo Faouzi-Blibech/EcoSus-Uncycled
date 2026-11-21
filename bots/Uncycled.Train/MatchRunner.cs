@@ -297,7 +297,7 @@ namespace Uncycled.Train
                 seats.Add(new SeatSetup((byte)i, "bot" + i, (byte)i));
             }
 
-            _engine = new MatchEngine(cfg, _content.Map, seats, _content.Tasks, _rng);
+            _engine = new MatchEngine(cfg, _content.Map, seats, _content.Tasks, _rng, _content.Phrases);
             while (_engine.Phase == MatchPhase.Intro)
             {
                 _engine.Tick(TickDt);
@@ -337,8 +337,16 @@ namespace Uncycled.Train
                 _feed.Add(agent.Seat, agent.Memory, agent.Voter);
             }
 
+            var floor = new MeetingFloor();
             for (int s = 0; s < _brainBySeat.Length; s++)
             {
+                IBotBrain? scripted = _brainBySeat[s];
+                if (scripted != null)
+                {
+                    // the scripted seats talk in the meetings like in the live room (rule decider, no model call)
+                    _brainBySeat[s] = OfflineTalk.Wrap(scripted, _feed, floor, (byte)s, Seed);
+                }
+
                 if (_brainBySeat[s] is IMeetingObserver observer)
                 {
                     _feed.Add((byte)s, observer, _brainBySeat[s] as IAccuser);

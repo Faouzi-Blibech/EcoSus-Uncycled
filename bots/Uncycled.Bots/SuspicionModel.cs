@@ -78,19 +78,29 @@ namespace Uncycled.Bots
         }
 
         public const float HearsayWeight = 15f;
+
+        /// <summary>A specific eyewitness accusation heard in chat (saw_dump or saw_hit with a zone): a vote by itself.</summary>
+        public const float EyewitnessWeight = VoteThreshold;
         public const float ContradictionWeight = 30f;
 
         /// <summary>
         /// Adds what was said in the meeting on top of the last Update (replaces the previous chat
-        /// part, so calling it again with a longer log never stacks): each other seat that accuses a
-        /// seat adds HearsayWeight to it once; an alibi (i_was, with) whose zone does not match where
-        /// this bot saw the speaker near a clue pile's time adds ContradictionWeight to the speaker
-        /// once. Accusations of self and the bot's own lines are ignored.
+        /// part, so calling it again with a longer log never stacks). Each other seat that accuses a seat
+        /// counts once per accused:
+        /// a vague accusation (sus, near_pile) adds HearsayWeight; a specific eyewitness line (saw_dump or
+        /// saw_hit, with a zone: the speaker says he saw the act) adds EyewitnessWeight, a vote by itself, like a
+        /// real player who is told "I saw it". The eyewitness line adds nothing when this bot's own sightings
+        /// contradict it (the accused was in sight elsewhere near a clue time), and drops to hearsay when this bot
+        /// already suspects the accuser (AccuseThreshold from its own evidence) or when a player it does not
+        /// suspect spoke for the accused (an alibi line naming him). An alibi (i_was, with) whose zone does not
+        /// match where this bot saw the speaker near a clue pile's time adds ContradictionWeight to the speaker
+        /// once. Accusations of self and the bot's own lines are ignored. The bots have no per-seat skill
+        /// (BotsSettings.Skill is one value for every bot), so the eyewitness weight is one constant.
         /// </summary>
         public void ApplyChat(MeetingLog log, BotMemory mem, byte self)
         {
             _chat.Clear();
-            var accusedBy = new HashSet<(byte, byte)>();
+            var claims = new Dictionary<(byte, byte), string?>(); // (accuser, accused) -> the claimed zone of an eyewitness line, null for a vague one
             var contradicted = new HashSet<byte>();
             foreach (ChatAct a in log.Acts)
             {
@@ -99,9 +109,14 @@ namespace Uncycled.Bots
                     continue;
                 }
 
-                if (a.Kind == "accuse" && a.Seat != null && a.Seat.Value != self && accusedBy.Add((a.Speaker, a.Seat.Value)))
+                if (a.Kind == "accuse" && a.Seat != null && a.Seat.Value != self)
                 {
-                    AddChat(a.Seat.Value, HearsayWeight);
+                    var key = (a.Speaker, a.Seat.Value);
+                    bool witness = IsEyewitness(a);
+                    if (!claims.TryGetValue(key, out string? zone) || (witness && zone == null))
+                    {
+                        claims[key] = witness ? a.Zone : null;
+                    }
                 }
                 else if (a.Kind == "alibi" && a.Zone != null && !contradicted.Contains(a.Speaker) && Contradicts(mem, a.Speaker, a.Zone))
                 {
@@ -109,6 +124,49 @@ namespace Uncycled.Bots
                     AddChat(a.Speaker, ContradictionWeight);
                 }
             }
+
+            foreach (KeyValuePair<(byte, byte), string?> claim in claims)
+            {
+                byte accuser = claim.Key.Item1;
+                byte accused = claim.Key.Item2;
+                if (claim.Value == null)
+                {
+                    AddChat(accused, HearsayWeight);
+                }
+                else if (Contradicts(mem, accused, claim.Value))
+                {
+                    continue; // this bot saw him elsewhere then: the line does not hold
+                }
+                else if (BaseScore(accuser) >= RuleDecider.AccuseThreshold || DefendedBySomeoneTrusted(log, accused, accuser, self))
+                {
+                    AddChat(accused, HearsayWeight);
+                }
+                else
+                {
+                    AddChat(accused, EyewitnessWeight);
+                }
+            }
+        }
+
+        private static bool IsEyewitness(ChatAct a) =>
+            a.Zone != null && (a.PhraseId == EvidenceItem.SawDump || a.PhraseId == EvidenceItem.SawHit);
+
+        /// <summary>This bot's own evidence on a seat (before any chat).</summary>
+        private float BaseScore(byte seat) => _scores.TryGetValue(seat, out float v) ? v : 0f;
+
+        /// <summary>An alibi line naming the accused (a vouch) from a seat other than the accuser, the accused and this bot, that this bot does not suspect.</summary>
+        private bool DefendedBySomeoneTrusted(MeetingLog log, byte accused, byte accuser, byte self)
+        {
+            foreach (ChatAct d in log.Acts)
+            {
+                if (d.Kind == "alibi" && d.Seat == accused && d.Speaker != accused && d.Speaker != accuser && d.Speaker != self
+                    && BaseScore(d.Speaker) < RuleDecider.AccuseThreshold)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private bool Contradicts(BotMemory mem, byte speaker, string claimedZone)

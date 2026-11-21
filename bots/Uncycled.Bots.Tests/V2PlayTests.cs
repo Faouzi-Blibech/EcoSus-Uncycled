@@ -512,12 +512,36 @@ namespace Uncycled.Bots.Tests
             {
                 using (System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(line))
                 {
-                    foreach (string key in new[] { "deliveries", "repollutes", "abilities_used", "wrong_ejections", "correct_ejections", "meter" })
+                    foreach (string key in new[] { "deliveries", "repollutes", "abilities_used", "wrong_ejections", "correct_ejections", "meter", "chat_lines" })
                     {
                         Assert.True(doc.RootElement.TryGetProperty(key, out _), key + " missing in " + line);
                     }
                 }
             }
+        }
+
+        [Fact]
+        public void Eval_MeetingsHaveChat_LikeTheLiveRoom()
+        {
+            string dir = Uncycled.Server.Content.ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));
+            Uncycled.Server.Content.ContentBundle content = Uncycled.Server.Content.ContentLoader.Load(dir);
+            var options = Uncycled.Train.HostOptions.Parse(new[] { "--eval", "--content", dir, "--seeds", "1-6", "--threads", "2" });
+
+            IReadOnlyList<string> lines = Uncycled.Train.EvalRunner.Run(options, content, Uncycled.Train.HostBrains.Scripted(new BotsSettings(), content));
+
+            int meetings = 0;
+            int chat = 0;
+            foreach (string line in lines)
+            {
+                using (System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(line))
+                {
+                    meetings += doc.RootElement.GetProperty("meetings").GetInt32();
+                    chat += doc.RootElement.GetProperty("chat_lines").GetInt32();
+                }
+            }
+
+            Assert.True(meetings > 0, "no meeting in 6 matches: the test checks nothing");
+            Assert.True(chat > 0, "the eval meetings had no chat line in " + meetings + " meetings");
         }
 
         [Fact]
