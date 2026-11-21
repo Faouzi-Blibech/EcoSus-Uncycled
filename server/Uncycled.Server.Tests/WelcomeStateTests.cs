@@ -93,11 +93,15 @@ namespace Uncycled.Server.Tests
             Assert.Equal(1, state.GetProperty("bags").GetInt32());
             Assert.Equal(engine.Config.BagCap, state.GetProperty("cap").GetInt32());
             Assert.False(state.GetProperty("tool").GetBoolean());
+            Assert.Equal(0, state.GetProperty("heals").GetInt32());
+            Assert.Equal(0, state.GetProperty("masks").GetInt32());
 
             using JsonDocument s = JsonDocument.Parse(snapshot);
             JsonElement me = s.RootElement.GetProperty("me");
             Assert.Equal(1, me.GetProperty("bags").GetInt32());
             Assert.Equal(engine.Config.BagCap, me.GetProperty("cap").GetInt32());
+            Assert.Equal(0, me.GetProperty("heals").GetInt32());
+            Assert.Equal(0, me.GetProperty("masks").GetInt32());
 
             // the spot board reaches every seat, the clean one marked clean
             bool found = false;
@@ -140,6 +144,8 @@ namespace Uncycled.Server.Tests
                 Assert.DoesNotContain("\"bags\"", json);
                 Assert.DoesNotContain("\"cap\"", json);
                 Assert.DoesNotContain("\"tool\"", json);
+                Assert.DoesNotContain("\"heals\"", json);
+                Assert.DoesNotContain("\"masks\"", json);
             }
         }
     }

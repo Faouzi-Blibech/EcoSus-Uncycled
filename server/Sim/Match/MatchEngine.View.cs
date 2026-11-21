@@ -112,7 +112,9 @@ namespace Sim.Match
                 tasks,
                 me.Bags,
                 me.BagCap,
-                me.HasTool);
+                me.HasTool,
+                me.Heals,
+                me.Masks);
 
             var spots = new List<SpotView>();
             foreach (Spot spot in Spots.All)

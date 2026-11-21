@@ -45,6 +45,17 @@ namespace Sim.Match
         public string SpotId { get; }
     }
 
+    /// <summary>protocol: pick_upgrade {item}. Answers an open upgrade offer.</summary>
+    public sealed class PickUpgradeCommand : ICommand
+    {
+        public PickUpgradeCommand(UpgradeKind item)
+        {
+            Item = item;
+        }
+
+        public UpgradeKind Item { get; }
+    }
+
     /// <summary>protocol: task_step {task}.</summary>
     public sealed class TaskStepCommand : ICommand
     {

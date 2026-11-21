@@ -107,11 +107,15 @@ namespace Sim.Match
             IReadOnlyList<TaskInfo> tasks,
             int bags = 0,
             int bagCap = 0,
-            bool hasTool = false)
+            bool hasTool = false,
+            int heals = 0,
+            int masks = 0)
         {
             Bags = bags;
             BagCap = bagCap;
             HasTool = hasTool;
+            Heals = heals;
+            Masks = masks;
             Seat = seat;
             Role = role;
             Partners = partners;
@@ -155,6 +159,12 @@ namespace Sim.Match
         public int BagCap { get; }
 
         public bool HasTool { get; }
+
+        /// <summary>Heals held (0 or 1). Private to the carrier; the wire sends it to citizens only.</summary>
+        public int Heals { get; }
+
+        /// <summary>Masks held (0 or 1). Private to the carrier; the wire sends it to citizens only.</summary>
+        public int Masks { get; }
     }
 
     public sealed class SabotageView

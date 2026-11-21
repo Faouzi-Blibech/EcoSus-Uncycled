@@ -155,6 +155,54 @@ namespace Sim.Match
         public int? Step { get; }
     }
 
+    /// <summary>delivered {bags, meter}. To the deliverer: bags dropped in this delivery, meter after it.</summary>
+    public sealed class DeliveredEvent : GameEvent
+    {
+        public DeliveredEvent(byte seat, int bags, float meter)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Bags = bags;
+            Meter = meter;
+        }
+
+        public byte Seat { get; }
+
+        public int Bags { get; }
+
+        public float Meter { get; }
+    }
+
+    /// <summary>upgrade_offer {items}. To the deliverer.</summary>
+    public sealed class UpgradeOfferEvent : GameEvent
+    {
+        public UpgradeOfferEvent(byte seat, IReadOnlyList<UpgradeKind> items)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Items = items;
+        }
+
+        public byte Seat { get; }
+
+        public IReadOnlyList<UpgradeKind> Items { get; }
+    }
+
+    /// <summary>upgrade_ok {item}. To the picker.</summary>
+    public sealed class UpgradeOkEvent : GameEvent
+    {
+        public UpgradeOkEvent(byte seat, UpgradeKind item)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Item = item;
+        }
+
+        public byte Seat { get; }
+
+        public UpgradeKind Item { get; }
+    }
+
     /// <summary>spot_cleaned. To the cleaner: the spot is clean and Bags is the new bag count.</summary>
     public sealed class SpotCleanedEvent : GameEvent
     {

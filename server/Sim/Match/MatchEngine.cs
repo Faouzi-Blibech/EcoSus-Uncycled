@@ -286,6 +286,7 @@ namespace Sim.Match
                 case MoveCommand c: return ApplyMove(p, c);
                 case UseCommand c: return ApplyUse(p, c);
                 case SpotDoneCommand c: return ApplySpotDone(p, c);
+                case PickUpgradeCommand c: return ApplyPickUpgrade(p, c);
                 // v1 actions, out of play in v2 (their handlers stay in MatchEngine.Actions.cs)
                 case TaskStepCommand _: return Reject(RejectReason.NotAllowed);
                 case HitCommand _: return Reject(RejectReason.NotAllowed);
@@ -418,7 +419,7 @@ namespace Sim.Match
 
             float clock = Config.DeadlineClock == DeadlineClock.MatchTime ? MatchTime : ActiveTime;
             bool deadline = clock + Epsilon >= Config.DeadlineS;
-            WinResult? result = WinEvaluator.Evaluate(polluters, citizens, Meter.Value, deadline, Tasks.AllDone);
+            WinResult? result = WinEvaluator.Evaluate(polluters, citizens, Meter.Value, deadline);
             if (result == null)
             {
                 return false;

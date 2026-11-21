@@ -244,6 +244,76 @@ namespace Uncycled.Server.Tests
         }
 
         [Theory]
+        [InlineData("backpack", UpgradeKind.Backpack)]
+        [InlineData("tool", UpgradeKind.Tool)]
+        [InlineData("heal", UpgradeKind.Heal)]
+        [InlineData("mask", UpgradeKind.Mask)]
+        public void PickUpgrade_ParsesTheItem(string item, UpgradeKind expected)
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"pick_upgrade\",\"item\":\"" + item + "\"}"), out ICommand? cmd, out _));
+            Assert.Equal(expected, Assert.IsType<PickUpgradeCommand>(cmd).Item);
+        }
+
+        [Theory]
+        [InlineData("{\"t\":\"pick_upgrade\"}")]
+        [InlineData("{\"t\":\"pick_upgrade\",\"item\":\"sword\"}")]
+        public void PickUpgrade_RejectsAMissingOrUnknownItem(string json)
+        {
+            Assert.False(Codec.TryToCommand(Parse(json), out _, out string? error));
+            Assert.Equal("bad_field", error);
+        }
+
+        [Fact]
+        public void MachineEvents_UseTheProtocolNames()
+        {
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new UseOkEvent(2, "machine", ConsoleKind.Machine, null, null, null))!))
+            {
+                Assert.Equal("machine", d.RootElement.GetProperty("kind").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new DeliveredEvent(2, 2, 20f))!))
+            {
+                Assert.Equal("delivered", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal(2, d.RootElement.GetProperty("bags").GetInt32());
+                Assert.Equal(20.0, d.RootElement.GetProperty("meter").GetDouble(), 3);
+            }
+
+            var items = new List<UpgradeKind> { UpgradeKind.Backpack, UpgradeKind.Tool, UpgradeKind.Heal, UpgradeKind.Mask };
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new UpgradeOfferEvent(2, items))!))
+            {
+                Assert.Equal("upgrade_offer", d.RootElement.GetProperty("t").GetString());
+                var names = new List<string>();
+                foreach (JsonElement i in d.RootElement.GetProperty("items").EnumerateArray())
+                {
+                    names.Add(i.GetString()!);
+                }
+
+                Assert.Equal(new[] { "backpack", "tool", "heal", "mask" }, names);
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new UpgradeOkEvent(2, UpgradeKind.Mask))!))
+            {
+                Assert.Equal("upgrade_ok", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("mask", d.RootElement.GetProperty("item").GetString());
+            }
+        }
+
+        [Theory]
+        [InlineData(RejectReason.NoBags, "no_bags")]
+        [InlineData(RejectReason.MachineJammed, "machine_jammed")]
+        [InlineData(RejectReason.NoItem, "no_item")]
+        public void MachineRejectReasons_HaveWireNames(RejectReason reason, string wire)
+        {
+            Assert.Equal(wire, WireNames.Of(reason));
+        }
+
+        [Fact]
+        public void MeterFull_HasTheWireName()
+        {
+            Assert.Equal("meter_full", WireNames.Of(GameOverReason.MeterFull));
+        }
+
+        [Theory]
         [InlineData(RejectReason.BagsFull, "bags_full")]
         [InlineData(RejectReason.SpotClean, "spot_clean")]
         [InlineData(RejectReason.SpotDirty, "spot_dirty")]
