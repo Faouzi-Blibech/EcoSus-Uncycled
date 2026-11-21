@@ -64,6 +64,7 @@ func _ready() -> void:
 	_build()
 	Net.action_rejected.connect(_on_action_rejected)
 	Net.sabotage_ended.connect(_on_sabotage_ended)
+	Net.event.connect(_on_event)
 
 
 func bind(round: Node) -> void:
@@ -487,6 +488,11 @@ func _update_spectator() -> void:
 	_spectator.visible = Session.is_out
 	if Session.is_out:
 		_spectator.set_status(Session.meter, Session.phase, SpectatorOverlay.left_seconds(Session.deadline_t, Session.clock_t))
+
+
+func _on_event(data: Dictionary) -> void:
+	if str(data.get("t", "")) == "spot_cleaned":
+		_toast.show_text(tr("HUD_SPOT_CLEANED"))
 
 
 func _on_sabotage_ended(data: Dictionary) -> void:

@@ -10,6 +10,7 @@ const Joystick := preload("res://ui/joystick/virtual_joystick.gd")
 const AvatarScene: PackedScene = preload("res://world/player/avatar.tscn")
 const LocalPlayerScene: PackedScene = preload("res://world/player/local_player.tscn")
 const PileScene: PackedScene = preload("res://world/pile/pile.tscn")
+const SpotViewScript: GDScript = preload("res://world/spot/spot_view.gd")
 const CameraScript: GDScript = preload("res://world/camera/follow_camera.gd")
 const VisionScene: PackedScene = preload("res://world/vision/vision.tscn")
 const HudScene: PackedScene = preload("res://ui/hud/hud.tscn")
@@ -40,6 +41,8 @@ var _player: LocalPlayer = null
 var _camera: FollowCamera = null
 var _vision: Vision = null
 var _piles_holder: Node2D = null
+## Cleaning spots by console id (one SpotView per task console of the map).
+var _spot_views: Dictionary = {}
 var _avatars_holder: Node2D = null
 var _fx_holder: Node2D = null
 var _world_shown: bool = true
@@ -107,6 +110,7 @@ func _ready() -> void:
 		_leave_for_update()
 		return
 	add_child(_map)
+	_build_spots()
 	_piles_holder = Node2D.new()
 	add_child(_piles_holder)
 	_avatars_holder = Node2D.new()
@@ -303,6 +307,25 @@ func _update_remote(remote: Dictionary) -> void:
 
 ## Mirrors Session.piles ([{id, pos (px), kind, state}]): adds, updates and removes. Runs once per
 ## snapshot, not per frame; Pile.setup ignores unchanged data.
+## One SpotView per task console of the map, drawn under the piles and players.
+func _build_spots() -> void:
+	var holder: Node2D = Node2D.new()
+	add_child(holder)
+	for m in _map.markers():
+		if m.kind != "task":
+			continue
+		var v: SpotView = SpotViewScript.new() as SpotView
+		v.setup(m.marker_id, MinigameRegistry.base_type(_task_type_at_console(m.marker_id)), m.global_position)
+		holder.add_child(v)
+		_spot_views[m.marker_id] = v
+	_update_spots()
+
+
+func _update_spots() -> void:
+	for id in _spot_views:
+		(_spot_views[id] as SpotView).show_state(str(Session.spots.get(id, "dirty")))
+
+
 func _update_piles() -> void:
 	var present: Dictionary = {}
 	for entry in Session.piles:
@@ -328,7 +351,8 @@ func _update_piles() -> void:
 # ---------------------------------------------------------------- actions
 
 ## What the player can reach right now: `near_console` ({id, kind} of the nearest task, emergency
-## or fire/smog fix marker inside its range, else {}), `has_task_here`, `fresh_pile` (nearest
+## or fire/smog fix marker inside its range, else {}), `near_spot_state` (Session.spots state of that
+## console when it is a task console: a cleaning spot), `bags_full`, `fresh_pile` (nearest
 ## visible fresh pile id or -1), `hit_target` (nearest visible active seat, not me and not my
 ## partner, inside the hit range, or -1), `sabotage` (the running one, {} when none) and
 ## `holding_fire`, `clean_pile` (nearest dump pile, fresh or reported, inside the clean range, or -1). Visibility is the server's: only seats and piles of the latest snapshot are known.
@@ -344,12 +368,11 @@ func interaction_context() -> Dictionary:
 			if d <= Net.tiles_to_px(m.range_tiles) and d < best:
 				best = d
 				near = {"id": m.marker_id, "kind": m.kind}
-	var has_task: bool = (
-		str(near.get("kind", "")) == "task" and not Session.my_task_at_console(str(near["id"])).is_empty()
-	)
+	var spot_state: String = str(Session.spots.get(str(near["id"]), "")) if str(near.get("kind", "")) == "task" else ""
 	return {
 		"near_console": near,
-		"has_task_here": has_task,
+		"near_spot_state": spot_state,
+		"bags_full": Session.bag_cap > 0 and Session.bags >= Session.bag_cap,
 		"fresh_pile": _nearest_fresh_pile(pos),
 		"clean_pile": _nearest_clean_pile(pos),
 		"hit_target": _nearest_hit_target(pos),
@@ -704,10 +727,13 @@ func _on_correct(data: Dictionary) -> void:
 
 func _on_snapshot(_data: Dictionary) -> void:
 	_update_piles()
+	_update_spots()
 	_leave_if_phase_changed()
 
 
-func _on_event(_data: Dictionary) -> void:
+func _on_event(data: Dictionary) -> void:
+	if str(data.get("t", "")) == "spot_cleaned":
+		_update_spots()
 	_leave_if_phase_changed()
 
 

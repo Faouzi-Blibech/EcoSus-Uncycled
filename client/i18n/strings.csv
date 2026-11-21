@@ -255,3 +255,7 @@ MEETING_GHOST_LINE,%s (ghost): %s,%s (fantôme) : %s
 CHAT_GHOST_HINT,Ghost chat: only out players see it.,Discussion des fantômes : seuls les joueurs éliminés la voient.
 GHOST_CHAT_TITLE,Ghost chat,Discussion des fantômes
 HUD_BAGS,Bags: %d/%d,Sacs : %d/%d
+HUD_SPOT_CLEANED,Spot cleaned. Take the bag to the Recycling Machine.,Endroit nettoyé. Porte le sac à la machine de recyclage.
+REJECT_BAGS_FULL,Your bags are full. Recycle them first.,Tes sacs sont pleins. Recycle-les d'abord.
+REJECT_SPOT_CLEAN,This spot is already clean.,Cet endroit est déjà propre.
+REJECT_SPOT_DIRTY,This spot is still dirty.,Cet endroit est encore sale.

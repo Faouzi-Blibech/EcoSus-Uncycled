@@ -89,6 +89,11 @@ results scene. Louay owns `menu.gd`, `lobby.gd`, `settings_panel.gd` and the new
 
 ### Task F2: spots and cleaning through mini-games (1 h 30)
 
+Done on `gameplay/spots`, simpler than planned: the existing USE button cleans (no `clean_spot` action);
+`SpotView` is a script-only Sprite2D (`client/world/spot/spot_view.gd`, no .tscn); the mini-game layer opens
+on `use_ok` kind `spot` and sends `spot_done` (`Net.send_spot_done`); `Session.clean_min_s` applies the tool
+multiplier; `MinigameRegistry.base_type` names the spot art. The original plan follows for reference.
+
 **Files:**
 - Create: `client/world/spot/spot.gd`, `client/world/spot/spot.tscn` (sprite dirty/clean, from map consoles of
   kind `task`)

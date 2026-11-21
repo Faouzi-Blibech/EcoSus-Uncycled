@@ -19,22 +19,28 @@ func _states(over: Dictionary = {}) -> Dictionary:
 	return load(RULES_PATH).button_states(_ctx(over))
 
 
-func test_citizen_at_own_task_console() -> bool:
-	var s: Dictionary = _states({"near_console": {"id": "market_bins", "kind": "task"}, "has_task_here": true})
+const SPOT: Dictionary = {"id": "market_bins", "kind": "task"}
+
+
+## v2: a task console is a cleaning spot; USE cleans it when it is dirty and a bag slot is free.
+func test_cleaner_at_dirty_spot_with_a_free_bag_slot() -> bool:
+	var s: Dictionary = _states({"near_console": SPOT, "near_spot_state": "dirty", "bags_full": false})
 	assert_eq(s["use"], true, "use")
 	assert_eq(s["hit"]["visible"], false, "hit hidden")
 	assert_eq(s["dump"]["visible"], false, "dump hidden")
 	return true
 
 
-func test_citizen_at_console_without_task() -> bool:
-	var s: Dictionary = _states({"near_console": {"id": "market_bins", "kind": "task"}})
-	assert_eq(s["use"], false, "no task here")
+func test_cleaner_spot_use_table() -> bool:
+	assert_eq(_states({"near_console": SPOT, "near_spot_state": "dirty", "bags_full": true})["use"], false, "bags full")
+	assert_eq(_states({"near_console": SPOT, "near_spot_state": "clean"})["use"], false, "already clean")
+	assert_eq(_states({"near_console": SPOT})["use"], false, "state unknown before the first snapshot")
+	assert_eq(_states({"role": "polluter", "near_console": SPOT, "near_spot_state": "clean"})["use"], false, "a Trasher fakes only dirty spots")
 	return true
 
 
 func test_polluter_at_task_console() -> bool:
-	var s: Dictionary = _states({"role": "polluter", "near_console": {"id": "market_bins", "kind": "task"}})
+	var s: Dictionary = _states({"role": "polluter", "near_console": SPOT, "near_spot_state": "dirty", "bags_full": true})
 	assert_eq(s["use"], true, "use for the fake")
 	assert_eq(s["hit"]["visible"], true, "hit visible")
 	assert_eq(s["hit"]["ready"], false, "no target")
