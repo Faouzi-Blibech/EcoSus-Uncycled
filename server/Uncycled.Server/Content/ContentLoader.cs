@@ -3,6 +3,7 @@ using Sim.Core;
 using Sim.Match;
 using Sim.Uncycled;
 using Sim.World;
+using Uncycled.Bots.Meeting;
 
 namespace Uncycled.Server.Content;
 
@@ -16,7 +17,8 @@ public sealed class ContentBundle
         string tasksJson,
         MapData map,
         PhraseCatalogue? phrases = null,
-        ChatFilter? filter = null)
+        ChatFilter? filter = null,
+        ChatWords? words = null)
     {
         Config = config;
         TuningJson = tuningJson;
@@ -25,6 +27,7 @@ public sealed class ContentBundle
         Map = map;
         Phrases = phrases;
         Filter = filter ?? ChatFilter.Empty;
+        Words = words ?? ChatWords.Empty;
     }
 
     public MatchConfig Config { get; }
@@ -44,6 +47,9 @@ public sealed class ContentBundle
 
     /// <summary>Word filter from chat_filter.json; every engine applies it to typed chat (Empty: no words).</summary>
     public ChatFilter Filter { get; }
+
+    /// <summary>Words the bots look for in typed chat, from chat_words.json (Empty: the bots read no typed line).</summary>
+    public ChatWords Words { get; }
 
     public string MapId => Map.Id;
 
@@ -99,7 +105,9 @@ public static class ContentLoader
         MapData map = ReadMap(mapDoc.RootElement);
         PhraseCatalogue phrases = PhraseCatalogue.Parse(File.ReadAllText(Path.Combine(contentDir, "phrases.json")));
         ChatFilter filter = ChatFilter.Parse(File.ReadAllText(Path.Combine(contentDir, "chat_filter.json")));
-        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter);
+        string wordsPath = Path.Combine(contentDir, "chat_words.json");
+        ChatWords words = File.Exists(wordsPath) ? ChatWords.Parse(File.ReadAllText(wordsPath)) : ChatWords.Empty;
+        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter, words);
     }
 
     // ---------- tuning ----------
