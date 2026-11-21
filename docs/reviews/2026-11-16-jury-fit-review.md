@@ -73,7 +73,7 @@ poison, reports, meetings, votes, win order, bots with path-finding, reconnect a
 on top of per-seat line-of-sight snapshot filtering. No toolchain is confirmed installed, the
 host and the Godot version are still open decisions.
 
-**C. Originality.** The design doc's own rule-mapping table lists crew/impostor, kill, lights,
+**C. Originality.** The design doc's own rule-mapping table lists majority/saboteur roles, kill, lights,
 the two-console hold, emergency meetings and confirm-ejects, each with a recycling name.
 Mechanics are not protected, but the jury scores "original thinking" and this reads as a reskin.
 

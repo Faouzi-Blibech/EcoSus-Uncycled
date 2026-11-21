@@ -157,7 +157,7 @@ Default proposal; the team confirms in "Open decisions".
 
 | `sim` concept | Uncycled | Reuse |
 |---|---|---|
-| Crewmate / Impostor roles | Citizen / Polluter | `RoleAssigner`, `RoleDefinition` (renamed) |
+| Majority / hidden saboteur roles | Citizen / Polluter | `RoleAssigner`, `RoleDefinition` (renamed) |
 | Tasks + task bar, crew wins by tasks | Eco mini-games, cleanup bar | `TaskAssigner`, task progress |
 | Kill | **Poison (decided):** a polluter "hit" adds poison to a citizen (default 34% per hit = 3 hits, 25 s per-victim immunity, in `tuning.json`). At 100% the citizen **becomes pollution** and is out of the round (spectator). Each hit is validated like a kill (alive, not a polluter, in range + line of sight, cooldown, not in a meeting) | `KillValidator`, `KillTimerRules`, `TargetSelector` (renamed); new poison counter |
 | (new) | Poisoned-out citizen leaves a **pollution pile** where they fell; it is reportable once, like a body | `ReportValidator` (as-is) |
