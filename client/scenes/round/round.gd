@@ -39,6 +39,9 @@ const CONSOLE_KINDS: Array[String] = ["task", "emergency", "fire_fix", "smog_fix
 const MACHINE_ID: String = "machine"
 ## Used while Session.tuning has no machine.fix_s; equals the server default (4 s).
 const MACHINE_FIX_FALLBACK_S: float = 4.0
+## Used while Session.tuning has no virus.heal_range; equals the server default.
+const HEAL_RANGE_FALLBACK_TILES: float = 1.5
+const GasOverlayScript: GDScript = preload("res://world/vision/gas_overlay.gd")
 
 var _map: MapRoot = null
 var _player: LocalPlayer = null
@@ -47,6 +50,8 @@ var _vision: Vision = null
 var _piles_holder: Node2D = null
 ## Cleaning spots by console id (one SpotView per task console of the map).
 var _spot_views: Dictionary = {}
+## The toxic tint over the room a gas warning runs in.
+var _gas_overlay: GasOverlay = null
 var _avatars_holder: Node2D = null
 var _fx_holder: Node2D = null
 var _world_shown: bool = true
@@ -90,6 +95,7 @@ var senders: Dictionary = {
 	"move": Net.send_move,
 	"call_meeting": Net.send_call_meeting,
 	"pick_upgrade": Net.send_pick_upgrade,
+	"heal": Net.send_heal,
 }
 var _hud: Hud = null
 var _minigames: MinigameLayer = null
@@ -120,6 +126,8 @@ func _ready() -> void:
 		return
 	add_child(_map)
 	_build_spots()
+	_gas_overlay = GasOverlayScript.new() as GasOverlay
+	add_child(_gas_overlay)
 	_piles_holder = Node2D.new()
 	add_child(_piles_holder)
 	_avatars_holder = Node2D.new()
@@ -330,6 +338,19 @@ func _build_spots() -> void:
 	_update_spots()
 
 
+## Tints the room of the running gas warning (Session.gas_room), clears it when none.
+func _update_gas() -> void:
+	if _gas_overlay == null:
+		return
+	var m: MapMarker = _map.marker(Session.gas_room) if _map != null and not Session.gas_room.is_empty() else null
+	if m == null:
+		_gas_overlay.clear()
+		return
+	var rect: Rect2 = Rect2(m.position / MapRoot.TILE_PX, Vector2(m.zone_size_tiles))
+	var warning_s: float = float(Net.as_dict(Session.tuning.get("trasher")).get("gas_warning_s", 3.0))
+	_gas_overlay.show_room(rect, Session.gas_in_s, warning_s)
+
+
 func _update_spots() -> void:
 	for id in _spot_views:
 		(_spot_views[id] as SpotView).show_state(str(Session.spots.get(id, "dirty")))
@@ -383,6 +404,7 @@ func interaction_context() -> Dictionary:
 		"bags_full": Session.bag_cap > 0 and Session.bags >= Session.bag_cap,
 		"fresh_pile": _nearest_fresh_pile(pos),
 		"clean_pile": _nearest_clean_pile(pos),
+		"heal_target": _nearest_seat_in_reach(pos, heal_range_px()),
 		"sabotage": Session.sabotage,
 		"holding_fire": not _held_console.is_empty(),
 		"held_console": _held_console,
@@ -443,6 +465,9 @@ func action_states() -> Dictionary:
 	ctx["bags"] = Session.bags
 	ctx["machine_jammed"] = Session.machine_jammed
 	ctx["ability"] = Session.ability
+	ctx["heals"] = Session.heals
+	ctx["infected"] = Session.infected_s >= 0.0
+	ctx["alert_used"] = Session.alert_used
 	return ActionRules.button_states(ctx)
 
 
@@ -470,6 +495,14 @@ func perform_action(action: String) -> void:
 			var ability: Dictionary = Net.as_dict(states["ability"])
 			if bool(ability.get("ready", false)) and str(ability.get("kind", "")) == "virus":
 				senders["plant_virus"].call(_near_spot_id())
+		"heal":
+			if bool(states["heal"]):
+				var target: int = Session.seat_id if Session.infected_s >= 0.0 else _nearest_seat_in_reach(local_position_px(), heal_range_px())
+				senders["heal"].call(target)
+		"alert":
+			if bool(states["alert"]):
+				Session.alert_used = true
+				senders["call_meeting"].call()
 		"sabotage_machine", "sabotage_smog":
 			if bool(Net.as_dict(states["sabotage"]).get("ready", false)):
 				senders["sabotage"].call(action.trim_prefix("sabotage_"))
@@ -501,6 +534,26 @@ func pick_ability(ability: String) -> void:
 	senders["pick_ability"].call(ability)
 	Session.ability_choices = []
 	Session.ability_pick_sent = true
+
+
+## How close another player must be to heal them (tuning virus.heal_range, 1.5 tiles by default).
+func heal_range_px() -> float:
+	return Net.tiles_to_px(float(Net.as_dict(Session.tuning.get("virus")).get("heal_range", HEAL_RANGE_FALLBACK_TILES)))
+
+
+## The nearest visible, active other seat within `range_px`, or -1.
+func _nearest_seat_in_reach(pos: Vector2, range_px: float) -> int:
+	var found: int = -1
+	var best: float = INF
+	for seat in _avatars:
+		var a: Avatar = _avatars[seat] as Avatar
+		if not a.visible or int(seat) == Session.seat_id or Session.seat_out(int(seat)):
+			continue
+		var dist: float = pos.distance_to(a.position)
+		if dist <= range_px and dist < best:
+			best = dist
+			found = int(seat)
+	return found
 
 
 ## The id of the spot (task console) in range, "" when none.
@@ -803,6 +856,7 @@ func _on_correct(data: Dictionary) -> void:
 func _on_snapshot(_data: Dictionary) -> void:
 	_update_piles()
 	_update_spots()
+	_update_gas()
 	_leave_if_phase_changed()
 
 

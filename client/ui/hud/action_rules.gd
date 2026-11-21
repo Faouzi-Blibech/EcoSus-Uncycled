@@ -6,10 +6,11 @@ extends RefCounted
 ## ctx keys: phase, role, is_out, near_console ({id, kind} or {}; kind task, emergency, fire_fix,
 ## smog_fix), held_console (the fire console I hold or ""), near_spot_state ("dirty", "clean" or "" for the
 ## task console in near_console: a v2 cleaning spot), bags_full, bags (carried), machine_jammed,
-## ability ("", "virus" or "gas"), fresh_pile (pile id or -1), cd ({repollute, virus, gas, sabotage} seconds), emergencies_left, sabotage (Session.sabotage: {} or {kind, ...}), clean_pile (cleanable pile id
+## ability ("", "virus" or "gas"), heals, infected, heal_target (nearest seat in heal reach or -1),
+## alert_used, fresh_pile (pile id or -1), cd ({repollute, virus, gas, sabotage} seconds), emergencies_left, sabotage (Session.sabotage: {} or {kind, ...}), clean_pile (cleanable pile id
 ## in range or -1).
 ## Result: {"use": bool, "report": bool, "repollute": {visible, ready, cooldown},
-## "ability": {visible, ready, cooldown, kind ("virus", "gas" or "")},
+## "ability": {visible, ready, cooldown, kind ("virus", "gas" or "")}, "heal": bool, "alert": bool,
 ## "sabotage": {...}, "fix": {visible, kind ("fire", "smog", "machine" or "")}, "clean": bool}.
 ## The server still validates every action; these rules only decide what the player is offered.
 
@@ -17,7 +18,7 @@ extends RefCounted
 static func button_states(ctx: Dictionary) -> Dictionary:
 	var states: Dictionary = {
 		"use": false, "report": false, "repollute": _hidden(), "ability": _hidden_ability(), "sabotage": _hidden(),
-		"fix": {"visible": false, "kind": ""}, "clean": false,
+		"fix": {"visible": false, "kind": ""}, "clean": false, "heal": false, "alert": false,
 	}
 	if str(ctx.get("phase", "")) != "playing" or bool(ctx.get("is_out", false)):
 		return states
@@ -48,6 +49,12 @@ static func button_states(ctx: Dictionary) -> Dictionary:
 			if not polluter and running == fix_kind and not held_by_other:
 				states["fix"] = {"visible": true, "kind": fix_kind}
 	states["report"] = int(ctx.get("fresh_pile", -1)) >= 0
+	if not polluter:
+		# The virus counterplay: HEAL myself when infected, else the player in reach (the server checks
+		# that they are infected); ALERT calls a meeting from anywhere, once per infection.
+		var infected: bool = bool(ctx.get("infected", false))
+		states["heal"] = int(ctx.get("heals", 0)) > 0 and (infected or int(ctx.get("heal_target", -1)) >= 0)
+		states["alert"] = infected and not bool(ctx.get("alert_used", false))
 	states["clean"] = not polluter and int(ctx.get("clean_pile", -1)) >= 0
 
 	if polluter:

@@ -51,6 +51,10 @@ var _ability_picker: AbilityPicker
 var _room_picker: RoomPicker
 ## The kind the ability button is labelled with ("virus" or "gas"), "" until known.
 var _ability_kind: String = ""
+## The infected player's countdown, and the HEAL / ALERT buttons a Cleaner gets in the Trasher slots.
+var _virus_timer: VirusTimer
+var _heal_button: ActionButton
+var _alert_button: ActionButton
 var _ping_label: Label
 var _buttons: Dictionary = {}
 var _fix_button: ActionButton
@@ -113,6 +117,14 @@ func _build() -> void:
 	_root.add_child(GhostChatPanel.new())
 
 	# The upgrade cards after a delivery, under the role reveal; hidden until upgrade_offer.
+	_virus_timer = VirusTimer.new()
+	_virus_timer.anchor_left = 0.5
+	_virus_timer.anchor_right = 0.5
+	_virus_timer.offset_top = 52.0
+	_virus_timer.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_root.add_child(_virus_timer)
+	_virus_timer.show_seconds(-1.0)
+
 	_picker = UpgradePicker.new()
 	_picker.picked.connect(_on_upgrade_picked)
 	_root.add_child(_picker)
@@ -242,6 +254,9 @@ func _build_buttons() -> void:
 	_fix_button.hold_started.connect(_on_hold_started.bind("fix"))
 	_fix_button.hold_ended.connect(_on_hold_ended.bind("fix"))
 	_clean_button = _make_hold_button(slots["ability"] as Control, "ACT_CLEAN", "act_clean")
+	# A Cleaner never sees RE-POLLUTE or the ability, so HEAL and ALERT take those two slots and keys.
+	_heal_button = _make_tap_button(slots["repollute"] as Control, "ACT_HEAL", "act_hit", "heal")
+	_alert_button = _make_tap_button(slots["ability"] as Control, "ACT_ALERT", "act_dump", "alert")
 	_clean_button.hold_started.connect(_on_hold_started.bind("clean"))
 	_clean_button.hold_ended.connect(_on_hold_ended.bind("clean"))
 	# An empty last slot keeps the grid two columns wide; both go when the role has no SABOTAGE.
@@ -250,6 +265,17 @@ func _build_buttons() -> void:
 	_sabotage_spare.custom_minimum_size = ActionButton.BUTTON_SIZE
 	_sabotage_spare.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	grid.add_child(_sabotage_spare)
+
+
+## A tap button that fills `slot`, hidden until the rules show it; pressing it runs `action`.
+func _make_tap_button(slot: Control, label_key: String, input_action: String, action: String) -> ActionButton:
+	var b: ActionButton = ActionButton.new()
+	b.text = action_text(tr(label_key), _key_text(input_action), DisplayServer.is_touchscreen_available())
+	b.visible = false
+	b.pressed.connect(_on_action_pressed.bind(action))
+	slot.add_child(b)
+	UIKit.fill(b)
+	return b
 
 
 ## A hold button (see ActionButton.hold_mode) that fills `slot`, hidden until the rules show it.
@@ -341,6 +367,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_action_pressed(action: String) -> void:
+	# A Cleaner's keys of the Trasher slots run HEAL and ALERT.
+	if Session.role != "polluter":
+		if action == "repollute":
+			action = "heal"
+		elif action == "ability":
+			action = "alert"
 	# The gas asks which room first (the room picker sends it through the round).
 	var ability: Dictionary = Net.as_dict(_states.get("ability"))
 	if action == "ability" and str(ability.get("kind", "")) == "gas":
@@ -375,6 +407,7 @@ func _process(_delta: float) -> void:
 	_update_tasks()
 	_update_buttons()
 	_update_pickers()
+	_virus_timer.show_seconds(Session.infected_s)
 	_update_banner()
 	_update_reveal()
 	_update_spectator()
@@ -444,6 +477,8 @@ func _update_buttons() -> void:
 	_set_simple(states, "report")
 	_set_cooldown(states, "repollute", "trasher", "repollute_cooldown_s")
 	_update_ability(Net.as_dict(states["ability"]))
+	_heal_button.visible = bool(states["heal"])
+	_alert_button.visible = bool(states["alert"])
 	_set_cooldown(states, "sabotage", "sabotage", "shared_cooldown_s")
 	_update_fix(Net.as_dict(states["fix"]))
 	# Only polluters have the third row; citizens keep REPORT and USE near the thumb.
@@ -544,6 +579,12 @@ func _on_event(data: Dictionary) -> void:
 			_toast.show_text(tr("HUD_DELIVERED") % [int(data.get("bags", 0)), float(data.get("meter", Session.meter))])
 		"repollute_ok":
 			_toast.show_text(tr("REPOLLUTE_OK"))
+		"healed":
+			_toast.show_text(tr("HUD_HEALED"))
+		"mask_used":
+			_toast.show_text(tr("HUD_MASK_USED"))
+		"gas_warning":
+			_toast.show_text(tr("GAS_WARNING") % [tr(gas_room_key(str(data.get("room", "")))), ceili(float(data.get("in_s", 0.0)))])
 		"virus_planted":
 			_toast.show_text(tr("VIRUS_PLANTED"))
 		"ability_ok":
@@ -561,6 +602,11 @@ func _update_pickers() -> void:
 		_picker.open(_as_strings(Session.upgrade_offer))
 	if not Session.ability_choices.is_empty() and not _ability_picker.is_open():
 		_ability_picker.open(_as_strings(Session.ability_choices))
+
+
+## "gas_market" -> "GAS_ROOM_MARKET" (same names as the room picker).
+static func gas_room_key(room: String) -> String:
+	return "GAS_ROOM_" + room.trim_prefix("gas_").to_upper()
 
 
 static func _as_strings(items: Array) -> Array[String]:

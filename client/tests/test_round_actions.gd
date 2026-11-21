@@ -16,7 +16,7 @@ const SESSION_FIELDS: Array[String] = [
 	"my_tasks", "piles", "out_seats", "is_out", "spawn", "spawn_pending", "has_me_pos", "seats",
 	"cooldowns", "emergencies_left", "move_seq", "sabotage", "spots", "bags", "bag_cap",
 	"machine_jammed", "machine_repair_t", "upgrade_offer", "ability", "repollutes", "ability_choices",
-	"ability_pick_sent",
+	"ability_pick_sent", "heals", "infected_s", "alert_used",
 ]
 
 var _saved: Dictionary = {}
@@ -77,7 +77,7 @@ func _round(role: String, at: String, offset: float) -> RoundScene:
 	r._player.position = map.marker(at).position + Vector2(offset, 0.0)
 	r._minigames = load("res://minigames/minigame_layer.tscn").instantiate() as MinigameLayer
 	r.add_child(r._minigames)
-	for kind in ["use", "report", "repollute", "plant_virus", "gas", "pick_ability", "call_meeting", "sabotage", "clean_start", "clean_cancel", "pick_upgrade"]:
+	for kind in ["use", "report", "repollute", "plant_virus", "gas", "pick_ability", "call_meeting", "sabotage", "clean_start", "clean_cancel", "pick_upgrade", "heal"]:
 		r.senders[kind] = _record(kind)
 	r.senders["fix"] = func(console: String, holding: bool) -> void: _sent.append(["fix", console, holding])
 	return r
@@ -782,5 +782,37 @@ func test_pick_upgrade_sends_and_closes_the_offer() -> bool:
 	r.pick_upgrade("heal")
 	assert_eq(_sent, [["pick_upgrade", "heal"]], "pick sent")
 	assert_eq(Session.upgrade_offer, [], "offer closed")
+	_restore()
+	return true
+
+
+func test_heal_myself_when_infected_else_the_nearest_player() -> bool:
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
+	Session.tuning = {"virus": {"heal_range": 1.5}}
+	Session.heals = 1
+	Session.infected_s = 20.0
+	_remote(r, 5, r._player.position + Vector2(20.0, 0.0))
+	r.perform_action("heal")
+	assert_eq(_sent, [["heal", Session.seat_id]], "infected: heal myself first")
+	_sent.clear()
+	Session.infected_s = -1.0
+	r.perform_action("heal")
+	assert_eq(_sent, [["heal", 5]], "the player in reach")
+	_sent.clear()
+	_remote(r, 5, r._player.position + Vector2(200.0, 0.0))
+	r.perform_action("heal")
+	assert_eq(_sent.size(), 0, "nobody in reach")
+	_restore()
+	return true
+
+
+func test_alert_calls_the_meeting_once_per_infection() -> bool:
+	var r: RoundScene = _round("citizen", OTHER_CONSOLE, 0.0)
+	Session.infected_s = 20.0
+	Session.alert_used = false
+	r.perform_action("alert")
+	r.perform_action("alert")
+	assert_eq(_sent, [["call_meeting", null]], "one meeting call")
+	assert_true(Session.alert_used, "used")
 	_restore()
 	return true

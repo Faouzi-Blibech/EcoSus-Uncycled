@@ -280,6 +280,10 @@ func send_gas(room_id: String) -> void:
 	send("gas", {"room": room_id})
 
 
+func send_heal(target: int) -> void:
+	send("heal", {"target": target})
+
+
 func send_pick_ability(ability: String) -> void:
 	send("pick_ability", {"ability": ability})
 

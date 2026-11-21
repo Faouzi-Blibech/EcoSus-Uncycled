@@ -188,6 +188,14 @@ witnessed re-pollute plays the old dump splat. The original plan follows for ref
 
 ### Task F5: virus, heal, gas, death, end screens (1 h)
 
+Done on `gameplay/virus-gas` (stacked on F4), with languages: `VirusTimer` (red countdown, pulses under 10 s)
+and `GasOverlay` (green room tint growing to the landing) built by a parallel worker; a Cleaner's HEAL and ALERT
+take the Trasher slots and keys (heal self when infected, else the nearest player in `virus.heal_range`; one
+ALERT meeting per infection); toasts for healed, mask used, gas warning; spectator and results texts for virus,
+gas and `meter_full`. Languages: English by default (no longer the computer's language), French and Arabic in
+Settings; `strings.csv` has an `ar` column (worker), Noto Sans Arabic is a fallback of the default font. The
+original plan follows for reference.
+
 **Files:**
 - Create: `client/ui/hud/virus_timer.gd` (big red countdown, only when `Session.infected_s >= 0`)
 - Modify: `round.gd` (`heal` button: self, or the nearest player within 1.5 tiles; infected `call_meeting`
