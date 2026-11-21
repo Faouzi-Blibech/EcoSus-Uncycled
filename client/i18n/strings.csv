@@ -8,6 +8,7 @@ BOOT_ERROR,Something went wrong (%s). Please try again.,Un problème est survenu
 COMMON_SETTINGS,Settings,Paramètres
 COMMON_SAVE,Save,Enregistrer
 COMMON_CANCEL,Cancel,Annuler
+COMMON_CLOSE,Close,Fermer
 SETTINGS_TITLE,Settings,Paramètres
 SETTINGS_NAME,Player name,Nom du joueur
 SETTINGS_LANGUAGE,Language,Langue
@@ -16,7 +17,13 @@ SETTINGS_BAD_URL,"The address must start with ws:// or wss://","L'adresse doit c
 LANG_EN,English,English
 LANG_FR,Français,Français
 MENU_NAME_PLACEHOLDER,Your name,Ton nom
-MENU_CREATE,Create a room,Créer une salle
+MENU_CREATE_GAME,Create Game,Créer
+MENU_JOIN_GAME,Join Game,Rejoindre
+MENU_JOIN_TITLE,Enter the room code,Entre le code de la salle
+MENU_PROFILE,Profile,Profil
+MENU_PROFILE_SKINS,Skins unlock with your daily scan streak. Coming soon.,Les skins se débloquent avec ta série de scans quotidiens. Bientôt disponible.
+MENU_SCAN,Scan & earn,Scanne et gagne
+"MENU_SCAN_TEXT","Scan a real recyclable item with your camera to earn points, keep your daily streak and unlock skins. Coming soon.","Scanne un vrai objet recyclable avec ta caméra pour gagner des points, garder ta série quotidienne et débloquer des skins. Bientôt disponible."
 MENU_CODE_PLACEHOLDER,Code,Code
 MENU_JOIN,Join,Rejoindre
 MENU_NAME_REQUIRED,Please enter a name.,Entre un nom d'abord.
