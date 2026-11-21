@@ -21,10 +21,6 @@ import {
 import CameraScreen from "./components/CameraScreen";
 import ResultScreen from "./components/ResultScreen";
 import { verifyDailyPhoto } from "./services/api";
-import {
-  recordVerifiedStreak,
-  getStreakState,
-} from "./services/streakManager";
 
 // ─── App States ───────────────────────────────────────────────
 const SCREEN = {
@@ -37,8 +33,6 @@ export default function App() {
   const [screen, setScreen] = useState(SCREEN.CAMERA);
   const [photoUri, setPhotoUri] = useState(null);
   const [apiResult, setApiResult] = useState(null);
-  const [streakInfo, setStreakInfo] = useState(null);
-  const [streakState, setStreakState] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
   /**
@@ -53,19 +47,9 @@ export default function App() {
 
     try {
       // ── 1. Send to FastAPI backend ────────────────────────
+      // The server decides the streak, CO₂ and skins; they come back in result.player.
       const result = await verifyDailyPhoto(uri);
       setApiResult(result);
-
-      // ── 2. Process streak & skin unlocks (if verified) ────
-      if (result.verified) {
-        const info = recordVerifiedStreak(result.co2_saved_grams || 0);
-        setStreakInfo(info);
-      } else {
-        setStreakInfo(null);
-      }
-      setStreakState(getStreakState());
-
-      // ── 3. Show result ────────────────────────────────────
       setScreen(SCREEN.RESULT);
     } catch (error) {
       console.error("Verification failed:", error);
@@ -87,10 +71,9 @@ export default function App() {
 
       setApiResult({
         verified: false,
+        reason: "network",
         message: message,
       });
-      setStreakInfo(null);
-      setStreakState(getStreakState());
       setScreen(SCREEN.RESULT);
     }
   };
@@ -101,7 +84,6 @@ export default function App() {
   const handleScanAgain = () => {
     setPhotoUri(null);
     setApiResult(null);
-    setStreakInfo(null);
     setErrorMessage(null);
     setScreen(SCREEN.CAMERA);
   };
@@ -121,7 +103,7 @@ export default function App() {
             🤖 AI is analyzing your recycling item
           </Text>
           <Text style={styles.loadingDetail}>
-            Running YOLOE detection + anti-cheat check
+            Detecting the item + anti-cheat check
           </Text>
         </SafeAreaView>
       );
@@ -131,8 +113,6 @@ export default function App() {
         <ResultScreen
           photoUri={photoUri}
           result={apiResult}
-          streakInfo={streakInfo}
-          streakState={streakState}
           onScanAgain={handleScanAgain}
         />
       );

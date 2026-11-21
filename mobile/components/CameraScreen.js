@@ -60,9 +60,11 @@ export default function CameraScreen({ onPhotoCaptured }) {
     try {
       // takePictureAsync returns { uri, width, height, exif? }
       // quality 0.7 keeps payload small for faster upload
+      // exif: true keeps the capture time the server uses for its freshness check
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.7,
         skipProcessing: false,
+        exif: true,
       });
       onPhotoCaptured(photo.uri);
     } catch (error) {
