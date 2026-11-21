@@ -14,6 +14,7 @@ services:
       # Local testing only: the browser tester's webcam shots carry no EXIF capture time.
       # Remove this line on the demo server; clients can never turn the check off themselves.
       UNCYCLED_DEV_SKIP_EXIF: "1"
+      # ECO_PUBLIC_URL: "https://<your-tunnel>.trycloudflare.com"   # address used in scan links and QR codes
       # ECO_DISABLE_CLIP: "1"   # uncomment to run YOLO only (faster start, less RAM)
       # ECO_DISABLE_TACO: "1"   # uncomment to ignore the TACO litter model
     restart: unless-stopped

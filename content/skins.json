@@ -1,0 +1,10 @@
+{
+  "_comment": "Cosmetic skins unlocked by the daily scan streak. Read by the photo service (ecoverify/) and the game server (lobby skins). Display names for the game go in client/i18n/strings.csv as SKIN_<ID>.",
+  "skins": [
+    {"id": "eco_novice", "streak": 1, "name": "Eco Novice", "emoji": "🌱", "rarity": "Common", "description": "Your first step toward a greener world!"},
+    {"id": "recycled_scout", "streak": 3, "name": "Recycled Scout", "emoji": "🍃", "rarity": "Uncommon", "description": "Three days of recycling in a row."},
+    {"id": "waste_warrior", "streak": 7, "name": "Waste Warrior", "emoji": "🌊", "rarity": "Rare", "description": "A full week! The oceans thank you."},
+    {"id": "green_guardian", "streak": 14, "name": "Green Guardian", "emoji": "🌍", "rarity": "Epic", "description": "Two weeks of dedication."},
+    {"id": "planet_legend", "streak": 30, "name": "Planet Legend", "emoji": "♻️", "rarity": "Legendary", "description": "A 30-day streak. Legendary status."}
+  ]
+}

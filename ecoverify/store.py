@@ -3,6 +3,7 @@
 One connection, one lock: the service holds `lock` around "check duplicates,
 then record" so two uploads from the same player cannot both pass.
 """
+import secrets
 import sqlite3
 import threading
 from datetime import date, datetime
@@ -38,6 +39,12 @@ CREATE TABLE IF NOT EXISTS submissions (
     embedding   BLOB
 );
 CREATE INDEX IF NOT EXISTS ix_sub_player_day ON submissions (player_id, day);
+CREATE TABLE IF NOT EXISTS scan_tokens (
+    token       TEXT PRIMARY KEY,
+    player_id   TEXT NOT NULL,
+    expires_at  REAL NOT NULL,
+    used        INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -71,6 +78,43 @@ class Store:
                 (pid, day.isoformat()),
             ).fetchone()
             return int(row["co2"]), int(row["depot"])
+
+    def scans_per_day(self, pid: str) -> dict[str, int]:
+        """Accepted scans per game day, e.g. {"2026-11-22": 2}."""
+        with self.lock:
+            rows = self._db.execute(
+                "SELECT day, COUNT(*) AS n FROM submissions WHERE player_id = ? GROUP BY day", (pid,))
+            return {r["day"]: int(r["n"]) for r in rows}
+
+    # ── scan links (single use, short-lived) ───────────────────
+    def issue_token(self, pid: str, now: float, ttl_s: float) -> str:
+        token = secrets.token_urlsafe(16)
+        with self.lock, self._db:
+            self._db.execute("DELETE FROM scan_tokens WHERE expires_at < ?", (now - 3600,))
+            self._db.execute("INSERT INTO scan_tokens (token, player_id, expires_at) VALUES (?, ?, ?)",
+                             (token, pid, now + ttl_s))
+        return token
+
+    def token_player(self, token: str, now: float) -> str | None:
+        """The player a link belongs to, without using it up. None if unknown, expired or used."""
+        with self.lock:
+            row = self._db.execute(
+                "SELECT player_id FROM scan_tokens WHERE token = ? AND used = 0 AND expires_at >= ?",
+                (token, now)).fetchone()
+            return row["player_id"] if row else None
+
+    def redeem_token(self, token: str, now: float) -> str | None:
+        """Use a link up and return its player. None if unknown, expired or already used."""
+        with self.lock, self._db:
+            pid = self.token_player(token, now)
+            if pid is not None:
+                self._db.execute("UPDATE scan_tokens SET used = 1 WHERE token = ?", (token,))
+            return pid
+
+    def release_token(self, token: str) -> None:
+        """Give a link back after a photo that was not accepted, so the player can retry before it expires."""
+        with self.lock, self._db:
+            self._db.execute("UPDATE scan_tokens SET used = 0 WHERE token = ?", (token,))
 
     def candidates(self, pid: str, coco_class: str) -> list[sqlite3.Row]:
         """This player's earlier submissions of the same detected class (duplicate check input)."""

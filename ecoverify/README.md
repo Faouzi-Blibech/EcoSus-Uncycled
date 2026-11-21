@@ -84,12 +84,27 @@ the sample photos bundled with Ultralytics. The smoke test makes a new random pl
 2. Allow port 8000 through Windows Firewall when asked (private network).
 3. `npx expo start`, scan the QR code with Expo Go, photograph a bottle.
 
+## Scan links (the game's scan button)
+
+1. The game calls `POST /scan/start` with its player id and opens the returned `url` (web: same tab;
+   Android: browser) or shows `qr_url` (Windows) for a phone to scan.
+2. The phone page uploads one photo with the token. Only a verified item uses the link up and counts:
+   10 points per scan, at most 3 scans a day score (`points_per_scan`, `max_scored_scans_per_day`).
+3. The game refreshes `GET /profile/{id}` to show points, streak and skins (`content/skins.json`).
+
+Links point at this service's public address: set `ECO_PUBLIC_URL` (for example the `cloudflared` tunnel
+URL), or the service uses the forwarded host and scheme the tunnel sends.
+
 ## API
 
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/verify-daily-photo` | multipart `file`; headers `X-Player-Id` (UUID, required), `X-Tz-Offset-Minutes` (JS `getTimezoneOffset()`); no client option can skip the EXIF check |
-| GET | `/players/{id}` | streak, totals, unlocked skins, next skin |
+| GET | `/players/{id}`, `/profile/{id}` | points, streak, scans today, totals, unlocked skins (`skins` ids and full objects), next skin |
+| POST | `/scan/start` | JSON `{"player_id": "<uuid>"}` -> `{token, url, qr_url, expires_s}`: a single-use scan link valid 120 s |
+| GET | `/scan?t=` | phone page: take a photo, see the outline, points, streak and new skins, "Back to game" |
+| POST | `/scan/upload` | form `token`, `file`: the link replaces the EXIF check; a rejected photo gives the link back for a retry; 410 when expired or used |
+| GET | `/scan/qr?t=` | PNG QR code of the scan link (for the Windows build) |
 | GET | `/eco-stats` | totals across all players |
 | GET | `/recycling-guide` | taxonomy and skins |
 | GET | `/health` | model loaded, CLIP available |

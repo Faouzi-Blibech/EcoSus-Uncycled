@@ -1,17 +1,21 @@
 """Uncycled eco photo verification API.
 
 Run: uvicorn app:app --host 0.0.0.0 --port 8000
-The pipeline lives in ecoverify/; tuning, skins and taxonomy in content/eco_verify.json.
+The pipeline lives in ecoverify/; tuning and taxonomy in content/eco_verify.json, skins in content/skins.json.
 """
+import io
+import json
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
+from pydantic import BaseModel
 
 from ecoverify import config
 from ecoverify.clip import ClipEmbedder
@@ -33,7 +37,9 @@ verifier = Verifier(store, detector, embedder, taco=taco)
 # Server-side switch for local tests only (browser webcam shots carry no EXIF);
 # clients can never turn the freshness check off.
 SKIP_EXIF = os.environ.get("UNCYCLED_DEV_SKIP_EXIF") == "1"
-TESTER_HTML =(Path(__file__).parent / "ecoverify" / "tester.html").read_text(encoding="utf-8")
+TESTER_HTML = (Path(__file__).parent / "ecoverify" / "tester.html").read_text(encoding="utf-8")
+SCAN_HTML = (Path(__file__).parent / "ecoverify" / "scan.html").read_text(encoding="utf-8")
+LINK_GONE = "This scan link has expired or was already used. Start a new scan from the game."
 
 
 def _player_id(value: str | None) -> str:
@@ -46,6 +52,28 @@ def _player_id(value: str | None) -> str:
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _base_url(request: Request) -> str:
+    """Public address of this service, for the links and QR codes the game shows.
+
+    ECO_PUBLIC_URL wins (set it to the tunnel/host URL); otherwise use the forwarded host and
+    scheme a tunnel or proxy sends (cloudflared does), otherwise the address the request came in on.
+    """
+    if os.environ.get("ECO_PUBLIC_URL"):
+        return os.environ["ECO_PUBLIC_URL"].rstrip("/")
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    return f"{proto}://{host}"
+
+
+async def _read_image(file: UploadFile) -> bytes:
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type.")
+    data = await file.read(T["max_upload_bytes"] + 1)
+    if len(data) > T["max_upload_bytes"]:
+        raise HTTPException(status_code=413, detail="Image too large (max 10 MB).")
+    return data
 
 
 @app.on_event("startup")
@@ -79,18 +107,70 @@ async def verify_photo(
     x_tz_offset_minutes: int | None = Header(default=None),
 ):
     pid = _player_id(x_player_id)
-    if file.content_type and not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Invalid file type.")
-    data = await file.read(T["max_upload_bytes"] + 1)
-    if len(data) > T["max_upload_bytes"]:
-        raise HTTPException(status_code=413, detail="Image too large (max 10 MB).")
+    data = await _read_image(file)
     return await run_in_threadpool(verifier.verify, data, pid, _now(), x_tz_offset_minutes, SKIP_EXIF)
 
 
 @app.get("/players/{player_id}")
+@app.get("/profile/{player_id}")
 async def player_profile(player_id: str):
-    """Streak, totals and unlocked skins. The phone and (later) the game server read this."""
+    """Points, streak, totals and unlocked skins. The game, the phone app and the scan page read this."""
     return verifier.profile(_player_id(player_id), _now())
+
+
+# ── Scan links: the game asks for a link, the player opens it on a phone and photographs an item ──
+class ScanStart(BaseModel):
+    player_id: str
+
+
+@app.post("/scan/start")
+async def scan_start(body: ScanStart, request: Request):
+    """A single-use link (and its QR code) valid for scan_token_ttl_s seconds."""
+    pid = _player_id(body.player_id)
+    ttl = T["scan_token_ttl_s"]
+    token = verifier.store.issue_token(pid, time.time(), ttl)
+    base = _base_url(request)
+    return {"token": token, "url": f"{base}/scan?t={token}", "qr_url": f"{base}/scan/qr?t={token}",
+            "expires_s": ttl}
+
+
+@app.get("/scan", response_class=HTMLResponse)
+async def scan_page(t: str = Query(default="")):
+    """Phone page: take a photo of the item, see the result, go back to the game."""
+    state = {"token": t, "valid": verifier.store.token_player(t, time.time()) is not None,
+             "gone_message": LINK_GONE}
+    # json.dumps output is safe inside <script> once "</" is escaped
+    return SCAN_HTML.replace("/*__STATE__*/null", json.dumps(state).replace("</", "<\\/"))
+
+
+@app.post("/scan/upload")
+async def scan_upload(token: str = Form(...), file: UploadFile = File(...)):
+    """The scan link replaces the EXIF time check: only a fresh, unused link is accepted.
+
+    A photo that is not accepted gives the link back, so the player can retry until it expires.
+    """
+    data = await _read_image(file)
+    pid = verifier.store.redeem_token(token, time.time())
+    if pid is None:
+        raise HTTPException(status_code=410, detail=LINK_GONE)
+    result = await run_in_threadpool(verifier.verify, data, pid, _now(), None, True)
+    if not result["verified"]:
+        verifier.store.release_token(token)
+    # On success the verify result already has the profile with this scan's new skins.
+    result["profile"] = result.get("player") or verifier.profile(pid, _now())
+    return result
+
+
+@app.get("/scan/qr")
+async def scan_qr(request: Request, t: str = Query(default="")):
+    """PNG QR code of the scan link (the Windows build shows it for a phone to scan)."""
+    if verifier.store.token_player(t, time.time()) is None:
+        raise HTTPException(status_code=410, detail=LINK_GONE)
+    import qrcode
+    img = qrcode.make(f"{_base_url(request)}/scan?t={t}", box_size=8, border=2)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return Response(content=buf.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/recycling-guide")
@@ -105,7 +185,7 @@ async def recycling_guide():
 
 @app.get("/eco-stats")
 async def eco_stats():
-    s = store.global_stats()
+    s = verifier.store.global_stats()
     return {
         "total_items_recycled": s["items"],
         "total_players": s["players"],
