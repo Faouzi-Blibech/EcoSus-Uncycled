@@ -245,3 +245,14 @@ build/
 .env
 .env.*
 !bots/.env.example
+
+# Photo Verification & AI Models
+submitted_hashes.json
+eco_stats.json
+*.pt
+*.ts
+*.part
+
+# Mobile React Native / Expo
+node_modules/
+.expo/
