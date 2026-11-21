@@ -8,7 +8,11 @@ namespace Uncycled.Bots
     /// <summary>Which BotActions are valid for a seat right now (the mask the network may choose from).</summary>
     public static class ActionCatalogue
     {
+        /// <summary>The 30 actions the networks were trained on (the v1 set); Mask has this length.</summary>
         public const int Count = 30;
+
+        /// <summary>Every action of the enum, v2 ones included; FullMask has this length.</summary>
+        public const int TotalCount = 42;
 
         private const int SlotCount = 4;
         private const float CooldownEps = 1e-3f;
@@ -89,6 +93,54 @@ namespace Uncycled.Bots
             }
 
             return mask;
+        }
+
+        /// <summary>
+        /// Mask over every action, v2 included (length TotalCount): the legacy mask first, then what the v2
+        /// rules allow. The scripted brains choose from this one; the networks only see the legacy part.
+        /// </summary>
+        public static bool[] FullMask(SeatView view, BotMemory mem, MapData map)
+        {
+            var full = new bool[TotalCount];
+            Array.Copy(Mask(view, mem, map), full, Count);
+            if (!ActionQuery.Playing(view))
+            {
+                return full;
+            }
+
+            MatchConfig cfg = mem.Config;
+            ConsoleDef? machine = ActionQuery.MachineConsole(map);
+            if (view.Me.Role == Role.Polluter)
+            {
+                CooldownView? cd = view.Me.Cooldowns;
+                bool anyDirty = ActionQuery.SpotConsoles(view, map, SpotState.Dirty).Count > 0;
+                bool anyClean = ActionQuery.SpotConsoles(view, map, SpotState.Clean).Count > 0;
+                full[(int)BotAction.GoDirtySpot] = anyDirty;
+                full[(int)BotAction.Repollute] = anyClean && cd != null && cd.Repollute <= CooldownEps;
+                full[(int)BotAction.PickAbility] = view.Me.Ability == TrasherAbility.None && view.Me.Repollutes >= cfg.UnlockAfter;
+                full[(int)BotAction.PlantVirus] = anyDirty && view.Me.Ability == TrasherAbility.Virus && cd != null && cd.Virus <= CooldownEps;
+                full[(int)BotAction.GasRoom] = map.GasRooms.Count > 0 && view.Me.Ability == TrasherAbility.Gas && cd != null && cd.Gas <= CooldownEps;
+                bool sabotageReady = cd != null && cd.Sabotage <= CooldownEps && view.Sabotage == null && !view.MachineJammed;
+                full[(int)BotAction.SabotageSmog] = sabotageReady && ActionQuery.NthOfKind(map, ConsoleKind.SmogFix, 0) != null;
+                full[(int)BotAction.SabotageMachine] = sabotageReady && machine != null;
+                return full;
+            }
+
+            int bags = view.Me.Bags;
+            bool hasRoom = bags < view.Me.BagCap;
+            full[(int)BotAction.GoDirtySpot] = hasRoom && ActionQuery.SpotsNearestFirst(view, map, SpotState.Dirty).Count > 0;
+            full[(int)BotAction.FinishSpot] = hasRoom && ActionQuery.SpotInRange(view, map, SpotState.Dirty) != null;
+            full[(int)BotAction.GoMachine] = bags > 0 && machine != null;
+            full[(int)BotAction.Deliver] = bags > 0 && !view.MachineJammed && machine != null && ActionQuery.InRange(map, view.Me.Position, machine);
+            full[(int)BotAction.PickUpgrade] = mem.UpgradeOffer != null && mem.UpgradeOffer.Count > 0;
+            full[(int)BotAction.HealSelf] = ActionQuery.Infected(view) && view.Me.Heals > 0;
+            full[(int)BotAction.FixMachine] = view.MachineJammed && machine != null;
+            if (ActionQuery.Infected(view) && !mem.InfectedCallUsed)
+            {
+                full[(int)BotAction.CallMeeting] = true; // the infected may call one meeting from anywhere
+            }
+
+            return full;
         }
     }
 }

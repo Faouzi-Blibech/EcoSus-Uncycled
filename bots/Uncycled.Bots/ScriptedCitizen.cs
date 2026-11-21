@@ -9,15 +9,17 @@ using Sim.World;
 namespace Uncycled.Bots
 {
     /// <summary>
-    /// Scripted citizen (team doc 06 section 2): fire first, then smog, report a fresh pile, clean a
-    /// dump pile nearby, do own tasks nearest first, wander when done. Votes by suspicion.
+    /// Scripted Cleaner (v2): heal yourself or call the free meeting when infected, pick from an open
+    /// upgrade offer, fix a jammed machine, repair smog, report a fresh body, bring a full bag to the
+    /// machine, clean the nearest dirty spot, wander when every spot is clean. Votes by suspicion.
     /// </summary>
     public sealed class ScriptedCitizen : ScriptedBrain
     {
-        private const float FireSafetyS = 3f;
-        private const int CleanMaxPathTiles = 8;
+        private const int FixMaxPathTiles = 6;
+        private const float TakenRadius = 2.5f;
         private const int SmogMaxPathTiles = 25;
         private const float WanderStayChance = 0.3f;
+        private const float EarlyDeliverChance = 0.2f;
 
         private readonly BotsSettings _settings;
 
@@ -30,48 +32,45 @@ namespace Uncycled.Bots
         internal override Choice Choose(SeatView view, bool[] mask)
         {
             MapData map = Mem.Map;
-            MatchConfig cfg = Mem.Config;
             Vec2 me = view.Me.Position;
             MapDistances dist = MapDistances.For(map);
 
-            // 1. fire: hold a free console we can still reach in time
-            if (ActionQuery.FireActive(view))
+            // 1. infected: heal yourself, else call the one free meeting
+            if (mask[(int)BotAction.HealSelf])
             {
-                if (Exec.Busy && Exec.Current == BotAction.HoldFire)
+                return Choice.Now(BotAction.HealSelf);
+            }
+
+            if (ActionQuery.Infected(view) && mask[(int)BotAction.CallMeeting])
+            {
+                return Choice.Now(BotAction.CallMeeting);
+            }
+
+            // 2. an upgrade offer is open: pick
+            if (mask[(int)BotAction.PickUpgrade])
+            {
+                return Choice.Now(BotAction.PickUpgrade);
+            }
+
+            // 3. the machine is jammed: fix it when it is close or while carrying bags
+            ConsoleDef? machine = ActionQuery.MachineConsole(map);
+            if (mask[(int)BotAction.FixMachine] && machine != null)
+            {
+                if (Exec.Busy && Exec.Current == BotAction.FixMachine)
                 {
                     return Choice.Keep;
                 }
 
-                int index = 0;
-                int bestIndex = -1;
-                int bestDist = int.MaxValue;
-                foreach (ConsoleDef c in map.ConsolesOfKind(ConsoleKind.FireFix))
+                // someone already stands at the machine: they are fixing it (one repairer at a time), leave it to them
+                bool taken = ActionQuery.SomeoneNear(view, machine.Position, TakenRadius) && Vec2.Distance(me, machine.Position) > TakenRadius;
+                int d = dist.Path(me, machine.Position);
+                if (!taken && d != MapDistances.Unreachable && (d <= FixMaxPathTiles || view.Me.Bags > 0))
                 {
-                    bool held = view.Sabotage!.Held.Contains(c.Id);
-                    int d = dist.Path(me, c.Position);
-                    float reach = d / cfg.SpeedTilesPerS + FireSafetyS;
-                    if (!held && d != MapDistances.Unreachable && reach <= (view.Sabotage.Countdown ?? 0f) && d < bestDist)
-                    {
-                        bestDist = d;
-                        bestIndex = index;
-                    }
-
-                    index++;
-                }
-
-                if (bestIndex >= 0)
-                {
-                    ConsoleDef target = ActionQuery.NthOfKind(map, ConsoleKind.FireFix, bestIndex)!;
-                    if (mask[(int)BotAction.HoldFire] && ActionQuery.InRange(map, me, target))
-                    {
-                        return Choice.Now(BotAction.HoldFire);
-                    }
-
-                    return Same(bestIndex == 0 ? BotAction.GoFireA : BotAction.GoFireB, true);
+                    return Choice.Now(BotAction.FixMachine);
                 }
             }
 
-            // 2. smog: some citizens walk to the panel and repair it
+            // 4. smog: some Cleaners walk to the panel and repair it
             if (ActionQuery.SmogActive(view))
             {
                 if (mask[(int)BotAction.RepairSmog])
@@ -87,36 +86,40 @@ namespace Uncycled.Bots
                 }
             }
 
-            // 3. a fresh pile in sight: report it
+            // 5. a fresh body in sight: report it
             if (mask[(int)BotAction.ReportNearest])
             {
                 return Same(BotAction.ReportNearest, true);
             }
 
-            // 4. a dump pile close by: clean it
-            PileView? pile = ActionQuery.NearestPile(view, ActionQuery.IsCleanable);
-            if (pile != null && mask[(int)BotAction.CleanNearest])
+            // 6. bags: a full Cleaner brings them to the machine (a backpack carrier also when no spot is left)
+            bool full = view.Me.Bags >= view.Me.BagCap;
+            bool anyDirty = mask[(int)BotAction.GoDirtySpot];
+            if (view.Me.Bags > 0 && !view.MachineJammed && (full || !anyDirty || Rng.NextFloat() < EarlyDeliverChance * (view.Me.Bags / (float)view.Me.BagCap)))
             {
-                int d = dist.Path(me, pile.Position);
-                bool noTasks = !mask[(int)BotAction.GoNextTask];
-                if (noTasks || (d != MapDistances.Unreachable && d <= CleanMaxPathTiles))
+                if (mask[(int)BotAction.Deliver])
                 {
-                    return Same(BotAction.CleanNearest, false);
+                    return Same(BotAction.Deliver, false);
+                }
+
+                if (mask[(int)BotAction.GoMachine])
+                {
+                    return Same(BotAction.GoMachine, false);
                 }
             }
 
-            // 5. own tasks
-            if (mask[(int)BotAction.UseHere])
+            // 7. the nearest dirty spot
+            if (mask[(int)BotAction.FinishSpot])
             {
-                return Same(BotAction.UseHere, false);
+                return Same(BotAction.FinishSpot, false);
             }
 
-            if (mask[(int)BotAction.GoNextTask])
+            if (anyDirty)
             {
-                return Same(BotAction.GoNextTask, false);
+                return Same(BotAction.GoDirtySpot, false);
             }
 
-            // 6. nothing to do: wander
+            // 8. a full Cleaner at a jammed machine with nothing else to do waits at it (the jam is fixed above); else wander
             if (Exec.Busy)
             {
                 return Choice.Keep;
@@ -129,6 +132,41 @@ namespace Uncycled.Bots
 
             int zones = Math.Min(3, map.Zones.Count);
             return zones == 0 ? Choice.Do(BotAction.Stay) : Choice.Do(BotAction.GoZone0 + Rng.NextInt(zones));
+        }
+
+        internal override void Prepare(BotAction action, SeatView view)
+        {
+            if (action == BotAction.PickUpgrade && Mem.UpgradeOffer != null)
+            {
+                Exec.UpgradeChoice = PickUpgrade(Mem.UpgradeOffer);
+            }
+        }
+
+        /// <summary>A weighted draw from the offer: a backpack or a tool pays most, a heal or a mask is insurance.</summary>
+        private UpgradeKind PickUpgrade(IReadOnlyList<UpgradeKind> offer)
+        {
+            float Weight(UpgradeKind k)
+            {
+                switch (k)
+                {
+                    case UpgradeKind.Backpack: return 4f;
+                    case UpgradeKind.Tool: return 3f;
+                    default: return 2f;
+                }
+            }
+
+            float total = offer.Sum(Weight);
+            float roll = Rng.NextFloat() * total;
+            foreach (UpgradeKind k in offer)
+            {
+                roll -= Weight(k);
+                if (roll <= 0f)
+                {
+                    return k;
+                }
+            }
+
+            return offer[offer.Count - 1];
         }
 
         /// <summary>Keep the running action when it is already this one.</summary>

@@ -61,7 +61,7 @@ namespace Uncycled.Bots.Tests
 
         private static DeciderStats Of(BakeOffReport r, string name) => r.Deciders.Single(d => d.Name == name);
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact]
         public void BakeOff_CountsCorrectAndWrongEjectionsPerDecider()
         {
             BakeOffReport r = BakeOff.Run(Content(), BotsSettings.Load("none"), Options(6), new IMeetingDecider[] { new TruthDecider(), new SkipDecider() });
@@ -87,7 +87,7 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(truth.Calls, skip.Calls);
         }
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact]
         public void BakeOff_StopsBeforeAMeetingThatWouldPassTheCallBudget()
         {
             BakeOffReport r = BakeOff.Run(Content(), BotsSettings.Load("none"), Options(50, maxCalls: 10), new IMeetingDecider[] { new SkipDecider() });
@@ -96,7 +96,7 @@ namespace Uncycled.Bots.Tests
             Assert.InRange(Of(r, "skip").Calls, 1, 10);
         }
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact]
         public void BakeOff_ADeciderThatThrowsCountsAsFailuresAndSkips()
         {
             BakeOffReport r = BakeOff.Run(Content(), BotsSettings.Load("none"), Options(2), new IMeetingDecider[] { new Throwing(), new SkipDecider() });
@@ -122,7 +122,7 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(0.0, new DeciderStats("empty").Percentile(0.5));
         }
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact]
         public void BakeOff_ReportJsonCarriesTheTableTheGateNeeds()
         {
             BakeOffReport r = BakeOff.Run(Content(), BotsSettings.Load("none"), Options(2), new IMeetingDecider[] { new SkipDecider() });

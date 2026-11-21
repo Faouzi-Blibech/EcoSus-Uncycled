@@ -63,6 +63,10 @@ namespace Uncycled.Train
             int hits = 0;
             int dumps = 0;
             int meetings = 0;
+            int wrongEjections = 0;
+            int deliveries = 0;
+            int repollutes = 0;
+            int abilitiesUsed = 0;
             int maxTicks = (int)((cfg.DeadlineS + ExtraSecondsAfterDeadline) / TickDt) * 4;
             for (int t = 0; t < maxTicks && engine.Phase != MatchPhase.Ended; t++)
             {
@@ -78,6 +82,22 @@ namespace Uncycled.Train
                     if (e is EjectionEvent ej && engine.Find(ej.Seat)?.Role == Role.Polluter)
                     {
                         correctEjections++;
+                    }
+                    else if (e is EjectionEvent)
+                    {
+                        wrongEjections++;
+                    }
+                    else if (e is DeliveredEvent)
+                    {
+                        deliveries++;
+                    }
+                    else if (e is RepolluteOkEvent)
+                    {
+                        repollutes++;
+                    }
+                    else if (e is VirusPlantedEvent || e is GasWarningEvent)
+                    {
+                        abilitiesUsed++;
                     }
                     else if (e is HitOkEvent)
                     {
@@ -103,6 +123,10 @@ namespace Uncycled.Train
             sb.Append(",\"tasks_total\":").Append(engine.Tasks.TotalSteps.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"meter\":").Append(engine.Meter.Value.ToString("0.###", CultureInfo.InvariantCulture));
             sb.Append(",\"correct_ejections\":").Append(correctEjections.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"wrong_ejections\":").Append(wrongEjections.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"deliveries\":").Append(deliveries.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"repollutes\":").Append(repollutes.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"abilities_used\":").Append(abilitiesUsed.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"hits\":").Append(hits.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"dumps\":").Append(dumps.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"meetings\":").Append(meetings.ToString(CultureInfo.InvariantCulture));

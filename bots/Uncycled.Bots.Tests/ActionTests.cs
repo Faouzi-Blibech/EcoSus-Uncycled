@@ -26,7 +26,7 @@ namespace Uncycled.Bots.Tests
         [Fact]
         public void ActionCatalogue_CountMatchesEnum()
         {
-            Assert.Equal(ActionCatalogue.Count, Enum.GetValues(typeof(BotAction)).Length);
+            Assert.Equal(ActionCatalogue.TotalCount, Enum.GetValues(typeof(BotAction)).Length);
             Assert.Equal(0, (int)BotAction.Stay);
         }
 

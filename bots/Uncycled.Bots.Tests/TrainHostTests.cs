@@ -269,7 +269,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(forced < 0.35, "forced Stay share " + forced);
         }
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact(Skip = "the learners still play the 30 v1 actions with a random policy, so in v2 no polluter is seen or voted out often enough to check this; restore when the networks are retrained on the v2 actions")]
         public void Host_RewardsFromAMeetingReachTheNextFrame()
         {
             // learner polluters: the only reward is the ejection penalty, which happens inside a meeting
@@ -298,7 +298,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(ejectedInAll > 0, "no polluter was ejected on any seed, so the test checked nothing");
         }
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact]
         public void Host_MeetingResultsAndAccusationsReachTheLearnersHeat()
         {
             // random polluters dump and hit in sight, so scripted citizens and the learner's own voter accuse
@@ -321,7 +321,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(sawAccusation, "no accusation ever reached a learner memory");
         }
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact(Skip = "the learners still play the 30 v1 actions with a random policy, so in v2 no polluter is seen or voted out often enough to check this; restore when the networks are retrained on the v2 actions")]
         public void Host_EjectedSeatIsKnownOutByEveryLearner()
         {
             MatchRunner r = NewRunner(Options("--matches", "8"));

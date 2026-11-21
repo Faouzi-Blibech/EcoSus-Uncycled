@@ -15,6 +15,9 @@ namespace Uncycled.Bots
     {
         public const float DirectWeight = 100f;
         public const float NearPileWeight = 30f;
+
+        /// <summary>A player seen leaving a dirty spot dirty after a clean time: enough, alone, to be voted.</summary>
+        public const float FakeCleanWeight = 45f;
         public const float VoteThreshold = 40f;
         public const float NearPileWindowS = 20f;
 
@@ -37,6 +40,14 @@ namespace Uncycled.Bots
                 if (r.Actor != me && direct.Add(r.Actor))
                 {
                     Add(r.Actor, DirectWeight);
+                }
+            }
+
+            foreach (WitnessRecord r in mem.Inferred)
+            {
+                if (r.Actor != me && direct.Add(r.Actor))
+                {
+                    Add(r.Actor, FakeCleanWeight);
                 }
             }
 

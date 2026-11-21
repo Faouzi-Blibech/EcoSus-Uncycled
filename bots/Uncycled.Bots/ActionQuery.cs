@@ -259,6 +259,134 @@ namespace Uncycled.Bots
             return false;
         }
 
+        // ---------- v2: spots, the machine, rooms ----------
+
+        public static ConsoleDef? MachineConsole(MapData map) => NthOfKind(map, ConsoleKind.Machine, 0);
+
+        public static bool Infected(SeatView view) => view.Me.InfectedS != null;
+
+        /// <summary>Consoles of the spots in the given state (every seat sees every spot's state), in view order.</summary>
+        public static List<ConsoleDef> SpotConsoles(SeatView view, MapData map, SpotState state)
+        {
+            var list = new List<ConsoleDef>();
+            foreach (SpotView s in view.Spots)
+            {
+                if (s.State != state)
+                {
+                    continue;
+                }
+
+                ConsoleDef? c = map.FindConsole(s.Id);
+                if (c != null)
+                {
+                    list.Add(c);
+                }
+            }
+
+            return list;
+        }
+
+        /// <summary>The spots of a state nearest first by walking distance (unreachable ones dropped); ties by id.</summary>
+        public static List<ConsoleDef> SpotsNearestFirst(SeatView view, MapData map, SpotState state)
+        {
+            MapDistances dist = MapDistances.For(map);
+            var list = new List<KeyValuePair<int, ConsoleDef>>();
+            foreach (ConsoleDef c in SpotConsoles(view, map, state))
+            {
+                int d = dist.Path(view.Me.Position, c.Position);
+                if (d != MapDistances.Unreachable)
+                {
+                    list.Add(new KeyValuePair<int, ConsoleDef>(d, c));
+                }
+            }
+
+            list.Sort((a, b) =>
+            {
+                int c = a.Key.CompareTo(b.Key);
+                return c != 0 ? c : string.CompareOrdinal(a.Value.Id, b.Value.Id);
+            });
+            var result = new List<ConsoleDef>(list.Count);
+            foreach (KeyValuePair<int, ConsoleDef> kv in list)
+            {
+                result.Add(kv.Value);
+            }
+
+            return result;
+        }
+
+        /// <summary>A spot of the given state within reach (range and line of sight), or null.</summary>
+        public static ConsoleDef? SpotInRange(SeatView view, MapData map, SpotState state)
+        {
+            foreach (ConsoleDef c in SpotConsoles(view, map, state))
+            {
+                if (InRange(map, view.Me.Position, c))
+                {
+                    return c;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>True when a visible player other than a partner stands within the radius of the point.</summary>
+        public static bool SomeoneNear(SeatView view, Vec2 point, float radius)
+        {
+            foreach (PlayerView p in Slots(view))
+            {
+                if (!ContainsSeat(view.Me.Partners, p.Seat) && Vec2.Distance(p.Position, point) <= radius)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Visible players (not partners) close enough to see this seat act: within a citizen's vision (shrunk by smog) with line of sight.</summary>
+        public static int Watchers(SeatView view, MatchConfig cfg, MapData map)
+        {
+            float level = view.Sabotage != null && view.Sabotage.Kind == SabotageKind.Smog ? view.Sabotage.SmogLevel : 0f;
+            level = level < 0f ? 0f : (level > 1f ? 1f : level);
+            float range = cfg.VisionCitizen - level * (cfg.VisionCitizen - cfg.SmogMin);
+            int n = 0;
+            foreach (PlayerView p in Slots(view))
+            {
+                if (!ContainsSeat(view.Me.Partners, p.Seat) && Vec2.Distance(p.Position, view.Me.Position) <= range
+                    && map.Sight.HasLineOfSight(view.Me.Position, p.Position))
+                {
+                    n++;
+                }
+            }
+
+            return n;
+        }
+
+        /// <summary>The gas room (map gas_rooms) holding the most visible non-partner players, or null when none holds one.</summary>
+        public static ZoneDef? GasRoomWithPlayers(SeatView view, MapData map, out int count)
+        {
+            ZoneDef? best = null;
+            count = 0;
+            foreach (ZoneDef room in map.GasRooms)
+            {
+                int n = 0;
+                foreach (PlayerView p in Slots(view))
+                {
+                    if (!ContainsSeat(view.Me.Partners, p.Seat) && room.Contains(p.Position))
+                    {
+                        n++;
+                    }
+                }
+
+                if (n > count)
+                {
+                    count = n;
+                    best = room;
+                }
+            }
+
+            return best;
+        }
+
         public static Vec2 ZoneCentre(MapData map, int zoneIndex)
         {
             ZoneDef z = map.Zones[zoneIndex];
