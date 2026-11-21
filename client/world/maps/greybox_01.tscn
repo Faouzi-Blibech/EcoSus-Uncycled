@@ -136,18 +136,6 @@ script = ExtResource("3_marker")
 marker_id = "meeting_button"
 kind = "emergency"
 
-[node name="FireA" type="Marker2D" parent="Markers"]
-position = Vector2(80, 304)
-script = ExtResource("3_marker")
-marker_id = "fire_a"
-kind = "fire_fix"
-
-[node name="FireB" type="Marker2D" parent="Markers"]
-position = Vector2(1264, 304)
-script = ExtResource("3_marker")
-marker_id = "fire_b"
-kind = "fire_fix"
-
 [node name="Machine" type="Marker2D" parent="Markers"]
 position = Vector2(48, 336)
 script = ExtResource("3_marker")

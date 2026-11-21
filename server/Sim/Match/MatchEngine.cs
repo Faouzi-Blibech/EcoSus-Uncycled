@@ -90,6 +90,7 @@ namespace Sim.Match
 
             RoleAssigner.Assign(_players, config.Polluters, _rng, forcedPolluter, forcedCitizen);
             Tasks = TaskLedger.Assign(ActiveCitizenSeats(), taskTypes, config.TasksCommon, config.TasksShort, config.TasksLong, _rng);
+            Spots = SpotBoard.FromMap(map, taskTypes);
 
             _fireConsoles = map.ConsolesOfKind(ConsoleKind.FireFix);
             _emergencyConsoles = map.ConsolesOfKind(ConsoleKind.Emergency);
@@ -102,7 +103,9 @@ namespace Sim.Match
             Fire = new FireSystem(fireIds);
             List<ConsoleDef> smogPanels = map.ConsolesOfKind(ConsoleKind.SmogFix);
             Smog = new SmogSystem(smogPanels.Count > 0 ? smogPanels[0].Id : null);
-            SabotageTimer = new SabotageCooldown(config.SabotageSharedCooldownS, config.SabotageStartCooldownS);
+            List<ConsoleDef> machines = map.ConsolesOfKind(ConsoleKind.Machine);
+            Machine = new MachineSystem(machines.Count > 0 ? machines[0].Id : null);
+            SabotageTimer = new SabotageCooldown(config.SabotageSharedCooldownS, config.TrasherStartCooldownS);
             Meter = new PollutionMeter();
             Piles = new PileRegistry();
             Witnesses = new WitnessLog();
@@ -122,7 +125,9 @@ namespace Sim.Match
                 p.Position = map.SpawnFor(i);
                 p.HitReadyAt = config.StartCooldownS;
                 p.DumpReadyAt = config.StartCooldownS;
+                p.RepolluteReadyAt = config.TrasherStartCooldownS;
                 p.MoveBudget = config.MoveBudgetCap;
+                p.BagCap = p.IsCitizen ? config.BagCap : 0;
             }
 
             Phase = MatchPhase.Intro;
@@ -171,12 +176,18 @@ namespace Sim.Match
 
         public TaskLedger Tasks { get; }
 
+        /// <summary>The cleaning spots (v2): one per task console, all dirty at the start.</summary>
+        public SpotBoard Spots { get; }
+
         /// <summary>Server-side witness records (for bots). Never sent to clients.</summary>
         public WitnessLog Witnesses { get; }
 
         public FireSystem Fire { get; }
 
         public SmogSystem Smog { get; }
+
+        /// <summary>The Recycling Machine jam (v2). A delivery must be refused while Machine.Jammed.</summary>
+        public MachineSystem Machine { get; }
 
         public SabotageCooldown SabotageTimer { get; }
 
@@ -280,18 +291,26 @@ namespace Sim.Match
             {
                 case MoveCommand c: return ApplyMove(p, c);
                 case UseCommand c: return ApplyUse(p, c);
-                case TaskStepCommand c: return ApplyTaskStep(p, c);
-                case HitCommand c: return ApplyHit(p, c);
-                case DumpCommand _: return ApplyDump(p);
+                case SpotDoneCommand c: return ApplySpotDone(p, c);
+                case PickUpgradeCommand c: return ApplyPickUpgrade(p, c);
+                // v1 actions, out of play in v2 (their handlers stay in MatchEngine.Actions.cs)
+                case TaskStepCommand _: return Reject(RejectReason.NotAllowed);
+                case HitCommand _: return Reject(RejectReason.NotAllowed);
+                case DumpCommand _: return Reject(RejectReason.NotAllowed);
                 case ReportCommand c: return ApplyReport(p, c);
                 case CallMeetingCommand _: return ApplyCallMeeting(p);
                 case VoteCommand c: return ApplyVote(p, c);
+                case RepolluteCommand c: return ApplyRepollute(p, c);
+                case PickAbilityCommand c: return ApplyPickAbility(p, c);
+                case GasCommand c: return ApplyGas(p, c);
                 case SabotageCommand c: return ApplySabotage(p, c);
                 case FixCommand c: return ApplyFix(p, c);
-                case CleanStartCommand c: return ApplyCleanStart(p, c);
-                case CleanCancelCommand c: return ApplyCleanCancel(p, c);
+                case CleanStartCommand _: return Reject(RejectReason.NotAllowed);
+                case CleanCancelCommand _: return Reject(RejectReason.NotAllowed);
                 case ChatPhraseCommand c: return ApplyChat(p, c);
                 case ChatTextCommand c: return ApplyChatText(p, c);
+                case PlantVirusCommand c: return ApplyPlantVirus(p, c);
+                case HealCommand c: return ApplyHeal(p, c);
                 default: return CommandResult.Rejected(RejectReason.NotAllowed);
             }
         }
@@ -364,8 +383,11 @@ namespace Sim.Match
             Meter.Add(Config.MeterPassivePerS * dt);
             Smog.Ease(dt, Config.SmogEaseS);
             TickSmogRepair(dt);
+            TickMachineRepair(dt);
+            TickGas(dt);
             TickFire(dt);
             TickCleaning(dt);
+            TickInfections();
             UpdateSightMemory();
             TryEndMatch();
         }
@@ -411,7 +433,7 @@ namespace Sim.Match
 
             float clock = Config.DeadlineClock == DeadlineClock.MatchTime ? MatchTime : ActiveTime;
             bool deadline = clock + Epsilon >= Config.DeadlineS;
-            WinResult? result = WinEvaluator.Evaluate(polluters, citizens, Meter.Value, deadline, Tasks.AllDone);
+            WinResult? result = WinEvaluator.Evaluate(polluters, citizens, Meter.Value, deadline);
             if (result == null)
             {
                 return false;
@@ -427,6 +449,8 @@ namespace Sim.Match
             _sessions.Clear();
             Smog.CancelRepair();
             _smogRepairConsole = null;
+            Machine.CancelRepair();
+            _gasRoom = null;
             if (Fire.Active)
             {
                 Fire.Stop();
@@ -570,17 +594,27 @@ namespace Sim.Match
             _sessions.Remove(p.Seat);
             CancelCleaningBy(p.Seat);
             Fire.Release(p.Seat);
+            if (Machine.RepairSeat == p.Seat)
+            {
+                Machine.CancelRepair();
+            }
+
             if (Smog.RepairSeat == p.Seat)
             {
                 Smog.CancelRepair();
                 _smogRepairConsole = null;
             }
 
-            if (cause == OutCause.Poison)
+            p.InfectedDeathAt = null;
+            if (cause == OutCause.Poison || cause == OutCause.Virus)
             {
                 string zone = Map.ZoneAt(p.Position);
                 Piles.AddBody(p.Position, zone, MatchTime, p.Seat);
-                AddTimeline(TimelineKind.PoisonedOut, p.Seat, null, zone);
+                AddTimeline(cause == OutCause.Virus ? TimelineKind.Infected : TimelineKind.PoisonedOut, p.Seat, null, zone);
+            }
+            else if (cause == OutCause.Gas)
+            {
+                Piles.AddBody(p.Position, Map.ZoneAt(p.Position), MatchTime, p.Seat);
             }
 
             Emit(new YouAreOutEvent(p.Seat, cause));

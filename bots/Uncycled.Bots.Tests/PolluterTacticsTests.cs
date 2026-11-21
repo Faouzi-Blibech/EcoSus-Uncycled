@@ -88,7 +88,7 @@ namespace Uncycled.Bots.Tests
             Assert.NotEqual(BotAction.SabotageSmog, Decide(bot, t).Action);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Fire_OnlyWhenNoCitizenIsInSight()
         {
             TestMatch m = TestMatch.Create();

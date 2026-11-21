@@ -64,7 +64,7 @@ namespace Sim.Tests
         [InlineData(2.1f, 1f)] // full smog (1): lower than the dark value
         public void Smog_and_dark_together_use_the_lower_value(float smogSeconds, float expected)
         {
-            MatchEngine e = PlayingWithDark(new MatchConfig { SabotageStartCooldownS = 0f });
+            MatchEngine e = PlayingWithDark(new MatchConfig { TrasherStartCooldownS = 0f });
             byte pol = Polluter(e);
             byte cit = Citizen(e);
             e.TestTeleport(cit, InDark);

@@ -61,11 +61,16 @@ namespace Uncycled.Server.Tests
             return new RoomRig(c => new BotBrains(new BotsSettings(), RoomRig.EmptyModelsDir(), c.Tasks, new CountingLog(), meeting: kit));
         }
 
-        /// <summary>Runs until the bots start a meeting, then through it; reads each bot's own view like a client would.</summary>
+        /// <summary>
+        /// Starts a match with one dump pile of the first Trasher in the room (the v1 dump action is gone, so it is seeded),
+        /// runs until the bots report it and start a meeting, then through it; reads each bot's own view like a client would.
+        /// </summary>
         private static Probe RunOneMeeting(RoomRig rig)
         {
             rig.JoinAndStart();
             MatchEngine e = rig.Engine;
+            PlayerState trasher = e.Players.First(p => p.IsPolluter);
+            e.Piles.AddDump(trasher.Position, e.Map.ZoneAt(trasher.Position), e.MatchTime, trasher.Signature!.Value, trasher.Seat);
             int maxSteps = (int)((rig.Content.Config.DeadlineS * 3f + 300f) / RoomRig.Dt);
             for (int i = 0; i < maxSteps && e.Phase != MatchPhase.Meeting && e.Phase != MatchPhase.Ended; i++)
             {

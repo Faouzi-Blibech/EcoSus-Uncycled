@@ -1,6 +1,6 @@
 {
 	"id": "greybox_01",
-	"version": "sha1-88779d0c809a",
+	"version": "sha1-1b5303eed2f3",
 	"tile_px": 32,
 	"width": 42,
 	"height": 24,
@@ -222,24 +222,6 @@
 		}
 	],
 	"special": [
-		{
-			"id": "fire_a",
-			"kind": "fire_fix",
-			"pos": [
-				2.5,
-				9.5
-			],
-			"range": 1.2
-		},
-		{
-			"id": "fire_b",
-			"kind": "fire_fix",
-			"pos": [
-				39.5,
-				9.5
-			],
-			"range": 1.2
-		},
 		{
 			"id": "machine",
 			"kind": "machine",

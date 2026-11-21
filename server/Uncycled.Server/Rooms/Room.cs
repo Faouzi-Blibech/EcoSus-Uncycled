@@ -349,6 +349,17 @@ public sealed class Room
         SeatView? state = rejoin && _engine != null ? _engine.ViewFor(seat.Id) : null;
         string phase = _engine == null ? "lobby" : Wire.Snake(_engine.Phase);
         conn.Enqueue(Wire.Welcome(Code, seat.Id, seat.Token ?? "", _hostSeat, _content, phase, state, _seats, SeatIsOut, Size));
+        IReadOnlyList<UpgradeKind>? openOffer = rejoin ? _engine?.OpenUpgradeOffer(seat.Id) : null;
+        if (openOffer != null)
+        {
+            // an open Recycling Machine offer is not in the welcome: send it again right after it
+            string? offerJson = Wire.Event(new UpgradeOfferEvent(seat.Id, openOffer));
+            if (offerJson != null)
+            {
+                conn.Enqueue(offerJson);
+            }
+        }
+
         if (_engine == null)
         {
             BroadcastLobby();

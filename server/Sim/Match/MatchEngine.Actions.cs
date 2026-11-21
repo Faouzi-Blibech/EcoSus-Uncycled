@@ -80,6 +80,11 @@ namespace Sim.Match
                 return Reject(reach.Value);
             }
 
+            if (console.Kind == ConsoleKind.Machine)
+            {
+                return ApplyDeliver(p, console);
+            }
+
             if (console.Kind != ConsoleKind.Task)
             {
                 Emit(new UseOkEvent(p.Seat, console.Id, console.Kind, null, null, null));
@@ -88,27 +93,210 @@ namespace Sim.Match
 
             if (!p.IsCitizen)
             {
-                // Polluters have no real tasks (they fake them client-side).
+                // Trashers have no spots to clean (they fake it client-side).
                 return Reject(RejectReason.NotAllowed);
             }
 
-            TaskState? task = null;
-            foreach (TaskState t in Tasks.All)
+            Spot? spot = Spots.Find(console.Id);
+            if (spot == null)
             {
-                if (t.Owner == p.Seat && !t.IsDone && t.CurrentConsoleId == console.Id)
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (spot.State == SpotState.Clean)
+            {
+                return Reject(RejectReason.SpotClean);
+            }
+
+            if (p.Bags >= p.BagCap)
+            {
+                return Reject(RejectReason.BagsFull);
+            }
+
+            // One open session per seat; the spot can stay dirty for several seats at once, the first spot_done wins.
+            _sessions[p.Seat] = new TaskSession(-1, 0, spot.Id, ActiveTime);
+            Emit(new UseOkEvent(p.Seat, spot.Id, ConsoleKind.Task, null, spot.TaskType, spot.Step));
+            return CommandResult.Ok;
+        }
+
+        /// <summary>
+        /// use on the Recycling Machine: drops every bag (meter + BagMeterAdd each) and opens one upgrade
+        /// offer unless one is already open.
+        /// </summary>
+        private CommandResult ApplyDeliver(PlayerState p, ConsoleDef machine)
+        {
+            if (!p.IsCitizen)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (Machine.Jammed)
+            {
+                return Reject(RejectReason.MachineJammed);
+            }
+
+            if (p.Bags <= 0)
+            {
+                return Reject(RejectReason.NoBags);
+            }
+
+            int bags = p.Bags;
+            p.Bags = 0;
+            Meter.Add(bags * Config.BagMeterAdd);
+            Emit(new UseOkEvent(p.Seat, machine.Id, ConsoleKind.Machine, null, null, null));
+            Emit(new DeliveredEvent(p.Seat, bags, Meter.Value));
+            if (!p.UpgradeOfferOpen)
+            {
+                // Only items the Cleaner can take are offered; with none left there is no offer.
+                var items = new List<UpgradeKind>();
+                foreach (UpgradeKind kind in new[] { UpgradeKind.Backpack, UpgradeKind.Tool, UpgradeKind.Heal, UpgradeKind.Mask })
                 {
-                    task = t;
-                    break;
+                    if (!IsUpgradeOwned(p, kind))
+                    {
+                        items.Add(kind);
+                    }
+                }
+
+                if (items.Count > 0)
+                {
+                    p.UpgradeOffer = items;
                 }
             }
 
-            if (task == null)
+            // A delivery while an offer is open re-sends the same offer (never a second one).
+            if (p.UpgradeOffer != null)
+            {
+                Emit(new UpgradeOfferEvent(p.Seat, p.UpgradeOffer));
+            }
+
+            TryEndMatch();
+            return CommandResult.Ok;
+        }
+
+        private static bool ContainsItem(IReadOnlyList<UpgradeKind> items, UpgradeKind item)
+        {
+            foreach (UpgradeKind k in items)
+            {
+                if (k == item)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Heal and mask are held at most once; the backpack and tool do not stack.
+        private const int HeldItemMax = 1;
+
+        private bool IsUpgradeOwned(PlayerState p, UpgradeKind kind)
+        {
+            switch (kind)
+            {
+                case UpgradeKind.Backpack: return p.HasBackpack;
+                case UpgradeKind.Tool: return p.HasTool;
+                case UpgradeKind.Heal: return p.Heals >= HeldItemMax;
+                default: return p.Masks >= HeldItemMax;
+            }
+        }
+
+        /// <summary>The items of the offer open for a seat (a rejoin re-sends them), or null.</summary>
+        public IReadOnlyList<UpgradeKind>? OpenUpgradeOffer(byte seat) => Find(seat)?.UpgradeOffer;
+
+        /// <summary>pick_upgrade: only an item of the open offer; no offer or another item is no_item.</summary>
+        private CommandResult ApplyPickUpgrade(PlayerState p, PickUpgradeCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsCitizen)
             {
                 return Reject(RejectReason.NotAllowed);
             }
 
-            _sessions[p.Seat] = new TaskSession(task.Id, task.StepsDone, console.Id, ActiveTime);
-            Emit(new UseOkEvent(p.Seat, console.Id, ConsoleKind.Task, task.Id, task.Type.Id, task.StepsDone));
+            if (p.UpgradeOffer == null || !ContainsItem(p.UpgradeOffer, c.Item))
+            {
+                return Reject(RejectReason.NoItem);
+            }
+
+            switch (c.Item)
+            {
+                case UpgradeKind.Backpack: p.HasBackpack = true; p.BagCap = Config.BackpackCap; break;
+                case UpgradeKind.Tool: p.HasTool = true; break;
+                case UpgradeKind.Heal: p.Heals++; break;
+                default: p.Masks++; break;
+            }
+
+            p.UpgradeOffer = null;
+            Emit(new UpgradeOkEvent(p.Seat, c.Item));
+            return CommandResult.Ok;
+        }
+
+        /// <summary>
+        /// spot_done: the session opened by use must still be valid (spot dirty, in reach, min time
+        /// passed, bag slot free). The spot turns clean and the cleaner gets one bag.
+        /// </summary>
+        private CommandResult ApplySpotDone(PlayerState p, SpotDoneCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsCitizen)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            TaskSession? session;
+            if (!_sessions.TryGetValue(p.Seat, out session) || session == null || session.TaskId != -1 || session.ConsoleId != c.SpotId)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            Spot? spot = Spots.Find(c.SpotId);
+            if (spot == null)
+            {
+                _sessions.Remove(p.Seat);
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (spot.State == SpotState.Clean)
+            {
+                _sessions.Remove(p.Seat);
+                return Reject(RejectReason.SpotClean);
+            }
+
+            RejectReason? reach = CheckReach(p.Position, spot.Position, spot.Range);
+            if (reach != null)
+            {
+                _sessions.Remove(p.Seat);
+                return Reject(reach.Value);
+            }
+
+            float needed = spot.MinSeconds * (p.HasTool ? Config.ToolTimeMult : 1f);
+            if (ActiveTime - session.OpenedAt + Epsilon < needed)
+            {
+                return Reject(RejectReason.OnCooldown);
+            }
+
+            if (p.Bags >= p.BagCap)
+            {
+                _sessions.Remove(p.Seat);
+                return Reject(RejectReason.BagsFull);
+            }
+
+            _sessions.Remove(p.Seat);
+            spot.State = SpotState.Clean;
+            p.Bags++;
+            Emit(new SpotCleanedEvent(p.Seat, spot.Id, p.Bags));
+            if (spot.VirusBy != null)
+            {
+                TriggerVirus(p, spot);
+            }
+
             return CommandResult.Ok;
         }
 
@@ -429,6 +617,14 @@ namespace Sim.Match
                 return Reject(RejectReason.NotAllowed);
             }
 
+            if (p.InfectedDeathAt != null && !p.InfectedMeetingUsed)
+            {
+                // An infected Cleaner may call one meeting from anywhere; it does not use up an emergency.
+                p.InfectedMeetingUsed = true;
+                StartMeeting(p, MeetingCause.Emergency, null);
+                return CommandResult.Ok;
+            }
+
             if (Fire.Active)
             {
                 return Reject(RejectReason.FireActive);
@@ -656,6 +852,252 @@ namespace Sim.Match
             Emit(line);
         }
 
+        // ---------- re-pollute and ability (spec section 6) ----------
+
+        private CommandResult ApplyRepollute(PlayerState p, RepolluteCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsPolluter)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            Spot? spot = Spots.Find(c.SpotId);
+            if (spot == null)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (ActiveTime + Epsilon < p.RepolluteReadyAt)
+            {
+                return Reject(RejectReason.OnCooldown);
+            }
+
+            RejectReason? reach = CheckReach(p.Position, spot.Position, spot.Range);
+            if (reach != null)
+            {
+                return Reject(reach.Value);
+            }
+
+            if (spot.State != SpotState.Clean)
+            {
+                return Reject(RejectReason.SpotDirty);
+            }
+
+            List<byte> witnesses = WitnessesOf(p);
+            spot.State = SpotState.Dirty;
+            CloseCleanSessions(spot.Id);
+            Meter.Add(-Config.RepolluteMeterSub);
+            p.RepolluteReadyAt = ActiveTime + Config.RepolluteCooldownS;
+            p.Repollutes++;
+            if (witnesses.Count > 0)
+            {
+                Emit(new CueEvent(witnesses, CueKind.Repollute, p.Seat, spot.Position));
+            }
+
+            Emit(new RepolluteOkEvent(p.Seat, Config.RepolluteCooldownS, p.Repollutes));
+            if (p.Repollutes == Config.UnlockAfter && p.Ability == TrasherAbility.None)
+            {
+                p.AbilityChoiceOpen = true;
+                Emit(new AbilityUnlockedEvent(p.Seat));
+            }
+
+            return CommandResult.Ok;
+        }
+
+        /// <summary>A re-pollute closes every open clean session on the spot: a stale spot_done must not undo it (the Cleaner uses the spot again).</summary>
+        private void CloseCleanSessions(string spotId)
+        {
+            var stale = new List<byte>();
+            foreach (KeyValuePair<byte, TaskSession> s in _sessions)
+            {
+                if (s.Value.TaskId == -1 && s.Value.ConsoleId == spotId)
+                {
+                    stale.Add(s.Key);
+                }
+            }
+
+            foreach (byte seat in stale)
+            {
+                _sessions.Remove(seat);
+            }
+        }
+
+        private CommandResult ApplyPickAbility(PlayerState p, PickAbilityCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsPolluter)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (!p.AbilityChoiceOpen)
+            {
+                return Reject(RejectReason.NotUnlocked);
+            }
+
+            if (c.Ability != TrasherAbility.Virus && c.Ability != TrasherAbility.Gas)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            p.Ability = c.Ability;
+            p.AbilityChoiceOpen = false;
+            Emit(new AbilityOkEvent(p.Seat, c.Ability));
+            return CommandResult.Ok;
+        }
+
+        // ---------- virus and heal (spec section 6) ----------
+
+        private CommandResult ApplyPlantVirus(PlayerState p, PlantVirusCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsPolluter)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (p.Ability != TrasherAbility.Virus)
+            {
+                return Reject(RejectReason.NotUnlocked);
+            }
+
+            Spot? spot = Spots.Find(c.SpotId);
+            if (spot == null)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            if (ActiveTime + Epsilon < p.VirusReadyAt || HasPlantedVirus(p.Seat))
+            {
+                return Reject(RejectReason.OnCooldown);
+            }
+
+            RejectReason? reach = CheckReach(p.Position, spot.Position, spot.Range);
+            if (reach != null)
+            {
+                return Reject(reach.Value);
+            }
+
+            if (spot.State != SpotState.Dirty)
+            {
+                return Reject(RejectReason.SpotClean);
+            }
+
+            if (spot.VirusBy != null)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            spot.VirusBy = p.Seat;
+            spot.VirusPlantedAt = ActiveTime;
+            Emit(new VirusPlantedEvent(p.Seat, spot.Id));
+            return CommandResult.Ok;
+        }
+
+        private bool HasPlantedVirus(byte seat)
+        {
+            foreach (Spot s in Spots.All)
+            {
+                if (s.VirusBy == seat)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>A Cleaner finished a spot with a virus on it: infect them with a countdown that grows deadlier with the virus age.</summary>
+        private void TriggerVirus(PlayerState victim, Spot spot)
+        {
+            PlayerState? planter = spot.VirusBy == null ? null : Find(spot.VirusBy.Value);
+            float age = ActiveTime - spot.VirusPlantedAt;
+            spot.VirusBy = null;
+            if (planter != null)
+            {
+                planter.VirusReadyAt = ActiveTime + Config.VirusCooldownS;
+            }
+
+            if (victim.InfectedDeathAt != null)
+            {
+                return; // already infected: the virus is used up, the running countdown stays
+            }
+
+            float countdown = VirusRule.Countdown(age, Config.VirusStartS, Config.VirusFatalS, Config.VirusGrowS);
+            victim.InfectedDeathAt = ActiveTime + countdown;
+            victim.InfectedMeetingUsed = false;
+            Emit(new InfectedEvent(victim.Seat, countdown));
+        }
+
+        /// <summary>Active time only: a meeting or ejection freezes ActiveTime, so the countdown waits with it.</summary>
+        private void TickInfections()
+        {
+            foreach (PlayerState p in _players)
+            {
+                if (p.IsActive && p.InfectedDeathAt != null && ActiveTime + Epsilon >= p.InfectedDeathAt.Value)
+                {
+                    MakeOut(p, OutCause.Virus);
+                }
+            }
+        }
+
+        private CommandResult ApplyHeal(PlayerState p, HealCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsCitizen)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (p.Heals <= 0)
+            {
+                return Reject(RejectReason.NoItem);
+            }
+
+            PlayerState? target = Find(c.Target);
+            if (target == null || !target.IsActive)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            // Reach and sight come before the infection check: the reply must not tell whether a far seat is infected.
+            if (target != p)
+            {
+                RejectReason? reach = CheckReach(p.Position, target.Position, Config.HealRange);
+                if (reach != null)
+                {
+                    return Reject(reach.Value);
+                }
+            }
+
+            if (!target.IsCitizen || target.InfectedDeathAt == null)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            p.Heals--;
+            target.InfectedDeathAt = null;
+            Emit(new HealedEvent(target.Seat, p.Seat));
+            return CommandResult.Ok;
+        }
+
         // ---------- sabotage ----------
 
         private CommandResult ApplySabotage(PlayerState p, SabotageCommand c)
@@ -670,9 +1112,28 @@ namespace Sim.Match
                 return Reject(RejectReason.NotAllowed);
             }
 
-            if (Fire.Active || Smog.Active || ActiveTime + Epsilon < SabotageTimer.ReadyAt)
+            if (c.Kind == SabotageKind.Fire)
+            {
+                // The fire is gone in v2 (the code stays, out of play).
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (Fire.Active || Smog.Active || Machine.Jammed || ActiveTime + Epsilon < SabotageTimer.ReadyAt)
             {
                 return Reject(RejectReason.OnCooldown);
+            }
+
+            if (c.Kind == SabotageKind.Machine)
+            {
+                if (!Machine.Available)
+                {
+                    return Reject(RejectReason.NotAllowed);
+                }
+
+                Machine.Jam();
+                SabotageTimer.OnStarted();
+                Emit(new SabotageStartedEvent(SabotageKind.Machine, null));
+                return CommandResult.Ok;
             }
 
             if (c.Kind == SabotageKind.Fire)
@@ -768,7 +1229,63 @@ namespace Sim.Match
                 return Smog.RepairSeat == p.Seat ? CommandResult.Ok : Reject(RejectReason.NotAllowed);
             }
 
+            if (console.Kind == ConsoleKind.Machine)
+            {
+                if (!c.Holding)
+                {
+                    if (Machine.RepairSeat == p.Seat)
+                    {
+                        Machine.CancelRepair();
+                    }
+
+                    return CommandResult.Ok;
+                }
+
+                if (!Machine.Jammed)
+                {
+                    return Reject(RejectReason.NotAllowed);
+                }
+
+                RejectReason? reach = CheckReach(p.Position, console.Position, console.Range);
+                if (reach != null)
+                {
+                    return Reject(reach.Value);
+                }
+
+                if (Machine.RepairSeat == null)
+                {
+                    Machine.BeginRepair(p.Seat);
+                    return CommandResult.Ok;
+                }
+
+                return Machine.RepairSeat == p.Seat ? CommandResult.Ok : Reject(RejectReason.NotAllowed);
+            }
+
             return Reject(RejectReason.TargetInvalid);
+        }
+
+        /// <summary>The seat holding fix at the jammed machine is revalidated every tick; the hold counts to machine.fix_s.</summary>
+        private void TickMachineRepair(float dt)
+        {
+            if (!Machine.Jammed || Machine.RepairSeat == null)
+            {
+                return;
+            }
+
+            PlayerState? rp = Find(Machine.RepairSeat.Value);
+            ConsoleDef? console = Machine.ConsoleId == null ? null : Map.FindConsole(Machine.ConsoleId);
+            if (rp == null || !rp.IsActive || console == null
+                || CheckReach(rp.Position, console.Position, console.Range) != null)
+            {
+                Machine.CancelRepair();
+                return;
+            }
+
+            Machine.AdvanceRepair(dt);
+            if (Machine.RepairElapsed + Epsilon >= Config.MachineFixS)
+            {
+                EndSabotage(SabotageKind.Machine, SabotageEndResult.Fixed);
+            }
         }
 
         /// <summary>Fire holders are revalidated every tick; all held = fixed; countdown end = +meter.</summary>
@@ -839,6 +1356,10 @@ namespace Sim.Match
             if (kind == SabotageKind.Fire)
             {
                 Fire.Stop();
+            }
+            else if (kind == SabotageKind.Machine)
+            {
+                Machine.Clear();
             }
             else
             {

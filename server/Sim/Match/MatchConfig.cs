@@ -80,7 +80,7 @@ namespace Sim.Match
         public float CleanRange { get; set; } = 1.0f;
 
         // meter
-        public float MeterPassivePerS { get; set; } = 0.08f;
+        public float MeterPassivePerS { get; set; } = 0f;
         public float FireExpiredAdd { get; set; } = 20f;
 
         // match
@@ -140,9 +140,55 @@ namespace Sim.Match
         // sabotage
         public float SabotageSharedCooldownS { get; set; } = 30f;
 
-        /// <summary>The first sabotage is possible this long after Playing starts (rejected as on_cooldown before).</summary>
-        public float SabotageStartCooldownS { get; set; } = 10f;
         public float FireCountdownS { get; set; } = 45f;
+
+        // spots and bags (v2; tuning.json spots.* and bags.*)
+        public int BagCap { get; set; } = 1;
+
+        public int BackpackCap { get; set; } = 3;
+
+        /// <summary>Clean time multiplier with the Cleaning Tool (spots.tool_time_mult).</summary>
+        public float ToolTimeMult { get; set; } = 0.5f;
+
+        /// <summary>Meter added per delivered bag (spots.bag_meter_add).</summary>
+        public float BagMeterAdd { get; set; } = 10f;
+
+        /// <summary>Meter removed when a Trasher re-pollutes a spot (spots.repollute_meter_sub).</summary>
+        public float RepolluteMeterSub { get; set; } = 10f;
+
+        // Trasher kit (v2; tuning.json trasher.* and machine.*)
+        /// <summary>Cooldown between two re-pollutes (trasher.repollute_cooldown_s).</summary>
+        public float RepolluteCooldownS { get; set; } = 20f;
+
+        /// <summary>Re-pollutes that unlock the ability choice (trasher.unlock_after).</summary>
+        public int UnlockAfter { get; set; } = 3;
+
+        /// <summary>The first re-pollute and the first sabotage are locked this long after Playing starts (rejected as on_cooldown before; trasher.start_cooldown_s).</summary>
+        public float TrasherStartCooldownS { get; set; } = 10f;
+
+        /// <summary>Cooldown of the planted virus after it triggers (trasher.virus_cooldown_s); used by the virus rule.</summary>
+        public float VirusCooldownS { get; set; } = 30f;
+
+        /// <summary>Cooldown of the toxic gas (trasher.gas_cooldown_s); used by the gas rule.</summary>
+        public float GasCooldownS { get; set; } = 90f;
+
+        /// <summary>Seconds between the gas warning and the gas (trasher.gas_warning_s); used by the gas rule.</summary>
+        public float GasWarningS { get; set; } = 3f;
+
+        /// <summary>Countdown of a virus that triggers at once (virus.start_s).</summary>
+        public float VirusStartS { get; set; } = 60f;
+
+        /// <summary>Countdown of a virus that is at least VirusGrowS old (virus.fatal_s).</summary>
+        public float VirusFatalS { get; set; } = 10f;
+
+        /// <summary>Active seconds a planted virus takes to reach its deadliest (virus.grow_s).</summary>
+        public float VirusGrowS { get; set; } = 90f;
+
+        /// <summary>Reach of a heal on another seat, in tiles (virus.heal_range).</summary>
+        public float HealRange { get; set; } = 1.5f;
+
+        /// <summary>Seconds a Cleaner holds fix at the jammed machine (machine.fix_s).</summary>
+        public float MachineFixS { get; set; } = 4f;
 
         // tasks per citizen
         public int TasksCommon { get; set; } = 1;

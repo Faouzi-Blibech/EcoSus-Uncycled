@@ -282,12 +282,14 @@ func test_report_range_comes_from_tuning_when_the_server_sends_it() -> bool:
 	return true
 
 
+# v1 fire rule, out of play in v2: the fire consoles are gone from the map, so the fire-hold tests below are
+# renamed skipped_v1_* (the runner only runs test_*). Kept for reference.
 const FIRE_CONSOLE: String = "fire_a"
 const SMOG_PANEL: String = "smog_panel"
 const FIRE: Dictionary = {"kind": "fire", "countdown": 30.0, "held": []}
 
 
-func test_fire_hold_sends_true_then_false_on_release() -> bool:
+func skipped_v1_test_fire_hold_sends_true_then_false_on_release() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = FIRE.duplicate()
 	assert_eq(r.action_states()["fix"], {"visible": true, "kind": "fire"}, "fix offered at the fire console")
@@ -301,7 +303,7 @@ func test_fire_hold_sends_true_then_false_on_release() -> bool:
 	return true
 
 
-func test_walking_out_of_range_releases_the_fire_console() -> bool:
+func skipped_v1_test_walking_out_of_range_releases_the_fire_console() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = FIRE.duplicate()
 	r.begin_hold("fix")
@@ -312,7 +314,7 @@ func test_walking_out_of_range_releases_the_fire_console() -> bool:
 	return true
 
 
-func test_fire_ending_releases_the_hold() -> bool:
+func skipped_v1_test_fire_ending_releases_the_hold() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = FIRE.duplicate()
 	r.begin_hold("fix")
@@ -340,7 +342,7 @@ func test_smog_fix_is_a_tap_and_repairing_shows_until_it_ends() -> bool:
 	return true
 
 
-func test_hold_released_on_leave() -> bool:
+func skipped_v1_test_hold_released_on_leave() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = FIRE.duplicate()
 	r.begin_hold("fix")
@@ -370,7 +372,7 @@ func test_sabotage_button_sends_the_kind_when_ready() -> bool:
 
 
 func test_citizen_cannot_send_sabotage() -> bool:
-	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
+	var r: RoundScene = _round("citizen", CONSOLE, 0.0)
 	r.perform_action("sabotage_fire")
 	assert_eq(_sent.size(), 0, "a citizen's sabotage is dropped")
 	_restore()
@@ -378,8 +380,8 @@ func test_citizen_cannot_send_sabotage() -> bool:
 
 
 func test_polluter_cannot_send_fix() -> bool:
-	var r: RoundScene = _round("polluter", FIRE_CONSOLE, 0.0)
-	Session.sabotage = FIRE.duplicate()
+	var r: RoundScene = _round("polluter", SMOG_PANEL, 0.0)
+	Session.sabotage = {"kind": "smog"}
 	r.begin_hold("fix")
 	assert_eq(_sent.size(), 0, "a polluter's fix is dropped")
 	_restore()
@@ -498,7 +500,7 @@ func _fire_with_held(held: Array) -> Dictionary:
 	return {"kind": "fire", "countdown": 30.0, "held": held}
 
 
-func test_fix_rejection_clears_the_hold_and_the_repair() -> bool:
+func skipped_v1_test_fix_rejection_clears_the_hold_and_the_repair() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = _fire_with_held([])
 	r.begin_hold("fix")
@@ -513,7 +515,7 @@ func test_fix_rejection_clears_the_hold_and_the_repair() -> bool:
 	return true
 
 
-func test_hold_missing_from_the_snapshot_is_resent_once_then_dropped() -> bool:
+func skipped_v1_test_hold_missing_from_the_snapshot_is_resent_once_then_dropped() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = _fire_with_held([])
 	r.begin_hold("fix")
@@ -529,7 +531,7 @@ func test_hold_missing_from_the_snapshot_is_resent_once_then_dropped() -> bool:
 	return true
 
 
-func test_hold_listed_by_the_server_is_kept() -> bool:
+func skipped_v1_test_hold_listed_by_the_server_is_kept() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = _fire_with_held([])
 	r.begin_hold("fix")
@@ -580,7 +582,7 @@ func test_a_just_cleaned_pile_is_not_offered_again() -> bool:
 	return true
 
 
-func test_lobby_and_update_leave_release_the_holds() -> bool:
+func skipped_v1_test_lobby_and_update_leave_release_the_holds() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = _fire_with_held([])
 	r.begin_hold("fix")
@@ -590,7 +592,7 @@ func test_lobby_and_update_leave_release_the_holds() -> bool:
 	return true
 
 
-func test_window_focus_loss_ends_the_key_holds() -> bool:
+func skipped_v1_test_window_focus_loss_ends_the_key_holds() -> bool:
 	var r: RoundScene = _round("citizen", FIRE_CONSOLE, 0.0)
 	Session.sabotage = _fire_with_held([])
 	var hud: Hud = track(Hud.new()) as Hud

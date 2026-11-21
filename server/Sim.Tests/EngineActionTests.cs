@@ -16,7 +16,7 @@ namespace Sim.Tests
 
         // ---------- poison through the engine ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Poison_0_34_68_out_with_immunity_body_pile_and_task_reassignment()
         {
             MatchEngine e = Playing(ShortMeetings());
@@ -88,7 +88,7 @@ namespace Sim.Tests
             Assert.Equal(PileState.Removed, body.State);
         }
 
-        [Theory]
+        [Theory(Skip = "v1 rule, out of play in v2")]
         [InlineData("cooldown", RejectReason.OnCooldown)]
         [InlineData("range", RejectReason.OutOfRange)]
         [InlineData("wall", RejectReason.WallBetween)]
@@ -159,7 +159,7 @@ namespace Sim.Tests
 
         // ---------- dump ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Dump_cooldown_meter_pile_cue_and_witness()
         {
             MatchEngine e = Playing();
@@ -199,7 +199,7 @@ namespace Sim.Tests
             Assert.True(e.Apply(pol, new DumpCommand()).IsOk);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void No_cue_without_line_of_sight()
         {
             MatchEngine e = Playing();
@@ -224,13 +224,8 @@ namespace Sim.Tests
             byte pol2 = Polluter(e, 1);
             byte cit = Citizen(e);
             ParkOthers(e, pol, pol2, cit);
-            e.TestTeleport(pol, new Vec2(3.5f, 6.5f));
-            e.TestTeleport(pol2, new Vec2(15.5f, 6.5f));
-            Advance(e, 10.2f);
-            Assert.True(e.Apply(pol, new DumpCommand()).IsOk);
-            Assert.True(e.Apply(pol2, new DumpCommand()).IsOk);
-            Pile west = e.Piles.All[0];
-            Pile east = e.Piles.All[1];
+            Pile west = SeedDump(e, pol, new Vec2(3.5f, 6.5f));
+            Pile east = SeedDump(e, pol2, new Vec2(15.5f, 6.5f));
 
             e.TestTeleport(cit, new Vec2(16.5f, 6.5f));
             Assert.True(e.Apply(cit, new ReportCommand(east.Id)).IsOk);
@@ -268,9 +263,7 @@ namespace Sim.Tests
             byte pol = Polluter(e);
             byte cit = Citizen(e);
             ParkOthers(e, pol, cit);
-            e.TestTeleport(pol, new Vec2(5.0f, 3.5f));
-            Advance(e, 10.2f);
-            Assert.True(e.Apply(pol, new DumpCommand()).IsOk);
+            SeedDump(e, pol, new Vec2(5.0f, 3.5f));
             e.TestTeleport(pol, Corner);
             e.TestTeleport(cit, new Vec2(x, y));
             CommandResult r = e.Apply(cit, new ReportCommand(e.Piles.All[0].Id));
@@ -301,7 +294,7 @@ namespace Sim.Tests
             return e;
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Cleaning_completes_after_3_seconds_and_lowers_the_meter()
         {
             MatchEngine e = WithDumpPile(ShortMeetings(), out byte pol, out byte cit, out byte cit2, out Pile pile);
@@ -321,7 +314,7 @@ namespace Sim.Tests
             Assert.Equal(RejectReason.TargetInvalid, e.Apply(cit2, new CleanStartCommand(pile.Id)).Reason);
         }
 
-        [Theory]
+        [Theory(Skip = "v1 rule, out of play in v2")]
         [InlineData("leave")]
         [InlineData("meeting")]
         [InlineData("cancel")]
@@ -401,7 +394,7 @@ namespace Sim.Tests
 
         // ---------- use / task_step ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Use_and_task_steps_check_range_duration_and_order()
         {
             var types = new List<TaskTypeDef>

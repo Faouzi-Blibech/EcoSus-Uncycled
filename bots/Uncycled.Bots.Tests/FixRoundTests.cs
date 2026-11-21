@@ -18,7 +18,7 @@ namespace Uncycled.Bots.Tests
 
         // ---------- C1: the decision contract ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Executor_ReDecidedEveryHalfSecondStillCompletesATask()
         {
             TestMatch m = TestMatch.Create();
@@ -50,7 +50,7 @@ namespace Uncycled.Bots.Tests
             Assert.Single(driver.Sent, kv => kv.Key is UseCommand);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Executor_ChangingActionMidUseIsIgnored_TheCommittedStepCompletes()
         {
             TestMatch m = TestMatch.Create();
@@ -108,7 +108,7 @@ namespace Uncycled.Bots.Tests
 
         // ---------- I2 and m10: fire holds ----------
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Mask_HoldFireFalseOnConsoleHeldByOther()
         {
             TestMatch m = TestMatch.Create();
@@ -123,7 +123,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(bot.Mask()[(int)BotAction.HoldFire]);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Mask_ReleaseFireTrueOnlyForMyOwnHold()
         {
             TestMatch m = TestMatch.Create();
@@ -139,7 +139,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(mask[(int)BotAction.ReleaseFire]);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2")]
         public void Executor_HoldFireSkipsConsoleHeldByOther()
         {
             TestMatch m = TestMatch.Create();
@@ -342,7 +342,7 @@ namespace Uncycled.Bots.Tests
             TestMatch m = TestMatch.Create();
             m.TickFor(11f);
             byte polluter = m.FirstSeatOf(Role.Polluter);
-            Assert.True(m.Engine.Apply(polluter, new SabotageCommand(SabotageKind.Fire)).IsOk);
+            Assert.True(m.Engine.Apply(polluter, new SabotageCommand(SabotageKind.Smog)).IsOk);
             m.Tick();
             var zero = new MatchConfig
             {

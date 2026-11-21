@@ -14,7 +14,8 @@ namespace Sim.Match
         public SnapshotExtras ExtrasFor(byte seat)
         {
             float? repair = Smog.Active && Smog.RepairSeat == seat ? Smog.RepairElapsed : (float?)null;
-            return new SnapshotExtras(Smog.Level, repair);
+            float? machineRepair = Machine.Jammed && Machine.RepairSeat == seat ? Machine.RepairElapsed : (float?)null;
+            return new SnapshotExtras(Smog.Level, repair, Machine.Jammed, machineRepair, _gasRoom?.Id, Math.Max(0f, _gasLeft));
         }
 
         /// <summary>
@@ -96,7 +97,10 @@ namespace Sim.Match
                 cooldowns = new CooldownView(
                     Math.Max(0f, me.HitReadyAt - ActiveTime),
                     Math.Max(0f, me.DumpReadyAt - ActiveTime),
-                    SabotageTimer.Remaining(ActiveTime));
+                    SabotageTimer.Remaining(ActiveTime),
+                    Math.Max(0f, me.RepolluteReadyAt - ActiveTime),
+                    HasPlantedVirus(me.Seat) ? Config.VirusCooldownS : Math.Max(0f, me.VirusReadyAt - ActiveTime),
+                    gas: Math.Max(0f, me.GasReadyAt - ActiveTime));
             }
 
             var myView = new MyView(
@@ -109,7 +113,21 @@ namespace Sim.Match
                 VisionOf(me),
                 me.IsCitizen ? me.Poison : (int?)null,
                 cooldowns,
-                tasks);
+                tasks,
+                me.Bags,
+                me.BagCap,
+                me.HasTool,
+                me.Repollutes,
+                me.Ability,
+                me.Heals,
+                me.Masks,
+                me.InfectedDeathAt == null ? (float?)null : Math.Max(0f, me.InfectedDeathAt.Value - ActiveTime));
+
+            var spots = new List<SpotView>();
+            foreach (Spot spot in Spots.All)
+            {
+                spots.Add(new SpotView(spot.Id, spot.State));
+            }
 
             SabotageView? sabotage = null;
             if (Fire.Active)
@@ -170,7 +188,8 @@ namespace Sim.Match
                 sabotage,
                 meetingView,
                 Result,
-                me.IsActive ? null : new List<ChatEvent>(_ghostChat));
+                me.IsActive ? null : new List<ChatEvent>(_ghostChat),
+                spots);
         }
     }
 }

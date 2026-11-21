@@ -213,6 +213,249 @@ namespace Uncycled.Server.Tests
             }
         }
 
+        [Fact]
+        public void SpotDone_ParsesTheSpotId_AndRejectsAMissingOne()
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"spot_done\",\"spot\":\"market_bins\"}"), out ICommand? cmd, out _));
+            Assert.Equal("market_bins", Assert.IsType<SpotDoneCommand>(cmd).SpotId);
+
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"spot_done\"}"), out _, out string? error));
+            Assert.Equal("bad_field", error);
+        }
+
+        [Fact]
+        public void SpotEvents_UseKindSpotAndSpotCleaned()
+        {
+            var useOk = new UseOkEvent(2, "market_bins", ConsoleKind.Task, null, "sort_waste", 1);
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(useOk)!))
+            {
+                Assert.Equal("use_ok", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("spot", d.RootElement.GetProperty("kind").GetString());
+                Assert.Equal("sort_waste", d.RootElement.GetProperty("type").GetString());
+                Assert.Equal(1, d.RootElement.GetProperty("step").GetInt32());
+                Assert.False(d.RootElement.TryGetProperty("task", out _));
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new SpotCleanedEvent(2, "market_bins", 1))!))
+            {
+                Assert.Equal("spot_cleaned", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("market_bins", d.RootElement.GetProperty("spot").GetString());
+                Assert.Equal(1, d.RootElement.GetProperty("bags").GetInt32());
+            }
+        }
+
+        [Theory]
+        [InlineData("backpack", UpgradeKind.Backpack)]
+        [InlineData("tool", UpgradeKind.Tool)]
+        [InlineData("heal", UpgradeKind.Heal)]
+        [InlineData("mask", UpgradeKind.Mask)]
+        public void PickUpgrade_ParsesTheItem(string item, UpgradeKind expected)
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"pick_upgrade\",\"item\":\"" + item + "\"}"), out ICommand? cmd, out _));
+            Assert.Equal(expected, Assert.IsType<PickUpgradeCommand>(cmd).Item);
+        }
+
+        [Theory]
+        [InlineData("{\"t\":\"pick_upgrade\"}")]
+        [InlineData("{\"t\":\"pick_upgrade\",\"item\":\"sword\"}")]
+        public void PickUpgrade_RejectsAMissingOrUnknownItem(string json)
+        {
+            Assert.False(Codec.TryToCommand(Parse(json), out _, out string? error));
+            Assert.Equal("bad_field", error);
+        }
+
+        [Fact]
+        public void MachineEvents_UseTheProtocolNames()
+        {
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new UseOkEvent(2, "machine", ConsoleKind.Machine, null, null, null))!))
+            {
+                Assert.Equal("machine", d.RootElement.GetProperty("kind").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new DeliveredEvent(2, 2, 20f))!))
+            {
+                Assert.Equal("delivered", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal(2, d.RootElement.GetProperty("bags").GetInt32());
+                Assert.Equal(20.0, d.RootElement.GetProperty("meter").GetDouble(), 3);
+            }
+
+            var items = new List<UpgradeKind> { UpgradeKind.Backpack, UpgradeKind.Tool, UpgradeKind.Heal, UpgradeKind.Mask };
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new UpgradeOfferEvent(2, items))!))
+            {
+                Assert.Equal("upgrade_offer", d.RootElement.GetProperty("t").GetString());
+                var names = new List<string>();
+                foreach (JsonElement i in d.RootElement.GetProperty("items").EnumerateArray())
+                {
+                    names.Add(i.GetString()!);
+                }
+
+                Assert.Equal(new[] { "backpack", "tool", "heal", "mask" }, names);
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new UpgradeOkEvent(2, UpgradeKind.Mask))!))
+            {
+                Assert.Equal("upgrade_ok", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("mask", d.RootElement.GetProperty("item").GetString());
+            }
+        }
+
+        [Theory]
+        [InlineData(RejectReason.NoBags, "no_bags")]
+        [InlineData(RejectReason.MachineJammed, "machine_jammed")]
+        [InlineData(RejectReason.NoItem, "no_item")]
+        public void MachineRejectReasons_HaveWireNames(RejectReason reason, string wire)
+        {
+            Assert.Equal(wire, WireNames.Of(reason));
+        }
+
+        [Fact]
+        public void MeterFull_HasTheWireName()
+        {
+            Assert.Equal("meter_full", WireNames.Of(GameOverReason.MeterFull));
+        }
+
+        [Theory]
+        [InlineData(RejectReason.BagsFull, "bags_full")]
+        [InlineData(RejectReason.SpotClean, "spot_clean")]
+        [InlineData(RejectReason.SpotDirty, "spot_dirty")]
+        public void NewRejectReasons_HaveWireNames(RejectReason reason, string wire)
+        {
+            Assert.Equal(wire, WireNames.Of(reason));
+        }
+
+        [Fact]
+        public void TrasherCommands_Parse()
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"repollute\",\"spot\":\"market_bins\"}"), out ICommand? cmd, out _));
+            Assert.Equal("market_bins", Assert.IsType<RepolluteCommand>(cmd).SpotId);
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"repollute\"}"), out _, out string? error));
+            Assert.Equal("bad_field", error);
+
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"pick_ability\",\"ability\":\"gas\"}"), out cmd, out _));
+            Assert.Equal(TrasherAbility.Gas, Assert.IsType<PickAbilityCommand>(cmd).Ability);
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"pick_ability\",\"ability\":\"virus\"}"), out cmd, out _));
+            Assert.Equal(TrasherAbility.Virus, Assert.IsType<PickAbilityCommand>(cmd).Ability);
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"pick_ability\",\"ability\":\"none\"}"), out _, out _));
+
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"sabotage\",\"kind\":\"machine\"}"), out cmd, out _));
+            Assert.Equal(SabotageKind.Machine, Assert.IsType<SabotageCommand>(cmd).Kind);
+        }
+
+        [Fact]
+        public void VirusCommands_Parse()
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"plant_virus\",\"spot\":\"market_bins\"}"), out ICommand? cmd, out _));
+            Assert.Equal("market_bins", Assert.IsType<PlantVirusCommand>(cmd).SpotId);
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"plant_virus\"}"), out _, out string? error));
+            Assert.Equal("bad_field", error);
+
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"heal\",\"target\":3}"), out cmd, out _));
+            Assert.Equal((byte)3, Assert.IsType<HealCommand>(cmd).Target);
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"heal\"}"), out _, out error));
+            Assert.Equal("bad_field", error);
+        }
+
+        [Fact]
+        public void VirusEvents_HaveTheirWireShape()
+        {
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new InfectedEvent(2, 35.5f))!))
+            {
+                Assert.Equal("infected", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal(35.5f, d.RootElement.GetProperty("countdown").GetSingle());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new HealedEvent(2, 4))!))
+            {
+                Assert.Equal("healed", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal(4, d.RootElement.GetProperty("by").GetInt32());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new VirusPlantedEvent(1, "market_bins"))!))
+            {
+                Assert.Equal("virus_planted", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("market_bins", d.RootElement.GetProperty("spot").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new YouAreOutEvent(2, OutCause.Virus))!))
+            {
+                Assert.Equal("virus", d.RootElement.GetProperty("cause").GetString());
+            }
+        }
+
+        [Fact]
+        public void TrasherEvents_HaveTheirWireShape()
+        {
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new RepolluteOkEvent(1, 20f, 2))!))
+            {
+                Assert.Equal("repollute_ok", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal(20f, d.RootElement.GetProperty("cooldown").GetSingle());
+                Assert.Equal(2, d.RootElement.GetProperty("count").GetInt32());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new AbilityUnlockedEvent(1))!))
+            {
+                Assert.Equal("ability_unlocked", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal(new[] { "virus", "gas" }, d.RootElement.GetProperty("choices").EnumerateArray().Select(x => x.GetString()).ToArray());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new AbilityOkEvent(1, TrasherAbility.Gas))!))
+            {
+                Assert.Equal("ability_ok", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("gas", d.RootElement.GetProperty("ability").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new CueEvent(new byte[] { 2 }, CueKind.Repollute, 1, new Vec2(3f, 4f)))!))
+            {
+                Assert.Equal("repollute", d.RootElement.GetProperty("kind").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new SabotageStartedEvent(SabotageKind.Machine, null))!))
+            {
+                Assert.Equal("machine", d.RootElement.GetProperty("kind").GetString());
+                Assert.False(d.RootElement.TryGetProperty("countdown", out _));
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new SabotageEndedEvent(SabotageKind.Machine, SabotageEndResult.Fixed))!))
+            {
+                Assert.Equal("machine", d.RootElement.GetProperty("kind").GetString());
+                Assert.Equal("fixed", d.RootElement.GetProperty("result").GetString());
+            }
+
+            Assert.Equal("not_unlocked", WireNames.Of(RejectReason.NotUnlocked));
+        }
+
+        [Fact]
+        public void Gas_Command_And_Events_HaveTheirWireShape()
+        {
+            Assert.True(Codec.TryToCommand(Parse("{\"t\":\"gas\",\"room\":\"gas_market\"}"), out ICommand? cmd, out _));
+            Assert.Equal("gas_market", Assert.IsType<GasCommand>(cmd).RoomId);
+            Assert.False(Codec.TryToCommand(Parse("{\"t\":\"gas\"}"), out _, out string? error));
+            Assert.Equal("bad_field", error);
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new GasWarningEvent("gas_dark", 3f))!))
+            {
+                Assert.Equal("gas_warning", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("gas_dark", d.RootElement.GetProperty("room").GetString());
+                Assert.Equal(3f, d.RootElement.GetProperty("in_s").GetSingle());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new GasDoneEvent("gas_dark"))!))
+            {
+                Assert.Equal("gas_done", d.RootElement.GetProperty("t").GetString());
+                Assert.Equal("gas_dark", d.RootElement.GetProperty("room").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new MaskUsedEvent(3))!))
+            {
+                Assert.Equal("mask_used", d.RootElement.GetProperty("t").GetString());
+            }
+
+            using (JsonDocument d = JsonDocument.Parse(Uncycled.Server.Rooms.Wire.Event(new YouAreOutEvent(3, OutCause.Gas))!))
+            {
+                Assert.Equal("gas", d.RootElement.GetProperty("cause").GetString());
+            }
+        }
+
         [Theory]
         [InlineData("Alice", "Alice")]
         [InlineData("  Bob  ", "Bob")]

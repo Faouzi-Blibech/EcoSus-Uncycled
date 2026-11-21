@@ -37,5 +37,19 @@ namespace Uncycled.Server.Tests
             Assert.Equal(0.4, doc.RootElement.GetProperty("me").GetProperty("smog_level").GetDouble(), 3);
             Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("sabotage").ValueKind);
         }
+
+        [Fact]
+        public void Snapshot_gas_is_room_and_in_s_while_a_warning_runs_else_null()
+        {
+            var running = new SnapshotExtras(0f, null, false, null, "gas_market", 2.1f);
+
+            using JsonDocument on = JsonDocument.Parse(Wire.Snapshot(View(null), 1, 1.0, running));
+            using JsonDocument off = JsonDocument.Parse(Wire.Snapshot(View(null), 1, 1.0, new SnapshotExtras(0f, null)));
+
+            JsonElement gas = on.RootElement.GetProperty("gas");
+            Assert.Equal("gas_market", gas.GetProperty("room").GetString());
+            Assert.Equal(2.1, gas.GetProperty("in_s").GetDouble(), 3);
+            Assert.Equal(JsonValueKind.Null, off.RootElement.GetProperty("gas").ValueKind);
+        }
     }
 }
