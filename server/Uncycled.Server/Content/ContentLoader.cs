@@ -326,6 +326,7 @@ public static class ContentLoader
             case "emergency": return ConsoleKind.Emergency;
             case "fire_fix": return ConsoleKind.FireFix;
             case "smog_fix": return ConsoleKind.SmogFix;
+            case "machine": return ConsoleKind.Machine;
             default: throw new InvalidDataException("Unknown console kind: " + kind);
         }
     }

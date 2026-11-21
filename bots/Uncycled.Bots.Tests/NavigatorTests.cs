@@ -15,7 +15,7 @@ namespace Uncycled.Bots.Tests
         public void Navigator_ReachesEveryConsole()
         {
             TestMatch m = TestMatch.Create();
-            Assert.Equal(15, m.Map.Consoles.Count);
+            Assert.Equal(16, m.Map.Consoles.Count);
             Vec2 spawn = m.Map.SpawnFor(0);
             foreach (ConsoleDef console in m.Map.Consoles)
             {

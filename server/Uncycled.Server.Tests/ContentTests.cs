@@ -131,6 +131,17 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void The_real_map_has_one_recycling_machine_and_room_for_ten_seats()
+        {
+            ContentBundle content = LoadReal();
+
+            var machines = new List<ConsoleDef>(content.Map.ConsolesOfKind(ConsoleKind.Machine));
+            Assert.Single(machines);
+            Assert.Equal("machine", machines[0].Id);
+            Assert.True(content.Map.Spawns.Count >= 10, "the map has " + content.Map.Spawns.Count + " spawns");
+        }
+
+        [Fact]
         public void The_real_map_has_two_dark_rooms_away_from_every_spawn()
         {
             ContentBundle content = LoadReal();
