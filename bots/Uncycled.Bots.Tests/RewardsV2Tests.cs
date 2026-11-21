@@ -132,29 +132,58 @@ namespace Uncycled.Bots.Tests
         public void VirusVictim_PaysThePlanter_NotOtherTrashers()
         {
             var rig = new Rig(Role.Polluter, 4, 5);
-            rig.Position[4] = new Vec2(10f, 10f);
-            rig.Position[5] = new Vec2(40f, 10f);
             rig.Tick(0, new VirusPlantedEvent(4, "a"), new VirusPlantedEvent(5, "b"));
 
-            rig.Position[1] = new Vec2(10.5f, 10f);
-            rig.Tick(0, new InfectedEvent(1, 60f));
+            // the engine emits SpotCleaned and Infected together when a Cleaner finishes a spot holding a virus
+            rig.Tick(0, new SpotCleanedEvent(1, "b", 1), new InfectedEvent(1, 60f));
             Near(0f, rig.Of(4));
+            Near(0f, rig.Of(5));
 
             rig.Tick(0, new YouAreOutEvent(1, OutCause.Virus));
-            Near(0.1f, rig.Of(4));
+            Near(0.1f, rig.Of(5));
+            Near(0f, rig.Of(4));
+        }
+
+        [Fact]
+        public void VirusVictim_TwoSpotsCloseTogether_PaysThePlanterOfTheCleanedSpot()
+        {
+            // market_bottle_bank and market_sink are 4 tiles apart: the planters stood 1.2 tiles from their spots
+            var rig = new Rig(Role.Polluter, 4, 5);
+            rig.Position[4] = new Vec2(7.5f, 18.7f);
+            rig.Position[5] = new Vec2(7.5f, 22.7f);
+            rig.Position[1] = new Vec2(7.5f, 20.3f);
+            rig.Tick(0, new VirusPlantedEvent(4, "market_bottle_bank"), new VirusPlantedEvent(5, "market_sink"));
+            rig.Tick(0, new SpotCleanedEvent(1, "market_sink", 1), new InfectedEvent(1, 60f));
+            rig.Tick(0, new YouAreOutEvent(1, OutCause.Virus));
+            Near(0.1f, rig.Of(5));
+            Near(0f, rig.Of(4));
+        }
+
+        [Fact]
+        public void VirusVictim_VirusUsedUpOnAnInfectedCleaner_LeavesNoRecord()
+        {
+            var rig = new Rig(Role.Polluter, 4, 5);
+            rig.Position[4] = new Vec2(10f, 10f);
+            rig.Position[2] = new Vec2(10.5f, 10f);
+            rig.Tick(0, new VirusPlantedEvent(4, "a"));
+            // seat 1 cleans "a" while already infected: the virus is used up and the engine emits no InfectedEvent
+            rig.Tick(0, new SpotCleanedEvent(1, "a", 1));
+
+            // a later infection of seat 2 at a spot nobody planted a virus on, standing next to 4's old position
+            rig.Tick(0, new SpotCleanedEvent(2, "c", 1), new InfectedEvent(2, 60f));
+            rig.Tick(0, new YouAreOutEvent(2, OutCause.Virus));
+            Near(0f, rig.Of(4));
             Near(0f, rig.Of(5));
         }
 
         [Fact]
-        public void VirusVictim_NothingPaidWhenNoPlantedSpotIsNear()
+        public void VirusVictim_ResetForgetsPlantedViruses()
         {
             var rig = new Rig(Role.Polluter, 4, 5);
-            rig.Position[4] = new Vec2(10f, 10f);
             rig.Tick(0, new VirusPlantedEvent(4, "a"));
-            rig.Position[1] = new Vec2(60f, 60f);
-            rig.Tick(0, new InfectedEvent(1, 60f), new YouAreOutEvent(1, OutCause.Virus));
+            rig.Rewards.Reset();
+            rig.Tick(0, new SpotCleanedEvent(1, "a", 1), new InfectedEvent(1, 60f), new YouAreOutEvent(1, OutCause.Virus));
             Near(0f, rig.Of(4));
-            Near(0f, rig.Of(5));
         }
 
         [Fact]
@@ -247,7 +276,14 @@ namespace Uncycled.Bots.Tests
         public void Weights_DefaultsAreTheBriefValues()
         {
             RewardWeights w = HostOptions.Parse(Array.Empty<string>()).Rewards;
+            Near(1f, w.Win);
             Near(0.1f, w.Report);
+            Near(0.1f, w.Ejectright);
+            Near(0.05f, w.Heal);
+            Near(0.1f, w.Cleanerout);
+            Near(0.05f, w.Repollute);
+            Near(0.1f, w.Victim);
+            Near(0.02f, w.Jam);
             Near(0.1f, w.Deliver);
             Near(0.02f, w.Spot);
             Near(0.05f, w.Fix);
@@ -259,6 +295,17 @@ namespace Uncycled.Bots.Tests
         }
 
         private const string ContentLoaderDefaultMap = Uncycled.Server.Content.ContentLoader.DefaultMapId;
+
+        [Theory]
+        [InlineData("7")]
+        [InlineData("12")]
+        public void Seats_NotARoomSize_IsRejectedWithTheAllowedSizes(string seats)
+        {
+            HostOptions o = HostOptions.Parse(new[] { "--seats", seats });
+            ArgumentException e = Assert.Throws<ArgumentException>(() => o.LoadContent());
+            Assert.Contains("--seats " + seats, e.Message);
+            Assert.Contains("6, 8, 10", e.Message);
+        }
 
         [Fact]
         public void Seats_ResizeTheContentConfig()

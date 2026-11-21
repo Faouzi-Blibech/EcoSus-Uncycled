@@ -4,6 +4,8 @@ host:
   content_dir: ../../content                    # relative to this file
   matches: 16
   threads: null                                 # null = host default (cores - 2)
+  map: greybox_01                               # --map; the pipeline never assumes a map, the proof run uses greybox_01
+  seats: null                                   # --seats (room size 6, 8 or 10); null = the content's seats
 
 rewards:                  # v2 values; the v1 task, hit and dump weights are gone (no v1 event fires)
   win: 1.0

@@ -159,6 +159,11 @@ namespace Uncycled.Train
                 return content;
             }
 
+            if (Array.IndexOf(content.Config.RoomSizes, Seats.Value) < 0)
+            {
+                throw new ArgumentException("--seats " + Seats.Value + " is not a room size of this content (allowed: " + string.Join(", ", content.Config.RoomSizes) + ")");
+            }
+
             return new ContentBundle(content.Config.ForSize(Seats.Value), content.TuningJson, content.Tasks, content.TasksJson, content.Map, content.Phrases, content.Filter);
         }
 
