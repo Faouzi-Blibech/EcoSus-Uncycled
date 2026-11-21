@@ -42,7 +42,7 @@ flowchart TB
         api["Uncycled.Server<br/>ASP.NET Core: /ws, /health, /stats"]
         rooms["Rooms + Bots + AI service"]
         sim["Sim library (netstandard2.1)<br/>rules + match engine"]
-        content[("content/*.json<br/>tuning, tasks, maps, phrases, facts")]
+        content[("content/*.json<br/>tuning, tasks, maps, phrases, facts, bots")]
     end
 
     ai["LLM / vision provider"]
@@ -53,7 +53,7 @@ flowchart TB
     api --> rooms
     rooms --> sim
     rooms -. "loads at start" .-> content
-    rooms -- "async HTTPS, 3 s timeout" --> ai
+    rooms -- "async HTTPS, deadline per request" --> ai
 ```
 
 Key properties:
@@ -70,12 +70,12 @@ Arrows mean "depends on". Nothing may depend upward.
 flowchart BT
     simcore["Sim.Core<br/>GameState, PlayerState, Vec2, IRandom"]
     simrules["Sim.Rules + Sim.Systems<br/>kill/poison, report, meeting, win, tasks, sabotage"]
-    simuc["Sim.Uncycled<br/>pollution meter, piles, clues, witnesses, win order"]
-    simmatch["Sim.Match<br/>MatchEngine: commands in, events out"]
+    simuc["Sim.Uncycled<br/>pollution meter, poison, piles, clues, task ledger, win order"]
+    simmatch["Sim.Match<br/>MatchEngine: commands in, events + seat views out"]
     simnav["Sim.World<br/>MapData, walkable grid, line of sight, A*"]
     bots["Uncycled.Server/Bots<br/>bot brains, testimony"]
     aisvc["Uncycled.Server/Ai<br/>IAiProvider, offline + remote"]
-    roomsm["Uncycled.Server/Rooms<br/>RoomManager, Room actor, SnapshotFilter"]
+    roomsm["Uncycled.Server/Rooms<br/>RoomManager, Room actor, SnapshotWriter"]
     net["Uncycled.Server/Net<br/>WebSocket endpoint, codec, Connection"]
     host["Uncycled.Server/Program.cs<br/>DI, config, endpoints"]
 
@@ -96,7 +96,8 @@ flowchart BT
 Rules:
 - Everything under `Sim.*` is engine-free and framework-free (no ASP.NET, no Godot, no clocks,
   no `System.Random`; only `IRandom`). It is fully unit-testable.
-- `Bots` only call the same `MatchEngine` command API that humans reach through `Net`.
+- `Bots` only call the same `MatchEngine` command API that humans reach through `Net`, and only
+  read the same per-seat view (`SeatView`) that humans receive as snapshots.
 - `Ai` has no dependency on rooms; it returns results that the room feeds back as commands.
 
 ## 4. Deployment
@@ -151,7 +152,9 @@ flowchart LR
 | Seats per room | 8 (2 polluters) | Decided |
 | Server tick | 20 Hz (50 ms) | Enough for 8 players, cheap |
 | Snapshot rate | 20 Hz, filtered per seat | Smooth with a 100 ms interpolation buffer |
-| Client position send | 10 Hz (`Sim` `MovementSender.SendInterval = 0.1`) | Matches the reference pacing |
+| Client position send | 20 Hz while moving | Same as the tick; a slower rate makes remote players move in a stop-go pattern |
 | Walk speed | 2.5 tiles/s (`MovementSpeed.BaseSpeed`) = 80 px/s | Reference value, playtest later |
+| Screen | 20 x 11.25 tiles visible (640x360 at 32 px); citizen vision radius 4 tiles | A 60 x 40 map takes about 24 s to cross |
 | Max rooms per instance | 20 | Event needs 1-3 |
 | Message size cap | 4 KB | No free text exists |
+| Rate limit | 40 messages/s per connection, burst 80 | 20 moves/s plus actions and pings |
