@@ -95,6 +95,9 @@ public sealed class Room
     /// <summary>The running match, for tests. Null in the lobby.</summary>
     internal MatchEngine? Engine => _engine;
 
+    /// <summary>True once the room decided to close (idle limit); the loop stops after the current tick. For tests.</summary>
+    internal bool IsClosed => _closed;
+
     /// <summary>The chat log of the current match meeting, for tests. Null in the lobby or when bots do not talk.</summary>
     internal Uncycled.Bots.Meeting.MeetingLog? MeetingChat => _meeting?.Log;
 
@@ -201,7 +204,13 @@ public sealed class Room
             FeedMeeting(events);
             RouteEvents(events, now);
             SendSnapshots(now);
-            if (_backToLobbyAt >= 0 && now >= _backToLobbyAt)
+            if (_engine.Phase == MatchPhase.Ended && HumanCount == 0)
+            {
+                // nobody is left to see the result and a lobby without humans only waits for its idle limit
+                _log.LogInformation("Room {Code}: match over and no humans, closing", Code);
+                _closed = true;
+            }
+            else if (_backToLobbyAt >= 0 && now >= _backToLobbyAt)
             {
                 ReturnToLobby();
             }
