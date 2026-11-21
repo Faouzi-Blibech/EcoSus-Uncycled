@@ -41,6 +41,46 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void A_model_of_the_v2_contract_loads_for_both_roles()
+        {
+            // v2 shape and v2 schema hash: what a network trained on the v2 policy list carries
+            string dir = RoomRig.EmptyModelsDir();
+            foreach (string role in new[] { "citizen", "polluter" })
+            {
+                Uncycled.Bots.Tests.SyntheticOnnx.Write(dir, role, ObservationBuilderV2.Size, PolicyActionsV2.Count, SchemaV2.Hash);
+            }
+
+            var log = new CountingLog();
+
+            using var brains = new BotBrains(new BotsSettings { Brain = "neural" }, dir, Content().Tasks, log);
+
+            Assert.True(brains.HasModel(Role.Citizen));
+            Assert.True(brains.HasModel(Role.Polluter));
+            Assert.Equal(0, log.Warnings);
+        }
+
+        [Fact]
+        public void A_v1_model_is_refused_and_both_roles_play_scripted()
+        {
+            string dir = RoomRig.EmptyModelsDir();
+            string fixtures = Path.Combine(AppContext.BaseDirectory, "fixtures");
+            foreach (string role in new[] { "citizen", "polluter" })
+            {
+                File.Copy(Path.Combine(fixtures, "tiny_v1.onnx"), Path.Combine(dir, role + ".onnx"));
+                File.Copy(Path.Combine(fixtures, "tiny_v1.json"), Path.Combine(dir, role + ".json"));
+            }
+
+            var log = new CountingLog();
+
+            using var brains = new BotBrains(new BotsSettings { Brain = "neural" }, dir, Content().Tasks, log);
+
+            Assert.False(brains.HasModel(Role.Citizen));
+            Assert.False(brains.HasModel(Role.Polluter));
+            Assert.Equal(2, log.Warnings);
+            Assert.NotNull(brains.Create(Role.Citizen, 1));
+        }
+
+        [Fact]
         public void A_model_that_does_not_load_is_reported_once_per_role_and_never_reopened()
         {
             string dir = RoomRig.EmptyModelsDir();

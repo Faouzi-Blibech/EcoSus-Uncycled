@@ -55,7 +55,9 @@ namespace Uncycled.Bots.Tests
 
         private static OnnxPolicy LoadTiny()
         {
-            Assert.True(OnnxPolicy.TryLoad(TinyOnnx, TinyHash(), out OnnxPolicy? policy, out string reason), reason);
+            // the fixture must have been exported for the bots' current schema, not just agree with itself
+            Assert.Equal(SchemaV2.Hash, TinyHash());
+            Assert.True(OnnxPolicy.TryLoad(TinyOnnx, SchemaV2.Hash, out OnnxPolicy? policy, out string reason), reason);
             return policy!;
         }
 
@@ -246,6 +248,9 @@ namespace Uncycled.Bots.Tests
             var rng = new XorShiftRandom(seed);
             var problems = new List<string>();
             var picked = new HashSet<int>();
+            BotAction? awaiting = null;
+            int choices = 0;
+            int notStarted = 0;
             NeuralBrain? brain = null;
             var policy = new ProbePolicy(mask =>
             {
@@ -282,12 +287,30 @@ namespace Uncycled.Bots.Tests
                 }
 
                 picked.Add(chosen);
+                if (awaiting != null)
+                {
+                    notStarted++; // the previous choice never became the executor's action
+                }
+
+                awaiting = action;
+                choices++;
             };
             brain = new NeuralBrain(policy, new CountingBrain(), new BotsSettings { DecisionIntervalS = 0.2f, Skill = 0f }, new XorShiftRandom(seed), match.Content.Tasks);
 
-            ThinkSome(brain, match, seat, 1200);
+            for (int i = 0; i < 1200; i++)
+            {
+                brain.Think(match.Engine, seat, TestMatch.Dt, cmd => match.Engine.Apply(seat, cmd));
+                match.Tick();
+                if (awaiting != null && brain.CurrentAction == awaiting)
+                {
+                    awaiting = null;
+                }
+            }
 
             Assert.Empty(problems);
+            // a choice the live re-check dropped (or the brain lost) would never show as the executor's action;
+            // a few are legitimately replaced while a committed task step runs
+            Assert.True(notStarted * 10 <= choices, notStarted + " of " + choices + " choices never became the executor's action");
             Assert.False(brain.UsingFallback);
             Assert.True(policy.Calls > 20, "the policy was asked only " + policy.Calls + " times");
             Assert.True(picked.Count > 3, "only " + picked.Count + " distinct policy indices were exercised");
@@ -334,6 +357,59 @@ namespace Uncycled.Bots.Tests
             Assert.NotEqual(nearest, expected);
             Assert.False(brain.UsingFallback);
             Assert.Equal(expected, used);
+        }
+
+        [Fact]
+        public void OnnxPolicy_WrongShapeWithMatchingHash_IsRefused()
+        {
+            // a network exported for another observation size, claiming the current schema hash
+            string dir = ModelsDir();
+            SyntheticOnnx.Write(dir, "citizen", ObservationBuilderV2.Size - 1, PolicyActionsV2.Count, SchemaV2.Hash);
+
+            Assert.False(OnnxPolicy.TryLoad(Path.Combine(dir, "citizen.onnx"), SchemaV2.Hash, out OnnxPolicy? policy, out string reason));
+            Assert.Null(policy);
+            Assert.Contains("does not match the bots", reason, StringComparison.Ordinal);
+
+            var lines = new List<string>();
+            AssertScriptedAndPlays(NeuralBrainFactory.For(Sim.Core.Role.Citizen, Neural(), dir, new XorShiftRandom(1), null, lines.Add));
+            Assert.Single(lines);
+
+            string actionsDir = ModelsDir();
+            SyntheticOnnx.Write(actionsDir, "citizen", ObservationBuilderV2.Size, ActionCatalogue.Count, SchemaV2.Hash);
+            Assert.False(OnnxPolicy.TryLoad(Path.Combine(actionsDir, "citizen.onnx"), SchemaV2.Hash, out _, out reason));
+            Assert.Contains("does not match the bots", reason, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void NeuralBrainFactory_PlaysAModelOfTheV2Contract()
+        {
+            // loader path end to end without the trained fixture: v2 shape and v2 hash
+            string dir = ModelsDir();
+            SyntheticOnnx.Write(dir, "citizen", ObservationBuilderV2.Size, PolicyActionsV2.Count, SchemaV2.Hash);
+            var lines = new List<string>();
+
+            IBotBrain brain = NeuralBrainFactory.For(Sim.Core.Role.Citizen, Neural(), dir, new XorShiftRandom(1), null, lines.Add);
+
+            Assert.IsType<NeuralBrain>(brain);
+            Assert.Empty(lines);
+            TestMatch match = TestMatch.Create(5);
+            ThinkSome(brain, match, match.FirstSeatOf(Sim.Core.Role.Citizen), 400);
+            Assert.False(((NeuralBrain)brain).UsingFallback);
+        }
+
+        [Fact]
+        public void NeuralBrainFactory_DoesNotReopenAModelThatFailed()
+        {
+            string dir = ModelsDir(d => File.WriteAllBytes(Path.Combine(d, "citizen.onnx"), new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 }));
+            File.WriteAllText(Path.Combine(dir, "citizen.json"), "{ \"schema_hash\": \"" + SchemaV2.Hash + "\" }");
+            var lines = new List<string>();
+            Assert.IsNotType<NeuralBrain>(NeuralBrainFactory.For(Sim.Core.Role.Citizen, Neural(), dir, new XorShiftRandom(1), null, lines.Add));
+            Assert.Single(lines);
+
+            // a good model appears at the same path: the process keeps the failure it already reported
+            SyntheticOnnx.Write(dir, "citizen", ObservationBuilderV2.Size, PolicyActionsV2.Count, SchemaV2.Hash);
+            Assert.IsNotType<NeuralBrain>(NeuralBrainFactory.For(Sim.Core.Role.Citizen, Neural(), dir, new XorShiftRandom(2), null, lines.Add));
+            Assert.Single(lines);
         }
 
         private static void AssertScriptedAndPlays(IBotBrain brain)

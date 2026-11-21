@@ -12,7 +12,9 @@ namespace Uncycled.Bots.Neural
     {
         // One session per model file for the whole process, shared by every bot of that role.
         private static readonly ConcurrentDictionary<string, OnnxPolicy> Loaded = new ConcurrentDictionary<string, OnnxPolicy>();
+        // A model that failed to load is not opened again for every bot: the failure is kept for the process, like a loaded session.
         private static readonly ConcurrentDictionary<string, bool> Reported = new ConcurrentDictionary<string, bool>();
+        private static readonly ConcurrentDictionary<string, bool> Failed = new ConcurrentDictionary<string, bool>();
 
         /// <summary>The model file of a role inside modelsDir: citizen.onnx or polluter.onnx.</summary>
         public static string ModelPath(Role role, string modelsDir)
@@ -34,10 +36,16 @@ namespace Uncycled.Bots.Neural
 
             string path = ModelPath(role, modelsDir);
             string key = Path.GetFullPath(path);
+            if (Failed.ContainsKey(key))
+            {
+                return scripted;
+            }
+
             if (!Loaded.TryGetValue(key, out OnnxPolicy? policy))
             {
                 if (!OnnxPolicy.TryLoad(path, SchemaV2.Hash, out policy, out string reason) || policy == null)
                 {
+                    Failed[key] = true;
                     if (Reported.TryAdd(key, true))
                     {
                         (log ?? (message => Console.Error.WriteLine(message)))("neural " + role + " model not used, scripted brain plays: " + reason);

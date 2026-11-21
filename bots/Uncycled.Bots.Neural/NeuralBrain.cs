@@ -47,6 +47,9 @@ namespace Uncycled.Bots.Neural
             }
         }
 
+        /// <summary>The action the executor last began (what the network's choice became), for tests.</summary>
+        internal BotAction CurrentAction => _core.CurrentAction;
+
         public byte? Accusation =>UsingFallback ? (_fallback as IAccuser)?.Accusation : _core.Accusation;
 
         public void OnMeetingEnded(MeetingOutcome outcome)
@@ -92,6 +95,8 @@ namespace Uncycled.Bots.Neural
 
             public MatchEngine? Engine { get; set; }
 
+            public BotAction CurrentAction => Exec.Current;
+
             internal override Choice Choose(SeatView view, bool[] mask)
             {
                 // the scripted FullMask is not the network's: it picks among the v2 policy list, valid ones only
@@ -112,8 +117,9 @@ namespace Uncycled.Bots.Neural
 
             internal override void Prepare(BotAction action, SeatView view)
             {
-                // always all four hints, so none of an earlier choice is left over; a stale spot is the executor's to handle
-                (_resolved.Action == action ? _resolved : new PolicyChoice(action)).ApplyTo(Exec);
+                // always all four hints, so none of an earlier choice is left over; a stale spot is the executor's to handle.
+                // Prepare only follows a Choose (the pending action is always the resolved one).
+                _resolved.ApplyTo(Exec);
             }
         }
     }

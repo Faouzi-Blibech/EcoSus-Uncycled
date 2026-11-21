@@ -179,7 +179,7 @@ public class BotBrains : IDisposable
     {
         try
         {
-            if (OnnxPolicy.TryLoad(path, ObservationBuilder.SchemaHash, out OnnxPolicy? policy, out string reason) && policy != null)
+            if (OnnxPolicy.TryLoad(path, SchemaV2.Hash, out OnnxPolicy? policy, out string reason) && policy != null)
             {
                 _policies[role] = policy;
                 _log.LogInformation("Bot model for {Role} loaded from {Path}", role, path);
