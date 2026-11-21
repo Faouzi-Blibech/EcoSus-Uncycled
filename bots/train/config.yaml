@@ -1,0 +1,34 @@
+# Trainer configuration. Reward weights are passed to the host as --rw-* flags (spec 5.4).
+host:
+  exe: ../.build/train-win/Uncycled.Train.exe   # relative to this file
+  content_dir: ../../content                    # relative to this file
+  matches: 16
+  threads: null                                 # null = host default (cores - 2)
+
+rewards:
+  win: 1.0
+  task: 0.05
+  report: 0.1
+  fix: 0.05
+  hit: 0.1
+  dump: 0.05
+  ejected: -0.3
+
+ppo:
+  device: auto            # auto = cuda if available, else cpu
+  n_steps: 128            # per agent per rollout
+  batch_size: 2048
+  n_epochs: 4
+  learning_rate: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  net_arch:
+    pi: [256, 256]
+    vf: [256, 256]
+
+checkpoint_every: 100000   # env steps (one step = one decision of one agent)
+seed: 1

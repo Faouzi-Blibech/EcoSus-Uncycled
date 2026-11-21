@@ -1,0 +1,26 @@
+[project]
+name = "uncycled-train"
+version = "0.1.0"
+description = "Python trainer for the Uncycled bots (MaskablePPO over a binary pipe to the C# training host)"
+requires-python = ">=3.12"
+# Versions as installed in E:\venvs\uncycled-train on 2026-11-19. torch comes from the PyTorch cu128 index
+# (--index-url https://download.pytorch.org/whl/cu128).
+dependencies = [
+    "torch==2.11.0",
+    "stable-baselines3==2.9.2",
+    "sb3-contrib==2.9.2",
+    "gymnasium==1.4.0",
+    "numpy==2.5.5",
+    "onnx==1.23.2",
+    "onnxruntime==1.32.0",
+    "tensorboard==2.21.0",
+    "pyyaml==6.0.3",
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.2.0"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "tests"]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Uncycled.Train</RootNamespace>
+    <AssemblyName>Uncycled.Train</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Uncycled.Bots\Uncycled.Bots.csproj" />
+    <ProjectReference Include="..\Uncycled.Bots.Neural\Uncycled.Bots.Neural.csproj" />
+    <ProjectReference Include="..\..\server\Uncycled.Server\Uncycled.Server.csproj" />
+  </ItemGroup>
+
+</Project>
