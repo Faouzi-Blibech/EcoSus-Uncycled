@@ -1,4 +1,5 @@
 """The env tests that matter against the REAL published host (skipped when it is not built)."""
+import os
 import time
 from pathlib import Path
 
@@ -8,10 +9,10 @@ import pytest
 from uncycled_env import UncycledVecEnv
 
 ROOT = Path(__file__).resolve().parents[2]
-HOST = ROOT / ".build" / "train-win" / "Uncycled.Train.exe"
+HOST = Path(os.environ.get("UNCYCLED_HOST") or ROOT / ".build" / "train-win" / "Uncycled.Train.exe")
 CONTENT = ROOT.parent / "content"
 
-pytestmark = pytest.mark.skipif(not HOST.exists(), reason="real host not published (bots/.build/train-win)")
+pytestmark = pytest.mark.skipif(not HOST.exists(), reason="real host not published (bots/.build/train-win, or set UNCYCLED_HOST)")
 
 
 def make_env(learner="citizen", matches=2, seed=5):
@@ -28,11 +29,11 @@ def test_real_reset_shapes():
     try:
         obs = env.reset()
         assert env.num_envs == 2 * 6
-        assert obs.shape == (12, 154)
+        assert obs.shape == (12, 199)
         assert obs.dtype == np.float32
         assert np.isfinite(obs).all()
         masks = np.stack(env.env_method("action_masks"))
-        assert masks.shape == (12, 30) and masks.dtype == bool
+        assert masks.shape == (12, 35) and masks.dtype == bool
         assert masks[:, 0].all()
         assert len(env.schema_hash) == 64
     finally:

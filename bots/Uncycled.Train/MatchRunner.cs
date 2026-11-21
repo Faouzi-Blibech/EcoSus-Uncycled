@@ -22,6 +22,9 @@ namespace Uncycled.Train
 
         private const int MaxMeetingTicks = 20000;
 
+        /// <summary>Policy index 0 is Stay (PolicyActionsV2.Names[0]).</summary>
+        private const int StayIndex = 0;
+
         private readonly HostOptions _options;
         private readonly ContentBundle _content;
         private readonly Func<Role, IRandom, IBotBrain> _brains;
@@ -29,7 +32,7 @@ namespace Uncycled.Train
         private readonly int _slot;
         private readonly int _ticksPerDecision;
         private readonly BotsSettings _settings;
-        private readonly float[] _obsBuf = new float[ObservationBuilder.Size];
+        private readonly float[] _obsBuf = new float[ObservationBuilderV2.Size];
 
         private MatchEngine _engine = null!;
         private IRandom _rng = null!;
@@ -50,6 +53,7 @@ namespace Uncycled.Train
         private byte? _reportBy;
         private bool _warnedSeedRange;
         private MeetingFeed _feed = new MeetingFeed();
+        private readonly RewardsV2 _v2;
 
         public MatchRunner(HostOptions options, int slot, ContentBundle content, Func<Role, IRandom, IBotBrain> brains, OpponentMix? mix = null)
         {
@@ -58,19 +62,31 @@ namespace Uncycled.Train
             _brains = brains ?? throw new ArgumentNullException(nameof(brains));
             _mix = mix;
             _slot = slot;
+            _v2 = new RewardsV2(options.Rewards, options.Learner);
+            _v2.IsTrasher = seat => _engine.Find(seat)?.Role == Role.Polluter;
             _settings = options.Settings;
             BotsSettings settings = _settings;
             _ticksPerDecision = Math.Max(1, (int)Math.Round(settings.DecisionIntervalS / TickDt));
             _nextSeed = options.Seed + (ulong)slot;
             StartMatch();
             AgentCount = _agents.Length;
-            FrameSize = PipeProtocol.FrameSize(ObservationBuilder.Size, ActionCatalogue.Count);
-            MaskOffset = ObservationBuilder.Size * 4;
-            RewardOffset = MaskOffset + ActionCatalogue.Count;
+            FrameSize = PipeProtocol.FrameSize(ObservationBuilderV2.Size, PolicyActionsV2.Count);
+            MaskOffset = ObservationBuilderV2.Size * 4;
+            RewardOffset = MaskOffset + PolicyActionsV2.Count;
             DoneOffset = RewardOffset + 4;
         }
 
+        /// <summary>The first bytes of the pipe: observation size, action count, agent count and schema hash the trainer checks.</summary>
+        public static void WriteHandshake(System.IO.Stream stdout, int agents)
+        {
+            PipeProtocol.WriteHandshake(stdout, ObservationBuilderV2.Size, PolicyActionsV2.Count, agents, SchemaV2.Hash);
+        }
+
         public int AgentCount { get; }
+
+        public string MapId => _content.MapId;
+
+        public int Seats => _content.Config.Seats;
 
         /// <summary>
         /// True while the agent works a task step (see ActionExecutor.Committed). Its frame is then a placeholder
@@ -130,6 +146,8 @@ namespace Uncycled.Train
 
         public BotMemory AgentMemory(int agent) => _agents[agent].Memory;
 
+        public ActionExecutor AgentExecutor(int agent) => _agents[agent].Executor;
+
         /// <summary>Writes the current frame of every agent (AgentCount * FrameSize bytes).</summary>
         public void WriteFrames(Span<byte> dest)
         {
@@ -172,15 +190,18 @@ namespace Uncycled.Train
                     ForcedDecisions++;
                 }
 
-                if (action < 0 || action >= ActionCatalogue.Count || !_masks[a][action])
+                if (action < 0 || action >= PolicyActionsV2.Count || !_masks[a][action])
                 {
                     InvalidActions++;
                     Console.Error.WriteLine("invalid action " + action + " for agent " + a + " (match slot " + _slot + ")");
-                    action = (int)BotAction.Stay;
+                    action = StayIndex;
                 }
 
                 Agent agent = _agents[a];
-                agent.Executor.Begin((BotAction)action, _engine.ViewFor(agent.Seat), _engine.Map, _engine.MatchTime);
+                SeatView view = _engine.ViewFor(agent.Seat);
+                // the policy index becomes a BotAction plus the executor hints (spot, upgrade, ability, room, zone) for this view;
+                // the same index while its action still runs keeps its target (see PolicyDriver)
+                agent.Policy.Begin(action, view, agent.Memory, _engine.Map, agent.Executor, _engine.MatchTime);
             }
 
             Decisions += asked;
@@ -222,7 +243,7 @@ namespace Uncycled.Train
         {
             for (int i = 0; i < mask.Length; i++)
             {
-                if (mask[i] && i != (int)BotAction.Stay)
+                if (mask[i] && i != StayIndex)
                 {
                     return false;
                 }
@@ -258,11 +279,11 @@ namespace Uncycled.Train
         {
             Prepare();
             var actions = new int[AgentCount];
-            var valid = new int[ActionCatalogue.Count];
+            var valid = new int[PolicyActionsV2.Count];
             for (int a = 0; a < AgentCount; a++)
             {
                 int n = 0;
-                for (int i = 0; i < ActionCatalogue.Count; i++)
+                for (int i = 0; i < PolicyActionsV2.Count; i++)
                 {
                     if (_masks[a][i])
                     {
@@ -320,7 +341,7 @@ namespace Uncycled.Train
                 if (role == _options.Learner)
                 {
                     _agentOfSeat[s] = agents.Count;
-                    agents.Add(new Agent((byte)s, role, _engine, _content, _settings, _rng));
+                    agents.Add(new Agent((byte)s, role, _engine, _content, _settings, _rng, _v2.NoteAccepted));
                 }
                 else
                 {
@@ -363,8 +384,8 @@ namespace Uncycled.Train
                 _masks = new bool[_agents.Length][];
                 for (int a = 0; a < _agents.Length; a++)
                 {
-                    _obs[a] = new float[ObservationBuilder.Size];
-                    _masks[a] = new bool[ActionCatalogue.Count];
+                    _obs[a] = new float[ObservationBuilderV2.Size];
+                    _masks[a] = new bool[PolicyActionsV2.Count];
                 }
 
                 _reward = new float[_agents.Length];
@@ -388,6 +409,7 @@ namespace Uncycled.Train
             }
 
             MatchesFinished++;
+            _v2.Reset();
             StartMatch();
         }
 
@@ -415,35 +437,21 @@ namespace Uncycled.Train
                 agent.Executor.Step(_engine, agent.Seat, view, TickDt, now, agent.Send);
             }
 
-            int fireHolders = SnapshotFireHolders();
+            int fixHolders = SnapshotFixHolders();
             IReadOnlyList<GameEvent> events = _engine.Tick(TickDt);
-            Reward(events, fireHolders);
+            Reward(events, fixHolders);
             _feed.Handle(events, _engine.MatchTime);
             return _engine.Phase == MatchPhase.Ended && _engine.Result != null;
         }
 
-        /// <summary>Bit mask of the seats holding a fire console before this tick.</summary>
-        private int SnapshotFireHolders()
+        /// <summary>Bit mask of the seats repairing the jammed machine before this tick.</summary>
+        private int SnapshotFixHolders()
         {
-            if (!_engine.Fire.Active)
-            {
-                return 0;
-            }
-
-            int mask = 0;
-            for (int i = 0; i < _engine.Fire.ConsoleIds.Count; i++)
-            {
-                byte? holder = _engine.Fire.HolderAt(i);
-                if (holder != null)
-                {
-                    mask |= 1 << holder.Value;
-                }
-            }
-
-            return mask;
+            byte? repairing = _engine.Machine.Jammed ? _engine.Machine.RepairSeat : null;
+            return repairing == null ? 0 : 1 << repairing.Value;
         }
 
-        private void Reward(IReadOnlyList<GameEvent> events, int fireHolders)
+        private void Reward(IReadOnlyList<GameEvent> events, int fixHolders)
         {
             if (events.Count == 0)
             {
@@ -452,28 +460,11 @@ namespace Uncycled.Train
 
             RewardWeights w = _options.Rewards;
             bool citizens = _options.Learner == Role.Citizen;
-            var cuedDumpers = new HashSet<byte>();
-            foreach (GameEvent e in events)
-            {
-                if (e is CueEvent cue && cue.Kind == CueKind.Dump && CueCountsAsSeen(cue, _engine))
-                {
-                    cuedDumpers.Add(cue.Actor);
-                }
-            }
-
+            _v2.Tick(events, s => s < _agentOfSeat.Length && _agentOfSeat[s] >= 0, cue => CueCountsAsSeen(cue, _engine), s => _engine.Find(s)?.Position ?? Vec2.Zero, (ushort)fixHolders, Give);
             foreach (GameEvent e in events)
             {
                 switch (e)
                 {
-                    case TaskProgressEvent tp when citizens:
-                        Give(tp.Seat, w.Task);
-                        break;
-                    case HitOkEvent hit when !citizens:
-                        Give(hit.Seat, w.Hit);
-                        break;
-                    case DumpOkEvent dump when !citizens && !cuedDumpers.Contains(dump.Seat):
-                        Give(dump.Seat, w.Dump);
-                        break;
                     case MeetingStartedEvent m:
                         MeetingsHeld++;
                         _reportBy = m.Cause == MeetingCause.Report ? m.By : (byte?)null;
@@ -500,24 +491,9 @@ namespace Uncycled.Train
                             {
                                 Give(_reportBy.Value, w.Report);
                             }
-
-                            if (!citizens)
-                            {
-                                Give(ej.Seat, w.Ejected);
-                            }
                         }
 
                         _reportBy = null;
-                        break;
-                    case SabotageEndedEvent end when citizens && end.Kind == SabotageKind.Fire && end.Result == SabotageEndResult.Fixed:
-                        for (int s = 0; s < 32; s++)
-                        {
-                            if ((fireHolders & (1 << s)) != 0)
-                            {
-                                Give((byte)s, w.Fix);
-                            }
-                        }
-
                         break;
                 }
             }
@@ -545,14 +521,14 @@ namespace Uncycled.Train
             {
                 Agent agent = _agents[a];
                 SeatView view = _engine.ViewFor(agent.Seat);
-                ObservationBuilder.Build(view, agent.Memory, _engine.Map, _engine.Config, now, _obsBuf);
+                ObservationBuilderV2.Build(view, agent.Memory, _engine.Map, _engine.Config, now, _obsBuf);
                 Array.Copy(_obsBuf, _obs[a], _obsBuf.Length);
-                bool[] mask = ActionCatalogue.Mask(view, agent.Memory, _engine.Map);
+                bool[] mask = PolicyActionsV2.Mask(view, agent.Memory, _engine.Map);
                 Array.Copy(mask, _masks[a], mask.Length);
                 if (agent.Executor.Committed)
                 {
                     Array.Clear(_masks[a], 0, _masks[a].Length);
-                    _masks[a][(int)BotAction.Stay] = true;
+                    _masks[a][StayIndex] = true;
                 }
             }
 
@@ -562,7 +538,7 @@ namespace Uncycled.Train
         /// <summary>One learner seat: its own memory, navigator and executor.</summary>
         private sealed class Agent
         {
-            public Agent(byte seat, Role role, MatchEngine engine, ContentBundle content, BotsSettings settings, IRandom rng)
+            public Agent(byte seat, Role role, MatchEngine engine, ContentBundle content, BotsSettings settings, IRandom rng, Action<byte, ICommand> accepted)
             {
                 Seat = seat;
                 Role = role;
@@ -575,7 +551,15 @@ namespace Uncycled.Train
                     Pace = new PacePolicy(settings.Pace, rng),
                 };
                 Voter = new MeetingVoter();
-                Send = cmd => Executor.NotifyResult(cmd, engine.Apply(seat, cmd));
+                Send = cmd =>
+                {
+                    CommandResult result = engine.Apply(seat, cmd);
+                    Executor.NotifyResult(cmd, result);
+                    if (result.IsOk)
+                    {
+                        accepted(seat, cmd);
+                    }
+                };
             }
 
             public byte Seat { get; }
@@ -585,6 +569,8 @@ namespace Uncycled.Train
             public BotMemory Memory { get; }
 
             public ActionExecutor Executor { get; }
+
+            public PolicyDriver Policy { get; } = new PolicyDriver();
 
             public MeetingVoter Voter { get; }
 

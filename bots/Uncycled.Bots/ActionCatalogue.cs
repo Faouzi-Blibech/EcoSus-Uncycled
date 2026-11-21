@@ -13,7 +13,7 @@ namespace Uncycled.Bots
         public const int Count = 30;
 
         /// <summary>Every action of the enum, v2 ones included; FullMask has this length.</summary>
-        public const int TotalCount = 43;
+        public const int TotalCount = 44;
 
         private const int SlotCount = 4;
         private const float CooldownEps = 1e-3f;
@@ -169,6 +169,7 @@ namespace Uncycled.Bots
 
             MatchConfig cfg = mem.Config;
             ConsoleDef? machine = ActionQuery.MachineConsole(map);
+            full[(int)BotAction.GoZoneAt] = map.Zones.Count > 0; // the zone itself comes from ActionExecutor.ZoneHint
             if (view.Me.Role == Role.Polluter)
             {
                 CooldownView? cd = view.Me.Cooldowns;
