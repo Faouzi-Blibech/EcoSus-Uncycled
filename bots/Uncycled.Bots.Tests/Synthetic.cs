@@ -57,6 +57,8 @@ namespace Uncycled.Bots.Tests
 
         public SabotageView? Sabotage { get; set; }
 
+        public bool MachineJammed { get; set; }
+
         public MeetingView? Meeting { get; set; }
 
         public CooldownView? Cooldowns { get; set; }
@@ -74,7 +76,7 @@ namespace Uncycled.Bots.Tests
             CooldownView? cd = Cooldowns ?? (Role == Role.Polluter ? new CooldownView(0f, 0f, 0f) : null);
             var me = new MyView(Seat, Role, Partners, null, Status, Position, 4f, Role == Role.Citizen ? Poison : (int?)null, cd, Tasks);
             return new SeatView(Seat, Phase, 0f, MatchTime, 600f, DeadlineClock.MatchTime, MatchTime, 10f, EmergenciesLeft,
-                me, Players, Piles, Sabotage, Meeting, null, null, Spots);
+                me, Players, Piles, Sabotage, Meeting, null, null, Spots, MachineJammed);
         }
 
         public void Observe()

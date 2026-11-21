@@ -281,7 +281,98 @@ namespace Uncycled.Bots.Tests
             var suspicion = new SuspicionModel();
             suspicion.Update(bot.Memory, bot.View());
             Assert.Equal(SuspicionModel.FakeCleanWeight, suspicion.Score(3));
-            Assert.True(SuspicionModel.FakeCleanWeight >= SuspicionModel.VoteThreshold);
+            // one tell is a cue, not a vote: it needs a second one
+            Assert.True(SuspicionModel.FakeCleanWeight <= 25f);
+            Assert.True(SuspicionModel.FakeCleanWeight < SuspicionModel.VoteThreshold);
+            Assert.Null(suspicion.Vote(bot.View(), Role.Citizen, new byte[0]));
+        }
+
+        [Fact]
+        public void FakeClean_ASabotageThatStartsMidClean_InterruptsAnHonestCleaner_NoRecord()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f, (b, spot) =>
+            {
+                if (b.MatchTime >= 104f)
+                {
+                    b.Sabotage = new SabotageView(SabotageKind.Smog, null, new List<string>(), 1f);
+                }
+            });
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_AGasWarningThatStartsMidClean_InterruptsAnHonestCleaner_NoRecord()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f, (b, spot) =>
+            {
+                b.Memory.GasWarnedRoom = b.MatchTime >= 104f ? "gas_market" : null;
+            });
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_AJamThatStartsMidClean_InterruptsAnHonestCleaner_NoRecord()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f, (b, spot) =>
+            {
+                b.MachineJammed = b.MatchTime >= 104f;
+            });
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_ALeaverSeenNextAtTheSmogPanel_IsDropped()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, Sim.World.ConsoleDef spot) = WatchSeat3(m, 6f);
+            Assert.Single(bot.Memory.Inferred); // a plain leave is still a tell
+
+            bot.Sabotage = new SabotageView(SabotageKind.Smog, null, new List<string>(), 1f);
+            Sim.World.ConsoleDef panel = m.Map.ConsolesOfKind(ConsoleKind.SmogFix)[0];
+            bot.MatchTime += 8f;
+            bot.Players.Clear();
+            bot.Players.Add(SyntheticBot.Player(3, panel.Position.X, panel.Position.Y));
+            bot.Observe();
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_ALeaverSeenNextAtTheJammedMachine_IsDropped()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f);
+            Assert.Single(bot.Memory.Inferred);
+
+            bot.MachineJammed = true;
+            Sim.World.ConsoleDef machine = m.Map.ConsolesOfKind(ConsoleKind.Machine)[0];
+            bot.MatchTime += 8f;
+            bot.Players.Clear();
+            bot.Players.Add(SyntheticBot.Player(3, machine.Position.X, machine.Position.Y));
+            bot.Observe();
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_ALeaverSeenElsewhereKeepsTheRecord()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, Sim.World.ConsoleDef spot) = WatchSeat3(m, 6f);
+
+            bot.Sabotage = new SabotageView(SabotageKind.Smog, null, new List<string>(), 1f);
+            bot.MatchTime += 8f;
+            bot.Players.Clear();
+            bot.Players.Add(SyntheticBot.Player(3, spot.Position.X + 5f, spot.Position.Y));
+            bot.Observe();
+
+            Assert.Single(bot.Memory.Inferred);
         }
 
         [Fact]

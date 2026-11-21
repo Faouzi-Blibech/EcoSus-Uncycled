@@ -16,8 +16,8 @@ namespace Uncycled.Bots
         public const float DirectWeight = 100f;
         public const float NearPileWeight = 30f;
 
-        /// <summary>A player seen leaving a dirty spot dirty after a clean time: enough, alone, to be voted.</summary>
-        public const float FakeCleanWeight = 45f;
+        /// <summary>A player seen leaving a dirty spot dirty after a clean time: one cue, below the vote (40) and the accusation (30) thresholds, so it needs a second one.</summary>
+        public const float FakeCleanWeight = 25f;
         public const float VoteThreshold = 40f;
         public const float NearPileWindowS = 20f;
 
