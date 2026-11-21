@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from ultralytics import YOLOE
+from ultralytics import YOLO, YOLOE
 from PIL import Image
 from PIL.ExifTags import Base as ExifBase
 import io
@@ -21,8 +21,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── 1. Load YOLOE Model & Configure Custom Classes ──────────
-model = YOLOE("yoloe-26s-seg.pt")
+# ─── 1. Load the model ──────────────────────────────────────
+# models/taco-seg.pt (YOLO segmentation trained on TACO, 15 waste classes) when present;
+# otherwise the zero-shot YOLOE model prompted with the synonyms below.
+TACO_WEIGHTS = os.environ.get(
+    "UNCYCLED_SCAN_WEIGHTS",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "taco-seg.pt"),
+)
+
+# TACO class -> canonical recycling category (the keys of CO2_SAVINGS where one fits).
+TACO_LABELS = {
+    "plastic_bottle": "plastic bottle",
+    "plastic_cup": "plastic bottle",
+    "plastic_container": "plastic bottle",
+    "plastic_film": "plastic film",
+    "wrapper": "wrapper",
+    "styrofoam": "styrofoam",
+    "drink_can": "aluminum can",
+    "metal_can": "aluminum can",
+    "foil": "aluminum can",
+    "drink_carton": "cardboard box",
+    "paperboard": "cardboard box",
+    "cardboard": "cardboard box",
+    "glass_bottle": "glass jar",
+    "paper": "paper waste",
+    "paper_cup": "paper waste",
+}
 
 # Zero-shot vision models match much better when prompted with natural synonyms.
 # All synonyms map cleanly back to your canonical recycling categories.
@@ -60,7 +84,18 @@ CLASS_SYNONYMS = {
     "paper": "paper waste",
     "newspaper": "paper waste",
 }
-model.set_classes(list(CLASS_SYNONYMS.keys()))
+if os.path.exists(TACO_WEIGHTS):
+    model = YOLO(TACO_WEIGHTS)
+    LABELS = TACO_LABELS
+    CONF = 0.25
+    MODEL_NAME = "TACO (YOLO segmentation)"
+else:
+    model = YOLOE("yoloe-26s-seg.pt")
+    model.set_classes(list(CLASS_SYNONYMS.keys()))
+    LABELS = CLASS_SYNONYMS
+    CONF = 0.20  # zero-shot embeddings need a lower threshold for real phone angles and lighting
+    MODEL_NAME = "YOLOE zero-shot"
+print(f"Scan model: {MODEL_NAME}")
 
 # ─── 2. CO₂ Savings Per Item (grams of CO₂ avoided) ──────────
 CO2_SAVINGS = {
@@ -197,10 +232,8 @@ async def verify_photo(file: UploadFile = File(...)):
                 "message": f"Live-capture check failed: {exif_check['reason']}"
             }
 
-    # ── Run YOLOE Detection ───────────────────────────────────
-    # Threshold at 0.20 allows zero-shot vision embeddings to pick up
-    # real-world webcam/phone angles, lighting changes, and wrappers reliably
-    results = model.predict(image, conf=0.20)
+    # ── Run Detection ─────────────────────────────────────────
+    results = model.predict(image, conf=CONF)
     result = results[0]
 
     if result.boxes is None or len(result.boxes) == 0:
@@ -216,7 +249,7 @@ async def verify_photo(file: UploadFile = File(...)):
     best_conf = confidences[best_idx]
     best_cls_id = int(result.boxes.cls[best_idx])
     raw_label = result.names[best_cls_id]
-    best_label = CLASS_SYNONYMS.get(raw_label, raw_label)
+    best_label = LABELS.get(raw_label, raw_label.replace("_", " "))
     best_bbox = result.boxes.xyxy[best_idx].tolist()
 
     # ── ANTI-CHEAT: Crop to Bounding Box & Hash ──────────────
@@ -341,7 +374,7 @@ async def web_tester():
       resultBox.className = '';
       resultBox.style.background = '#334155';
       resultBox.style.color = '#fff';
-      resultBox.innerHTML = '⏳ Analyzing with YOLOE + Anti-Cheat Hash...';
+      resultBox.innerHTML = '⏳ Analyzing photo + Anti-Cheat Hash...';
 
       const formData = new FormData();
       formData.append('file', blob, 'capture.jpg');

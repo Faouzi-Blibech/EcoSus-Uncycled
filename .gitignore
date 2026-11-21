@@ -256,3 +256,4 @@ eco_stats.json
 # Mobile React Native / Expo
 node_modules/
 .expo/
+!models/taco-seg.pt
