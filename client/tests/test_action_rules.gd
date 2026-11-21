@@ -228,3 +228,22 @@ func test_heal_and_alert_table() -> bool:
 	assert_eq(trasher["heal"] or trasher["alert"], false, "Trashers do neither")
 	assert_eq(_states({"phase": "meeting", "heals": 1, "infected": true})["heal"], false, "not in a meeting")
 	return true
+
+
+## Dash: every role while playing; hidden until the first snapshot gives its timer (dash_s -1).
+func test_dash_button_states() -> bool:
+	var cases: Array = [
+		# [over, visible, ready, cooldown]
+		[{"dash_s": 0.0}, true, true, 0.0],
+		[{"dash_s": 7.5}, true, false, 7.5],
+		[{"dash_s": 0.0, "role": "polluter"}, true, true, 0.0],
+		[{"dash_s": -1.0}, false, false, 0.0],
+		[{"dash_s": 0.0, "is_out": true}, false, false, 0.0],
+		[{"dash_s": 0.0, "phase": "meeting"}, false, false, 0.0],
+	]
+	for c in cases:
+		var d: Dictionary = _states(c[0] as Dictionary)["dash"]
+		assert_eq(d["visible"], c[1], "visible %s" % str(c[0]))
+		assert_eq(d["ready"], c[2], "ready %s" % str(c[0]))
+		assert_near(float(d["cooldown"]), float(c[3]), 0.001, "cooldown %s" % str(c[0]))
+	return true

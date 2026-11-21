@@ -54,6 +54,62 @@ namespace Sim.Match
             return CommandResult.Ok;
         }
 
+        // ---------- dash ----------
+
+        /// <summary>Step along the dash line when looking for the last point before a wall (tiles).</summary>
+        private const float DashStep = 0.05f;
+
+        private CommandResult ApplyDash(PlayerState p, DashCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (ActiveTime + Epsilon < p.DashReadyAt)
+            {
+                return Reject(RejectReason.OnCooldown);
+            }
+
+            Vec2 dir = c.Direction;
+            if (!dir.IsFinite)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            float length = (float)Math.Sqrt(dir.X * dir.X + dir.Y * dir.Y);
+            if (length < 0.01f)
+            {
+                return Reject(RejectReason.TargetInvalid);
+            }
+
+            Vec2 start = p.Position;
+            Vec2 end = start;
+            int steps = (int)Math.Ceiling(Config.DashTiles / DashStep);
+            for (int i = 1; i <= steps; i++)
+            {
+                float d = Math.Min(i * DashStep, Config.DashTiles) / length;
+                Vec2 next = new Vec2(start.X + dir.X * d, start.Y + dir.Y * d);
+                if (!Map.Walk.SegmentClear(start, next))
+                {
+                    break;
+                }
+
+                end = next;
+            }
+
+            p.Position = end;
+            p.DashReadyAt = ActiveTime + Config.DashCooldownS;
+            p.CleansSinceDash = 0;
+            Emit(new DashOkEvent(p.Seat, end, Config.DashCooldownS));
+            return CommandResult.Ok;
+        }
+
         // ---------- use / task_step ----------
 
         private CommandResult ApplyUse(PlayerState p, UseCommand c)
@@ -290,7 +346,14 @@ namespace Sim.Match
 
             _sessions.Remove(p.Seat);
             spot.State = SpotState.Clean;
+            spot.CleanedAt = ActiveTime;
             p.Bags++;
+            p.CleansSinceDash++;
+            if (Config.DashCleansRefill > 0 && p.CleansSinceDash >= Config.DashCleansRefill)
+            {
+                p.CleansSinceDash = 0;
+                p.DashReadyAt = Math.Min(p.DashReadyAt, ActiveTime);
+            }
             Emit(new SpotCleanedEvent(p.Seat, spot.Id, p.Bags));
             if (spot.VirusBy != null)
             {
@@ -533,6 +596,23 @@ namespace Sim.Match
         }
 
         /// <summary>Server-timed cleaning: revalidated every tick, completes after CleanS.</summary>
+        /// <summary>Litter comes back on a spot left clean for SpotRelitterS: Cleaners always have work.</summary>
+        private void TickLitter()
+        {
+            if (Config.SpotRelitterS <= 0f)
+            {
+                return;
+            }
+
+            foreach (Spot s in Spots.All)
+            {
+                if (s.State == SpotState.Clean && ActiveTime - s.CleanedAt >= Config.SpotRelitterS)
+                {
+                    s.State = SpotState.Dirty;
+                }
+            }
+        }
+
         private void TickCleaning(float dt)
         {
             if (_cleanJobs.Count == 0)

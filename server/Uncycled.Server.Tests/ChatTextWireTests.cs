@@ -191,9 +191,9 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
-        public void Protocol_VersionIsTwo()
+        public void Protocol_VersionIsThree()
         {
-            Assert.Equal(2, Codec.ProtocolVersion);
+            Assert.Equal(3, Codec.ProtocolVersion);
         }
 
         // ---------- ghost leak through a real room ----------

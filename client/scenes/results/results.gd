@@ -84,16 +84,22 @@ func _show_countdown() -> void:
 # ---------------------------------------------------------------- views
 
 func _roles_column(roles: Dictionary) -> VBoxContainer:
-	var col: VBoxContainer = UIKit.make_vbox(2, 190.0)
+	var col: VBoxContainer = UIKit.make_vbox(2)
 	col.add_child(UIKit.make_label(tr("RESULT_ROLES"), 14, MUTED))
+	# Two columns: 8 players fit in 4 rows on a phone screen.
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 2)
+	col.add_child(grid)
 	var seats: Array[int] = []
 	for key in roles.keys():
 		seats.append(int(key))
 	seats.sort()
 	for seat in seats:
 		var role: String = str(roles.get(str(seat), roles.get(seat, "")))
-		var line: Label = UIKit.make_label(tr("RESULT_ROLE_LINE") % [_name_of(seat), _tr_or("ROLE_", role, "RESULT_ROLE_UNKNOWN")], 14, Session.seat_color(seat))
-		col.add_child(line)
+		var line: Label = UIKit.make_label(tr("RESULT_ROLE_LINE") % [_name_of(seat), _tr_or("ROLE_", role, "RESULT_ROLE_UNKNOWN")], 13, Session.seat_color(seat))
+		grid.add_child(line)
 	return col
 
 

@@ -50,6 +50,30 @@ namespace Sim.Tests
             Assert.Equal(1, ev.Bags);
         }
 
+        [Theory]
+        [InlineData(0f, 300f, SpotState.Clean)]   // 0 turns litter off
+        [InlineData(90f, 89f, SpotState.Clean)]   // not yet
+        [InlineData(90f, 90.5f, SpotState.Dirty)] // litter is back
+        public void CleanSpot_GetsLitteredAgain_AfterRelitterSeconds(float relitterS, float wait, SpotState expected)
+        {
+            var e = Playing(new MatchConfig { SpotRelitterS = relitterS });
+            byte c = Citizen(e);
+            OpenAndFinish(e, c, "bins", BinsMinS + 0.1f);
+            Advance(e, wait);
+            Assert.Equal(expected, e.Spots.Find("bins")!.State);
+        }
+
+        [Fact]
+        public void Relitter_CountsFromTheLatestClean()
+        {
+            var e = Playing(new MatchConfig { SpotRelitterS = 90f });
+            byte c = Citizen(e);
+            Advance(e, 80f);
+            OpenAndFinish(e, c, "bins", BinsMinS + 0.1f);
+            Advance(e, 60f);
+            Assert.Equal(SpotState.Clean, e.Spots.Find("bins")!.State);
+        }
+
         [Fact]
         public void AllSpotsStartDirty_MeterStartsZero()
         {
