@@ -35,12 +35,25 @@ namespace Uncycled.Bots
         private const float MinSightingGapS = 0.5f;
         private const float TakeoverGraceS = 1f;
 
+        /// <summary>Seconds a seen player must stand at a dirty spot, and leave it dirty, to count as a fake clean (a real clean takes at least min_s).</summary>
+        public const float FakeCleanDwellS = 3.5f;
+        private const float SpotDwellMargin = 0.4f;
+
+        /// <summary>A fake-clean tell is dropped when the leaver shows up at the smog panel or the jammed machine within this many seconds: it left to repair.</summary>
+        private const float RepairDropWindowS = 25f;
+
         private readonly Dictionary<byte, List<Sighting>> _sightings = new Dictionary<byte, List<Sighting>>();
         private readonly List<Sighting> _own = new List<Sighting>();
         private readonly Dictionary<byte, float> _hitAtPlay = new Dictionary<byte, float>();
         private readonly HashSet<byte> _out = new HashSet<byte>();
         private readonly List<WitnessRecord> _witnessed = new List<WitnessRecord>();
+        private readonly List<WitnessRecord> _fakeCleans = new List<WitnessRecord>();
+        private readonly Dictionary<byte, KeyValuePair<string, float>> _dwell = new Dictionary<byte, KeyValuePair<string, float>>();
         private MatchPhase? _prevPhase;
+        private bool _prevAlarm;
+        private bool _prevRepairAlarm;
+        private float _repairAlarmAt;
+        private string? _prevGasRoom;
         private float? _lastMeetingEnd;
         private float? _prevMatchTime;
         private float _playTime;
@@ -60,10 +73,35 @@ namespace Uncycled.Bots
         public IReadOnlyList<WitnessRecord> Witnessed => _witnessed;
 
         /// <summary>
+        /// What this bot worked out from its own view: a player seen standing at a dirty spot for a clean's
+        /// time that left it dirty (a Trasher fake clean). Recorded as dump-kind records: like a witnessed
+        /// act they point at the actor, but they come from watching, not from an engine log.
+        /// </summary>
+        public IReadOnlyList<WitnessRecord> Inferred => _fakeCleans;
+
+        /// <summary>
         /// The fire console this bot is holding right now (set by the executor), so a mask can tell
         /// its own hold from a hold by another seat. Null when it holds none.
         /// </summary>
         public string? HeldFireConsole { get; set; }
+
+        /// <summary>The upgrade offer open for this seat (set by the brain from the engine before it decides: the popup a human sees); null when none.</summary>
+        public IReadOnlyList<UpgradeKind>? UpgradeOffer { get; set; }
+
+        /// <summary>
+        /// The room whose gas warning runs (the public gas warning, set by the brain from the engine's
+        /// wire extras before Observe, the same for every seat); null when none runs.
+        /// </summary>
+        public string? GasWarnedRoom { get; set; }
+
+        /// <summary>Match time at which the meeting in progress started, as this bot saw it (the phase turning to Meeting); null before the first meeting.</summary>
+        public float? MeetingStartedAt { get; private set; }
+
+        /// <summary>Match time of this bot's first sighting of the current machine jam; null while the machine runs.</summary>
+        public float? MachineJamSeenAt { get; private set; }
+
+        /// <summary>True once this seat called its one free meeting for the current infection (cleared when it is no longer infected).</summary>
+        public bool InfectedCallUsed { get; set; }
 
         /// <summary>Seconds of Playing this memory has watched (like the engine's ActiveTime, from when it was made).</summary>
         public float PlayTime => _playTime;
@@ -90,10 +128,19 @@ namespace Uncycled.Bots
             }
 
             _prevMatchTime = matchTime;
+            if (view.Me.InfectedS == null)
+            {
+                InfectedCallUsed = false;
+            }
 
             if (view.Phase == MatchPhase.Playing && (_prevPhase == MatchPhase.Meeting || _prevPhase == MatchPhase.Ejection))
             {
                 _lastMeetingEnd = matchTime;
+            }
+
+            if (view.Phase == MatchPhase.Meeting && _prevPhase != MatchPhase.Meeting)
+            {
+                MeetingStartedAt = matchTime;
             }
 
             _prevPhase = view.Phase;
@@ -103,9 +150,42 @@ namespace Uncycled.Bots
                 _livingNow = view.Meeting!.Living.Count > 0 ? view.Meeting.Living.Count : Math.Max(1, Config.Seats - _out.Count);
             }
 
+            // an alarm (smog, fire, machine jam) or a gas warning that starts pulls honest Cleaners off their
+            // spots: what they were cleaning is interrupted, not faked, so every dwell restarts from now
+            bool alarm = view.Sabotage != null || view.MachineJammed;
+            bool gasStarted = GasWarnedRoom != null && GasWarnedRoom != _prevGasRoom;
+            if ((alarm && !_prevAlarm) || gasStarted)
+            {
+                _dwell.Clear();
+            }
+
+            if (!view.MachineJammed)
+            {
+                MachineJamSeenAt = null;
+            }
+            else if (MachineJamSeenAt == null)
+            {
+                MachineJamSeenAt = matchTime;
+            }
+
+            bool repairAlarm = (view.Sabotage != null && view.Sabotage.Kind == SabotageKind.Smog) || view.MachineJammed;
+            if (repairAlarm && !_prevRepairAlarm)
+            {
+                _repairAlarmAt = matchTime;
+            }
+
+            _prevRepairAlarm = repairAlarm;
+            _prevAlarm = alarm;
+            _prevGasRoom = GasWarnedRoom;
+
             if (view.Phase == MatchPhase.Playing)
             {
                 RecordOwn(view, matchTime); // never in a meeting: the own zone history is the alibi, and 120 slots fill in 60 s
+                WatchSpots(view, matchTime);
+            }
+            else
+            {
+                _dwell.Clear(); // a meeting moves everyone: nobody left a spot
             }
 
             foreach (PlayerView p in view.Players)
@@ -162,6 +242,108 @@ namespace Uncycled.Bots
                     _hitAtPlay[r.Victim.Value] = _playTime - (matchTime - r.At);
                 }
             }
+        }
+
+        /// <summary>
+        /// Tracks who stands at a dirty spot. A player that leaves a spot still dirty after a clean time is
+        /// a fake cleaner; one that stays until the spot turns clean is honest (the tracker is dropped).
+        /// </summary>
+        private void WatchSpots(SeatView view, float matchTime)
+        {
+            var present = new HashSet<byte>();
+            foreach (PlayerView p in view.Players)
+            {
+                if (p.IsOut)
+                {
+                    _dwell.Remove(p.Seat);
+                    continue;
+                }
+
+                present.Add(p.Seat);
+                if (_fakeCleans.Count > 0 && AtRepairConsole(view, p.Position))
+                {
+                    // the leaver went to repair the smog or the jam: it left its spot for the alarm, not to fake (only a leave made after
+                    // the alarm began: a Trasher cannot wipe an earlier record by jamming and standing at the machine)
+                    _fakeCleans.RemoveAll(r => r.Actor == p.Seat && r.At >= _repairAlarmAt && matchTime - r.At <= RepairDropWindowS);
+                }
+
+                string? spot = null;
+                foreach (SpotView s in view.Spots)
+                {
+                    Sim.World.ConsoleDef? c = s.State == SpotState.Dirty ? Map.FindConsole(s.Id) : null;
+                    if (c != null && Vec2.Distance(p.Position, c.Position) <= c.Range + SpotDwellMargin)
+                    {
+                        spot = s.Id;
+                        break;
+                    }
+                }
+
+                bool tracked = _dwell.TryGetValue(p.Seat, out KeyValuePair<string, float> d);
+                if (spot != null)
+                {
+                    if (!tracked || d.Key != spot)
+                    {
+                        _dwell[p.Seat] = new KeyValuePair<string, float>(spot, matchTime);
+                    }
+
+                    continue;
+                }
+
+                if (!tracked)
+                {
+                    continue;
+                }
+
+                _dwell.Remove(p.Seat);
+                bool stillDirty = false;
+                foreach (SpotView s in view.Spots)
+                {
+                    stillDirty |= s.Id == d.Key && s.State == SpotState.Dirty;
+                }
+
+                if (stillDirty && matchTime - d.Value >= FakeCleanDwellS)
+                {
+                    Sim.World.ConsoleDef? c = Map.FindConsole(d.Key);
+                    Vec2 at = c != null ? c.Position : p.Position;
+                    _fakeCleans.Add(new WitnessRecord(ActKind.Dump, p.Seat, view.Me.Seat, matchTime, Map.ZoneAt(at), at, null, null));
+                }
+            }
+
+            // a seat that went out of sight loses its tracker
+            var gone = new List<byte>();
+            foreach (byte seat in _dwell.Keys)
+            {
+                if (!present.Contains(seat))
+                {
+                    gone.Add(seat);
+                }
+            }
+
+            foreach (byte seat in gone)
+            {
+                _dwell.Remove(seat);
+            }
+        }
+
+        /// <summary>True when a position is in range of the smog panel while smog is on, or of the machine while it is jammed.</summary>
+        private bool AtRepairConsole(SeatView view, Vec2 at)
+        {
+            bool smog = view.Sabotage != null && view.Sabotage.Kind == SabotageKind.Smog;
+            if (!smog && !view.MachineJammed)
+            {
+                return false;
+            }
+
+            foreach (Sim.World.ConsoleDef c in Map.Consoles)
+            {
+                bool repair = (smog && c.Kind == ConsoleKind.SmogFix) || (view.MachineJammed && c.Kind == ConsoleKind.Machine);
+                if (repair && Vec2.Distance(at, c.Position) <= c.Range + SpotDwellMargin)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>Seconds since this seat was last in sight; null when never seen.</summary>
@@ -351,8 +533,12 @@ namespace Uncycled.Bots
             _prevMatchTime = null;
             _playTime = 0f;
             HeldFireConsole = null;
+            UpgradeOffer = null;
+            InfectedCallUsed = false;
             _out.Clear();
             _witnessed.Clear();
+            _fakeCleans.Clear();
+            _dwell.Clear();
             _prevPhase = null;
             _lastMeetingEnd = null;
         }

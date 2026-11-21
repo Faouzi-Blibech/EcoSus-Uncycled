@@ -78,7 +78,7 @@ namespace Uncycled.Bots.Tests
             return o;
         }
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact]
         public void WholeMatch_EightScriptedBotsReachGameOver()
         {
             foreach (Outcome o in All.Value)
@@ -94,7 +94,7 @@ namespace Uncycled.Bots.Tests
                 Assert.True(o.Ended, "seed " + o.Seed + " did not end");
                 Assert.NotNull(o.Winner);
             });
-            Assert.Contains(All.Value, o => o.Reason == "tasks_done" || o.Reason == "polluters_voted_out");
+            Assert.Contains(All.Value, o => o.Reason == "meter_full" || o.Reason == "polluters_voted_out");
         }
 
         [Fact(Skip = "v1 rule, out of play in v2")]

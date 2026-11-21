@@ -49,7 +49,7 @@ namespace Uncycled.Bots.Tests
             bot.Memory.RecordMeeting(new MeetingOutcome(votes, null, accusations));
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2: the Trasher no longer hits, dumps or preps a hit")]
         public void Hit_WhenTheTargetIsTheOnlyOneInSight()
         {
             TestMatch m = TestMatch.Create();
@@ -68,7 +68,7 @@ namespace Uncycled.Bots.Tests
             Assert.NotEqual(BotAction.HitNearest, Decide(bot, t).Action);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2: the Trasher no longer hits, dumps or preps a hit")]
         public void Smog_BeforeAPlannedHit()
         {
             TestMatch m = TestMatch.Create();
@@ -103,7 +103,7 @@ namespace Uncycled.Bots.Tests
             Assert.NotEqual(BotAction.SabotageFire, Decide(crowd, t2).Action);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2: the Trasher no longer hits, dumps or preps a hit")]
         public void Dump_OnlyOutOfSightAndAwayFromPiles()
         {
             TestMatch m = TestMatch.Create();
@@ -135,7 +135,7 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(BotAction.FakeTaskHere, d.Action);
         }
 
-        [Fact]
+        [Fact(Skip = "v1 rule, out of play in v2: the Trasher no longer hits, dumps or preps a hit")]
         public void HotPolluter_DoesNotHitWhenSomeoneWasInSightJustNow_ButHitsAfterQuiet()
         {
             TestMatch m = TestMatch.Create();

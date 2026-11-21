@@ -263,6 +263,20 @@ namespace Sim.Match
         public int MyText { get; }
     }
 
+    /// <summary>A running gas warning: the warned room and the active seconds until it resolves.</summary>
+    public sealed class GasView
+    {
+        public GasView(string room, float inS)
+        {
+            Room = room;
+            InS = inS;
+        }
+
+        public string Room { get; }
+
+        public float InS { get; }
+    }
+
     /// <summary>Everything one seat may know right now. Becomes the snapshot message.</summary>
     public sealed class SeatView
     {
@@ -283,8 +297,12 @@ namespace Sim.Match
             MeetingView? meeting,
             GameOverEvent? gameOver,
             IReadOnlyList<ChatEvent>? ghostChat = null,
-            IReadOnlyList<SpotView>? spots = null)
+            IReadOnlyList<SpotView>? spots = null,
+            bool machineJammed = false,
+            GasView? gas = null)
         {
+            Gas = gas;
+            MachineJammed = machineJammed;
             Spots = spots ?? new List<SpotView>();
             GhostChat = ghostChat ?? new List<ChatEvent>();
             Seat = seat;
@@ -341,6 +359,12 @@ namespace Sim.Match
 
         /// <summary>Every spot and whether it is dirty or clean, for every seat.</summary>
         public IReadOnlyList<SpotView> Spots { get; }
+
+        /// <summary>The Recycling Machine is jammed (public: every seat sees the alarm). Deliveries are refused until it is fixed.</summary>
+        public bool MachineJammed { get; }
+
+        /// <summary>The running gas warning (public: every seat sees it); null when none runs.</summary>
+        public GasView? Gas { get; }
 
         /// <summary>Ghost chat so far, oldest first. Non-empty only in the view of an out seat.</summary>
         public IReadOnlyList<ChatEvent> GhostChat { get; }

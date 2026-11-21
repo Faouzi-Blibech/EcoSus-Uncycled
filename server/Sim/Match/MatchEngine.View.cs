@@ -189,7 +189,9 @@ namespace Sim.Match
                 meetingView,
                 Result,
                 me.IsActive ? null : new List<ChatEvent>(_ghostChat),
-                spots);
+                spots,
+                Machine.Jammed,
+                _gasRoom == null ? null : new GasView(_gasRoom.Id, Math.Max(0f, _gasLeft)));
         }
     }
 }

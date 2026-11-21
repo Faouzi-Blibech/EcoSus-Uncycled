@@ -195,9 +195,8 @@ REJECT_TOO_LONG,That line is too long.,Ce message est trop long.,هذه الرس
 REJECT_TEXT_LIMIT,No more typed lines this meeting.,Plus de messages écrits dans cette réunion.,لا مزيد من الرسائل المكتوبة في هذا الاجتماع.
 REJECT_PHRASE_LIMIT,No more phrases this meeting.,Plus de phrases dans cette réunion.,لا مزيد من العبارات في هذا الاجتماع.
 REJECT_UNKNOWN,Action refused.,Action refusée.,تم رفض الإجراء.
-REVEAL_GOAL_CITIZEN,"Finish your tasks and find the polluters.","Termine tes tâches et démasque les pollueurs.",أنجز مهامك واكشف الملوِّثين.
-REVEAL_GOAL_POLLUTER,"Dump waste and poison citizens without being seen.","Jette des déchets et empoisonne les citoyens sans te faire voir.",ارمِ النفايات وسمّم المنظّفين دون أن يراك أحد.
-REVEAL_SIGNATURE,Your dumps leave %s waste: it shows up as a clue.,Tes déchets jetés sont de type %s : ils apparaissent comme un indice.,نفاياتك المرمية من نوع %s: وستظهر كدليل.
+REVEAL_GOAL_CITIZEN,"Clean the spots, bring the bags to the machine and find the Trashers.","Nettoie les zones, apporte les sacs à la machine et démasque les pollueurs.",نظّف الأماكن، أوصل الأكياس إلى الآلة واكشف الملوِّثين.
+REVEAL_GOAL_POLLUTER,"Pretend to clean, re-pollute clean spots and jam the machine without being seen.","Fais semblant de nettoyer, repollue les zones propres et bloque la machine sans te faire voir.",تظاهر بالتنظيف، لوّث الأماكن النظيفة من جديد وعطّل الآلة دون أن يراك أحد.
 SPECTATOR_TITLE,You are out,Tu es éliminé,تم إقصاؤك
 SPECTATOR_HINT,You can still watch the meetings and the results.,Tu peux encore suivre les réunions et les résultats.,لا يزال بإمكانك متابعة الاجتماعات والنتائج.
 SPECTATOR_CAUSE_POISON,You were poisoned.,Tu as été empoisonné.,لقد تسمّمت.

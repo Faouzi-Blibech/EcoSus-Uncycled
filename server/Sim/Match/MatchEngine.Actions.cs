@@ -896,6 +896,12 @@ namespace Sim.Match
             p.Repollutes++;
             if (witnesses.Count > 0)
             {
+                string zone = Map.ZoneAt(p.Position);
+                foreach (byte w in witnesses)
+                {
+                    Witnesses.Add(new WitnessRecord(ActKind.Repollute, p.Seat, w, MatchTime, zone, p.Position, null, null));
+                }
+
                 Emit(new CueEvent(witnesses, CueKind.Repollute, p.Seat, spot.Position));
             }
 

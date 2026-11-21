@@ -61,7 +61,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(checkedSeeds >= 1, "no seed lasted past 120 s");
         }
 
-        [Fact(Skip = "bots still play v1 (dump, hit, tasks, fire); restore with the v2 bots")]
+        [Fact]
         public void Brain_SendsOnlyVoteInMeeting()
         {
             TestMatch m = TestMatch.Create(4);

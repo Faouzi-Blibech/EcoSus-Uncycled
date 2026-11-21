@@ -85,7 +85,9 @@ namespace Uncycled.Bots
             SeatView view = engine.ViewFor(seat);
             EnsureInit(engine, seat, view);
             float now = view.MatchTime;
+            Mem.GasWarnedRoom = engine.ExtrasFor(seat).GasRoom; // the public gas warning every seat gets, as a human sees it
             Mem.Observe(view, now, engine.Witnesses.SeenBy(seat));
+            Mem.UpgradeOffer = engine.OpenUpgradeOffer(seat); // the popup a human sees: the offer the seat holds
 
             if (view.Me.Status != PlayerStatus.Active || view.Phase == MatchPhase.Ended)
             {
@@ -121,6 +123,11 @@ namespace Uncycled.Bots
 
         /// <summary>Pick the next action. The mask holds what is valid right now.</summary>
         internal abstract Choice Choose(SeatView view, bool[] mask);
+
+        /// <summary>Called just before a chosen action begins: set the executor's hints (spot, upgrade, ability, room).</summary>
+        internal virtual void Prepare(BotAction action, SeatView view)
+        {
+        }
 
         /// <summary>Called when a chosen action actually starts.</summary>
         internal virtual void Started(BotAction action, SeatView view)
@@ -188,13 +195,13 @@ namespace Uncycled.Bots
             if (_pending == null)
             {
                 _decisionIn -= dt;
-                if (_decisionIn > 0f)
+                if (_decisionIn > 0f && ActionQuery.WarnedRoomToAvoid(view, Mem, Mem.Map) == null)
                 {
-                    return;
+                    return; // a gas warning is not left for the next decision slot: the warning is short
                 }
 
                 _decisionIn = _settings.DecisionIntervalS;
-                Choice choice = Choose(view, ActionCatalogue.Mask(view, Mem, Mem.Map));
+                Choice choice = Choose(view, ActionCatalogue.FullMask(view, Mem, Mem.Map));
                 if (choice.Action != null && (!Exec.Busy || choice.Urgent))
                 {
                     _pending = choice.Action;
@@ -212,8 +219,9 @@ namespace Uncycled.Bots
 
             BotAction action = _pending.Value;
             _pending = null;
-            if (ActionCatalogue.Mask(view, Mem, Mem.Map)[(int)action])
+            if (ActionCatalogue.FullMask(view, Mem, Mem.Map)[(int)action])
             {
+                Prepare(action, view);
                 Exec.Begin(action, view, Mem.Map, now);
                 Started(action, view);
             }
