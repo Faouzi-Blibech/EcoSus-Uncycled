@@ -140,8 +140,6 @@ namespace Sim.Match
         // sabotage
         public float SabotageSharedCooldownS { get; set; } = 30f;
 
-        /// <summary>The first sabotage is possible this long after Playing starts (rejected as on_cooldown before).</summary>
-        public float SabotageStartCooldownS { get; set; } = 10f;
         public float FireCountdownS { get; set; } = 45f;
 
         // spots and bags (v2; tuning.json spots.* and bags.*)
@@ -165,7 +163,7 @@ namespace Sim.Match
         /// <summary>Re-pollutes that unlock the ability choice (trasher.unlock_after).</summary>
         public int UnlockAfter { get; set; } = 3;
 
-        /// <summary>The first re-pollute is locked this long after Playing starts (trasher.start_cooldown_s).</summary>
+        /// <summary>The first re-pollute and the first sabotage are locked this long after Playing starts (rejected as on_cooldown before; trasher.start_cooldown_s).</summary>
         public float TrasherStartCooldownS { get; set; } = 10f;
 
         /// <summary>Cooldown of the planted virus after it triggers (trasher.virus_cooldown_s); used by the virus rule.</summary>

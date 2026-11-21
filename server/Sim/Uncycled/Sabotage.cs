@@ -5,7 +5,7 @@ namespace Sim.Uncycled
 {
     /// <summary>
     /// One shared sabotage cooldown, counted on ActiveTime from the END of the previous sabotage;
-    /// the first sabotage is locked for the opening seconds of the match (sabotage.start_cooldown_s).
+    /// the first sabotage is locked for the opening seconds of the match (trasher.start_cooldown_s).
     /// Frozen (shown as full) while a sabotage is running.
     /// </summary>
     public sealed class SabotageCooldown

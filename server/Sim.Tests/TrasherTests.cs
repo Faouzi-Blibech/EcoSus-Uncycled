@@ -16,7 +16,7 @@ namespace Sim.Tests
         /// <summary>No opening locks: these tests act at once.</summary>
         private static MatchConfig Open()
         {
-            return new MatchConfig { TrasherStartCooldownS = 0f, SabotageStartCooldownS = 0f };
+            return new MatchConfig { TrasherStartCooldownS = 0f };
         }
 
         /// <summary>The test map with an extra wall at x = 5, y = 6..8: a seat at (6.5, 7.5) is 3 tiles from the bins but cannot see them.</summary>
@@ -239,7 +239,117 @@ namespace Sim.Tests
             Assert.Equal(RejectReason.NotAllowed, e.Apply(Citizen(e), new PickAbilityCommand(TrasherAbility.Virus)).Reason);
         }
 
+        [Fact]
+        public void Repollute_ClosesTheOtherCleanersOpenSessionsOnThatSpot()
+        {
+            MatchEngine e = Playing(Open());
+            byte pol = Polluter(e);
+            byte a = Citizen(e, 0);
+            byte b = Citizen(e, 1);
+            ParkOthers(e, pol, a, b);
+            StandAt(e, pol, "bins");
+            StandAt(e, a, "bins");
+            StandAt(e, b, "bins");
+            Assert.True(e.Apply(a, new UseCommand("bins")).IsOk);
+            Assert.True(e.Apply(b, new UseCommand("bins")).IsOk);
+            Advance(e, 1.1f);
+            Assert.True(e.Apply(b, new SpotDoneCommand("bins")).IsOk); // b cleans it; a still holds an open session
+
+            Assert.True(e.Apply(pol, new RepolluteCommand("bins")).IsOk);
+
+            Advance(e, 0.1f);
+            CommandResult stale = e.Apply(a, new SpotDoneCommand("bins"));
+            Assert.False(stale.IsOk);
+            Assert.Equal(RejectReason.NotAllowed, stale.Reason);
+            Assert.Equal(SpotState.Dirty, e.Spots.Find("bins")!.State);
+            Assert.Equal(0, P(e, a).Bags);
+
+            // a has to open the spot again and play the whole minimum time
+            Assert.True(e.Apply(a, new UseCommand("bins")).IsOk);
+            Assert.Equal(RejectReason.OnCooldown, e.Apply(a, new SpotDoneCommand("bins")).Reason);
+            Advance(e, 1.1f);
+            Assert.True(e.Apply(a, new SpotDoneCommand("bins")).IsOk);
+            Assert.Equal(SpotState.Clean, e.Spots.Find("bins")!.State);
+        }
+
+        [Fact]
+        public void Repollute_LeavesSessionsOnOtherSpotsAlone()
+        {
+            MatchEngine e = Playing(Open());
+            byte pol = Polluter(e);
+            byte a = Citizen(e, 0);
+            ParkOthers(e, pol, a);
+            StandAt(e, pol, "bins");
+            StandAt(e, a, "tap");
+            Assert.True(e.Apply(a, new UseCommand("tap")).IsOk);
+            MakeClean(e, "bins");
+            Assert.True(e.Apply(pol, new RepolluteCommand("bins")).IsOk);
+            Advance(e, 1.1f);
+            Assert.True(e.Apply(a, new SpotDoneCommand("tap")).IsOk);
+        }
+
+        [Fact]
+        public void SabotageOpeningLock_ComesFromTheTrasherStartCooldown()
+        {
+            MatchEngine e = Playing(new MatchConfig { TrasherStartCooldownS = 12f });
+            byte pol = Polluter(e);
+            Assert.Equal(RejectReason.OnCooldown, e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).Reason);
+            Assert.Equal(12f, e.ViewFor(pol).Me.Cooldowns!.Sabotage, 2);
+            Advance(e, 12.1f);
+            Assert.True(e.Apply(pol, new SabotageCommand(SabotageKind.Smog)).IsOk);
+        }
+
         // ---------- machine jam and fix ----------
+
+        [Fact]
+        public void SabotageMachine_DeliveryRejected_MachineJammed()
+        {
+            MatchEngine e = Playing(Open());
+            byte pol = Polluter(e);
+            byte cit = Citizen(e);
+            ParkOthers(e, cit);
+            P(e, cit).BagCap = 3;
+            P(e, cit).Bags = 2;
+            StandAt(e, cit, "machine");
+            Assert.True(e.Apply(pol, new SabotageCommand(SabotageKind.Machine)).IsOk);
+            e.Tick(0f);
+
+            CommandResult r = e.Apply(cit, new UseCommand("machine"));
+
+            Assert.False(r.IsOk);
+            Assert.Equal(RejectReason.MachineJammed, r.Reason);
+            Assert.Equal(2, P(e, cit).Bags);
+            Assert.Equal(0f, e.Meter.Value);
+            Assert.False(P(e, cit).UpgradeOfferOpen);
+            IReadOnlyList<GameEvent> events = e.Tick(0f);
+            Assert.Empty(Of<DeliveredEvent>(events));
+            Assert.Empty(Of<UpgradeOfferEvent>(events));
+            Assert.Empty(Of<UseOkEvent>(events));
+        }
+
+        [Fact]
+        public void Delivery_WorksAgainAfterTheFixHold()
+        {
+            MatchEngine e = Playing(Open());
+            byte pol = Polluter(e);
+            byte cit = Citizen(e);
+            ParkOthers(e, cit);
+            P(e, cit).BagCap = 3;
+            P(e, cit).Bags = 2;
+            StandAt(e, cit, "machine");
+            Assert.True(e.Apply(pol, new SabotageCommand(SabotageKind.Machine)).IsOk);
+            Assert.True(e.Apply(cit, new FixCommand("machine", true)).IsOk);
+            Advance(e, 3.5f);
+            Assert.Equal(RejectReason.MachineJammed, e.Apply(cit, new UseCommand("machine")).Reason); // still jammed mid-hold
+            Advance(e, 0.6f);
+            Assert.False(e.Machine.Jammed);
+            float before = e.Meter.Value;
+
+            Assert.True(e.Apply(cit, new UseCommand("machine")).IsOk);
+
+            Assert.Equal(0, P(e, cit).Bags);
+            Assert.Equal(before + 2 * e.Config.BagMeterAdd, e.Meter.Value, 3);
+        }
 
         [Fact]
         public void SabotageMachine_Jams_SharesTheCooldownAndTellsEveryone()
@@ -375,7 +485,7 @@ namespace Sim.Tests
         [Fact]
         public void Machine_AMeetingDropsTheRepairButKeepsTheJam()
         {
-            MatchEngine e = Playing(new MatchConfig { TrasherStartCooldownS = 0f, SabotageStartCooldownS = 0f, DiscussionS = 1f, VotingS = 1f, ResultsS = 1f });
+            MatchEngine e = Playing(new MatchConfig { TrasherStartCooldownS = 0f, DiscussionS = 1f, VotingS = 1f, ResultsS = 1f });
             byte pol = Polluter(e);
             byte cit = Citizen(e);
             ParkOthers(e, cit);
