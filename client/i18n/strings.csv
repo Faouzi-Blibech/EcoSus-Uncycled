@@ -157,8 +157,6 @@ HUD_TASK_DONE,done,fait
 HUD_TIMER,%d:%02d,%d:%02d
 ACT_USE,Use,Agir
 ACT_REPORT,Report,Signaler
-ACT_HIT,Poison,Empoisonner
-ACT_DUMP,Dump,Jeter
 TASK_SORT_WASTE,Sort waste,Trier les déchets
 TASK_SORT_WASTE_DEPOT,Sort waste,Trier les déchets
 TASK_TURN_COMPOST,Turn the compost,Retourner le compost
@@ -271,3 +269,19 @@ SABOTAGE_BANNER_MACHINE,The Recycling Machine is jammed! Hold FIX at the machine
 REJECT_NO_BAGS,You carry no bags.,Tu ne portes aucun sac.
 REJECT_MACHINE_JAMMED,The machine is jammed. Fix it first.,La machine est bloquée. Répare-la d'abord.
 REJECT_NO_ITEM,That item is not available.,Cet objet n'est pas disponible.
+ACT_REPOLLUTE,Re-pollute,Repolluer
+ACT_VIRUS,Virus,Virus
+ACT_GAS,Gas,Gaz
+ABILITY_TITLE,Pick your ability,Choisis ton pouvoir
+ABILITY_VIRUS,Virus,Virus
+ABILITY_GAS,Toxic Gas,Gaz toxique
+ABILITY_OK,Unlocked: %s,Débloqué : %s
+GAS_ROOM_TITLE,Which room do you gas?,Quelle salle gazer ?
+GAS_ROOM_MARKET,Market,Marché
+GAS_ROOM_GARDEN,Garden,Jardin
+GAS_ROOM_DEPOT,Depot,Dépôt
+GAS_ROOM_DARK,Dark room,Salle sombre
+VIRUS_PLANTED,Virus planted. Wait for a Cleaner.,Virus caché. Attends un nettoyeur.
+REPOLLUTE_OK,Spot re-polluted.,Endroit repollué.
+SABOTAGE_MACHINE,Machine,Machine
+REJECT_NOT_UNLOCKED,Not unlocked yet.,Pas encore débloqué.

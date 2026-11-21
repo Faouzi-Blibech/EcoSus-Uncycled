@@ -8,8 +8,8 @@ const RULES_PATH: String = "res://ui/hud/action_rules.gd"
 func _ctx(over: Dictionary = {}) -> Dictionary:
 	var ctx: Dictionary = {
 		"phase": "playing", "role": "citizen", "is_out": false,
-		"near_console": {}, "has_task_here": false, "fresh_pile": -1, "hit_target": -1,
-		"cd": {"hit": 0.0, "dump": 0.0}, "emergencies_left": 2,
+		"near_console": {}, "fresh_pile": -1,
+		"cd": {"repollute": 0.0, "virus": 0.0, "gas": 0.0, "sabotage": 0.0}, "emergencies_left": 2,
 	}
 	ctx.merge(over, true)
 	return ctx
@@ -26,8 +26,8 @@ const SPOT: Dictionary = {"id": "market_bins", "kind": "task"}
 func test_cleaner_at_dirty_spot_with_a_free_bag_slot() -> bool:
 	var s: Dictionary = _states({"near_console": SPOT, "near_spot_state": "dirty", "bags_full": false})
 	assert_eq(s["use"], true, "use")
-	assert_eq(s["hit"]["visible"], false, "hit hidden")
-	assert_eq(s["dump"]["visible"], false, "dump hidden")
+	assert_eq(s["repollute"]["visible"], false, "a Cleaner has no re-pollute")
+	assert_eq(s["ability"]["visible"], false, "nor an ability")
 	return true
 
 
@@ -42,18 +42,36 @@ func test_cleaner_spot_use_table() -> bool:
 func test_polluter_at_task_console() -> bool:
 	var s: Dictionary = _states({"role": "polluter", "near_console": SPOT, "near_spot_state": "dirty", "bags_full": true})
 	assert_eq(s["use"], true, "use for the fake")
-	assert_eq(s["hit"]["visible"], true, "hit visible")
-	assert_eq(s["hit"]["ready"], false, "no target")
-	assert_eq(s["dump"]["visible"], true, "dump visible")
-	assert_eq(s["dump"]["ready"], true, "dump ready")
+	assert_eq(s["repollute"]["visible"], true, "re-pollute shown to a Trasher")
+	assert_eq(s["repollute"]["ready"], false, "but not at a dirty spot")
+	assert_eq(s["ability"]["visible"], false, "no ability before the unlock")
+	assert_eq(s.has("hit") or s.has("dump"), false, "v1 hit and dump are gone")
 	return true
 
 
-func test_polluter_hit_on_cooldown_with_target() -> bool:
-	var s: Dictionary = _states({"role": "polluter", "hit_target": 3, "cd": {"hit": 12.5, "dump": 0.0}})
-	assert_eq(s["hit"]["visible"], true, "visible")
-	assert_eq(s["hit"]["ready"], false, "cooling down")
-	assert_eq(s["hit"]["cooldown"], 12.5, "cooldown value")
+## v2 Trasher kit: RE-POLLUTE at a clean spot; the unlocked ability (virus at a dirty spot, gas anywhere).
+func test_trasher_kit_table() -> bool:
+	var clean: Dictionary = {"role": "polluter", "near_console": SPOT, "near_spot_state": "clean"}
+	assert_eq(_states(clean)["repollute"], {"visible": true, "ready": true, "cooldown": 0.0}, "re-pollute a clean spot")
+	var cooling: Dictionary = clean.duplicate()
+	cooling["cd"] = {"repollute": 12.5}
+	assert_eq(_states(cooling)["repollute"], {"visible": true, "ready": false, "cooldown": 12.5}, "on cooldown")
+	var virus: Dictionary = {"role": "polluter", "ability": "virus", "near_console": SPOT, "near_spot_state": "dirty"}
+	assert_eq(_states(virus)["ability"], {"visible": true, "ready": true, "cooldown": 0.0, "kind": "virus"}, "plant at a dirty spot")
+	virus["near_spot_state"] = "clean"
+	assert_eq(_states(virus)["ability"]["ready"], false, "no virus on a clean spot")
+	var gas: Dictionary = {"role": "polluter", "ability": "gas", "cd": {"gas": 30.0}}
+	assert_eq(_states(gas)["ability"], {"visible": true, "ready": false, "cooldown": 30.0, "kind": "gas"}, "gas anywhere, on cooldown")
+	gas["cd"] = {"gas": 0.0}
+	assert_eq(_states(gas)["ability"]["ready"], true, "gas ready")
+	var cleaner: Dictionary = _states({"near_console": SPOT, "near_spot_state": "clean", "ability": "gas"})
+	assert_eq(cleaner["repollute"]["visible"], false, "a Cleaner has no re-pollute")
+	assert_eq(cleaner["ability"]["visible"], false, "nor an ability")
+	return true
+
+
+func test_sabotage_hidden_while_the_machine_is_jammed() -> bool:
+	assert_eq(_states({"role": "polluter", "machine_jammed": true})["sabotage"]["visible"], false, "a jam is a running sabotage")
 	return true
 
 
@@ -67,22 +85,22 @@ func test_emergency_console_without_emergencies_left() -> bool:
 func test_meeting_phase_hides_everything() -> bool:
 	var s: Dictionary = _states({
 		"phase": "meeting", "role": "polluter", "near_console": {"id": "market_bins", "kind": "task"},
-		"fresh_pile": 7, "hit_target": 2})
+		"fresh_pile": 7, "ability": "gas"})
 	assert_eq(s["use"], false, "use")
 	assert_eq(s["report"], false, "report")
-	assert_eq(s["hit"]["visible"], false, "hit")
-	assert_eq(s["dump"]["visible"], false, "dump")
+	assert_eq(s["repollute"]["visible"], false, "repollute")
+	assert_eq(s["ability"]["visible"], false, "ability")
 	return true
 
 
 func test_out_player_hides_everything() -> bool:
 	var s: Dictionary = _states({
 		"is_out": true, "role": "polluter", "near_console": {"id": "market_bins", "kind": "task"},
-		"fresh_pile": 7, "hit_target": 2})
+		"fresh_pile": 7, "ability": "gas"})
 	assert_eq(s["use"], false, "use")
 	assert_eq(s["report"], false, "report")
-	assert_eq(s["hit"]["visible"], false, "hit")
-	assert_eq(s["dump"]["visible"], false, "dump")
+	assert_eq(s["repollute"]["visible"], false, "repollute")
+	assert_eq(s["ability"]["visible"], false, "ability")
 	return true
 
 

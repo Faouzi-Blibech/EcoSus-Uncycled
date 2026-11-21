@@ -79,8 +79,10 @@ var _clean_elapsed: float = 0.0
 var senders: Dictionary = {
 	"use": Net.send_use,
 	"report": Net.send_report,
-	"hit": Net.send_hit,
-	"dump": Net.send_dump,
+	"repollute": Net.send_repollute,
+	"plant_virus": Net.send_plant_virus,
+	"gas": Net.send_gas,
+	"pick_ability": Net.send_pick_ability,
 	"sabotage": Net.send_sabotage,
 	"fix": Net.send_fix,
 	"clean_start": Net.send_clean_start,
@@ -360,8 +362,7 @@ func _update_piles() -> void:
 ## What the player can reach right now: `near_console` ({id, kind} of the nearest task, emergency
 ## or fire/smog fix marker inside its range, else {}), `near_spot_state` (Session.spots state of that
 ## console when it is a task console: a cleaning spot), `bags_full`, `fresh_pile` (nearest
-## visible fresh pile id or -1), `hit_target` (nearest visible active seat, not me and not my
-## partner, inside the hit range, or -1), `sabotage` (the running one, {} when none) and
+## visible fresh pile id or -1), `sabotage` (the running one, {} when none) and
 ## `holding_fire`, `clean_pile` (nearest dump pile, fresh or reported, inside the clean range, or -1). Visibility is the server's: only seats and piles of the latest snapshot are known.
 func interaction_context() -> Dictionary:
 	var pos: Vector2 = local_position_px()
@@ -382,7 +383,6 @@ func interaction_context() -> Dictionary:
 		"bags_full": Session.bag_cap > 0 and Session.bags >= Session.bag_cap,
 		"fresh_pile": _nearest_fresh_pile(pos),
 		"clean_pile": _nearest_clean_pile(pos),
-		"hit_target": _nearest_hit_target(pos),
 		"sabotage": Session.sabotage,
 		"holding_fire": not _held_console.is_empty(),
 		"held_console": _held_console,
@@ -432,21 +432,6 @@ func _nearest_clean_pile(pos: Vector2) -> int:
 	return found
 
 
-func _nearest_hit_target(pos: Vector2) -> int:
-	var range_px: float = Net.tiles_to_px(float(Net.as_dict(Session.tuning.get("poison")).get("hit_range", 0.0)))
-	var found: int = -1
-	var best: float = INF
-	for seat in _avatars:
-		var a: Avatar = _avatars[seat] as Avatar
-		if not a.visible or int(seat) == Session.seat_id or int(seat) == Session.partner_seat or Session.seat_out(int(seat)):
-			continue
-		var dist: float = pos.distance_to(a.position)
-		if dist <= range_px and dist < best:
-			best = dist
-			found = int(seat)
-	return found
-
-
 ## The button states (ActionRules.button_states) for the current moment.
 func action_states() -> Dictionary:
 	var ctx: Dictionary = interaction_context()
@@ -457,10 +442,12 @@ func action_states() -> Dictionary:
 	ctx["emergencies_left"] = Session.emergencies_left
 	ctx["bags"] = Session.bags
 	ctx["machine_jammed"] = Session.machine_jammed
+	ctx["ability"] = Session.ability
 	return ActionRules.button_states(ctx)
 
 
-## Runs "use", "report", "hit", "dump", "sabotage_fire" or "sabotage_smog" if the rules allow it
+## Runs "use", "report", "repollute", "ability" (the virus; the gas goes through send_gas after the
+## room picker), "sabotage_machine" or "sabotage_smog" if the rules allow it
 ## right now (only "use" while a game is open). The server checks again.
 func perform_action(action: String) -> void:
 	if _leaving or _player == null:
@@ -476,15 +463,50 @@ func perform_action(action: String) -> void:
 		"report":
 			if bool(states["report"]):
 				senders["report"].call(_nearest_fresh_pile(local_position_px()))
-		"hit":
-			if bool(Net.as_dict(states["hit"]).get("ready", false)):
-				senders["hit"].call(_nearest_hit_target(local_position_px()))
-		"dump":
-			if bool(Net.as_dict(states["dump"]).get("ready", false)):
-				senders["dump"].call()
-		"sabotage_fire", "sabotage_smog":
+		"repollute":
+			if bool(Net.as_dict(states["repollute"]).get("ready", false)):
+				senders["repollute"].call(_near_spot_id())
+		"ability":
+			var ability: Dictionary = Net.as_dict(states["ability"])
+			if bool(ability.get("ready", false)) and str(ability.get("kind", "")) == "virus":
+				senders["plant_virus"].call(_near_spot_id())
+		"sabotage_machine", "sabotage_smog":
 			if bool(Net.as_dict(states["sabotage"]).get("ready", false)):
 				senders["sabotage"].call(action.trim_prefix("sabotage_"))
+
+
+## Gases `room` (an id of the map's gas rooms) when the gas is ready.
+func send_gas(room: String) -> void:
+	if _leaving or _player == null:
+		return
+	var ability: Dictionary = Net.as_dict(action_states()["ability"])
+	if bool(ability.get("ready", false)) and str(ability.get("kind", "")) == "gas":
+		senders["gas"].call(room)
+
+
+## The gas room ids of the map (marker kind "gas_room"), sorted.
+func gas_room_ids() -> Array[String]:
+	var ids: Array[String] = []
+	if _map != null:
+		for m in _map.markers():
+			if m.kind == "gas_room":
+				ids.append(m.marker_id)
+	ids.sort()
+	return ids
+
+
+## The Trasher chose the virus or the gas (AbilityPicker.picked). The choice closes at once and is
+## not offered again before ability_ok arrives.
+func pick_ability(ability: String) -> void:
+	senders["pick_ability"].call(ability)
+	Session.ability_choices = []
+	Session.ability_pick_sent = true
+
+
+## The id of the spot (task console) in range, "" when none.
+func _near_spot_id() -> String:
+	var near: Dictionary = Net.as_dict(interaction_context().get("near_console"))
+	return str(near.get("id", "")) if str(near.get("kind", "")) == "task" else ""
 
 
 ## Presses a hold button. "fix": a fire console is held until end_hold (or until it is no longer

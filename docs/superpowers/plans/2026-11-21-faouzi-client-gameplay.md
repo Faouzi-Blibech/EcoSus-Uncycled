@@ -155,6 +155,13 @@ machine (no fake delivery). The original plan follows for reference.
 
 ### Task F4: Trasher kit (1 h 30)
 
+Done on `gameplay/trasher-kit` (stacked on F3). The v1 HIT and DUMP buttons became RE-POLLUTE (key of
+HIT) and the ability button (VIRUS or GAS, key of DUMP); `hit`/`dump` code and tests are gone. Pickers share
+a `CardPicker` base (worker, in parallel): `UpgradePicker`, `AbilityPicker`, `RoomPicker` (cancelable). The
+ability choice comes from `ability_unlocked`, and after a rejoin from the snapshot (no ability, re-pollutes >=
+`trasher.unlock_after`), since the server does not re-send it. Sabotage choices are machine and smog; a
+witnessed re-pollute plays the old dump splat. The original plan follows for reference.
+
 **Files:**
 - Create: `client/ui/hud/ability_picker.gd` (2 cards), `client/ui/hud/room_picker.gd` (gas room list from map
   `gas_rooms`, names `GAS_ROOM_<ID>`)

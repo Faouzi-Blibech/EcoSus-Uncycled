@@ -1,21 +1,22 @@
 class_name ActionRules
 extends RefCounted
-## Which action buttons the HUD shows and whether HIT and DUMP can be used right now.
+## Which action buttons the HUD shows and whether each one can be used right now.
 ## Pure: everything comes in through `ctx`, so the rules are testable without a scene.
 ##
 ## ctx keys: phase, role, is_out, near_console ({id, kind} or {}; kind task, emergency, fire_fix,
 ## smog_fix), held_console (the fire console I hold or ""), near_spot_state ("dirty", "clean" or "" for the
-## task console in near_console: a v2 cleaning spot), bags_full, bags (carried), machine_jammed, fresh_pile (pile id or -1), hit_target (seat or -1), cd ({hit, dump,
-## sabotage} seconds), emergencies_left, sabotage (Session.sabotage: {} or {kind, ...}), clean_pile (cleanable pile id
+## task console in near_console: a v2 cleaning spot), bags_full, bags (carried), machine_jammed,
+## ability ("", "virus" or "gas"), fresh_pile (pile id or -1), cd ({repollute, virus, gas, sabotage} seconds), emergencies_left, sabotage (Session.sabotage: {} or {kind, ...}), clean_pile (cleanable pile id
 ## in range or -1).
-## Result: {"use": bool, "report": bool, "hit": {visible, ready, cooldown}, "dump": {...},
+## Result: {"use": bool, "report": bool, "repollute": {visible, ready, cooldown},
+## "ability": {visible, ready, cooldown, kind ("virus", "gas" or "")},
 ## "sabotage": {...}, "fix": {visible, kind ("fire", "smog", "machine" or "")}, "clean": bool}.
 ## The server still validates every action; these rules only decide what the player is offered.
 
 
 static func button_states(ctx: Dictionary) -> Dictionary:
 	var states: Dictionary = {
-		"use": false, "report": false, "hit": _hidden(), "dump": _hidden(), "sabotage": _hidden(),
+		"use": false, "report": false, "repollute": _hidden(), "ability": _hidden_ability(), "sabotage": _hidden(),
 		"fix": {"visible": false, "kind": ""}, "clean": false,
 	}
 	if str(ctx.get("phase", "")) != "playing" or bool(ctx.get("is_out", false)):
@@ -51,18 +52,25 @@ static func button_states(ctx: Dictionary) -> Dictionary:
 
 	if polluter:
 		var cd: Dictionary = ctx.get("cd", {}) as Dictionary
-		var hit_cd: float = float(cd.get("hit", 0.0))
-		var dump_cd: float = float(cd.get("dump", 0.0))
-		states["hit"] = {
-			"visible": true,
-			"ready": int(ctx.get("hit_target", -1)) >= 0 and hit_cd <= 0.0,
-			"cooldown": hit_cd,
-		}
-		states["dump"] = {"visible": true, "ready": dump_cd <= 0.0, "cooldown": dump_cd}
-		if (ctx.get("sabotage", {}) as Dictionary).is_empty():
+		var spot_state: String = str(ctx.get("near_spot_state", ""))
+		# RE-POLLUTE turns the clean spot in range dirty again.
+		var repollute_cd: float = float(cd.get("repollute", 0.0))
+		states["repollute"] = {"visible": true, "ready": spot_state == "clean" and repollute_cd <= 0.0, "cooldown": repollute_cd}
+		# The unlocked ability: the virus goes into a dirty spot in range, the gas works from anywhere.
+		var ability: String = str(ctx.get("ability", ""))
+		if ability == "virus" or ability == "gas":
+			var ability_cd: float = float(cd.get(ability, 0.0))
+			var in_place: bool = ability == "gas" or spot_state == "dirty"
+			states["ability"] = {"visible": true, "ready": in_place and ability_cd <= 0.0, "cooldown": ability_cd, "kind": ability}
+		# A jammed machine is a running sabotage too (snapshots report it as machine.jammed).
+		if (ctx.get("sabotage", {}) as Dictionary).is_empty() and not bool(ctx.get("machine_jammed", false)):
 			var sabotage_cd: float = float(cd.get("sabotage", 0.0))
 			states["sabotage"] = {"visible": true, "ready": sabotage_cd <= 0.0, "cooldown": sabotage_cd}
 	return states
+
+
+static func _hidden_ability() -> Dictionary:
+	return {"visible": false, "ready": false, "cooldown": 0.0, "kind": ""}
 
 
 static func _hidden() -> Dictionary:
