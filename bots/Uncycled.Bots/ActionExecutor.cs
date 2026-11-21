@@ -514,12 +514,12 @@ namespace Uncycled.Bots
                     Busy = false;
                     if (_upgrade != null || (Memory?.UpgradeOffer != null && Memory.UpgradeOffer.Count > 0))
                     {
-                        send(new PickUpgradeCommand(_upgrade ?? Memory!.UpgradeOffer![0]));
+                        send(new PickUpgradeCommand(_upgrade ?? ActionQuery.UpgradeByRule(Memory!.UpgradeOffer!)));
                     }
 
                     break;
                 case BotAction.PickAbility:
-                    send(new PickAbilityCommand(_ability ?? TrasherAbility.Virus));
+                    send(new PickAbilityCommand(_ability ?? ActionQuery.AbilityByRule(view, _map ?? Memory!.Map)));
                     Busy = false;
                     break;
                 case BotAction.HealSelf:
@@ -528,9 +528,11 @@ namespace Uncycled.Bots
                     break;
                 case BotAction.GasRoom:
                     Busy = false;
-                    if (_room != null)
+                    // no brain hint (a policy): the gas room holding the most players, as the scripted brain picks it
+                    string? gasRoom = _room ?? ActionQuery.GasRoomWithPlayers(view, _map ?? Memory!.Map, out _)?.Id;
+                    if (gasRoom != null)
                     {
-                        send(new GasCommand(_room));
+                        send(new GasCommand(gasRoom));
                     }
 
                     break;

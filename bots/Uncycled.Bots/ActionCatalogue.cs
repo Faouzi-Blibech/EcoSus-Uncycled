@@ -119,7 +119,8 @@ namespace Uncycled.Bots
                 full[(int)BotAction.Repollute] = anyClean && cd != null && cd.Repollute <= CooldownEps;
                 full[(int)BotAction.PickAbility] = view.Me.Ability == TrasherAbility.None && view.Me.Repollutes >= cfg.UnlockAfter;
                 full[(int)BotAction.PlantVirus] = anyDirty && view.Me.Ability == TrasherAbility.Virus && cd != null && cd.Virus <= CooldownEps;
-                full[(int)BotAction.GasRoom] = map.GasRooms.Count > 0 && view.Me.Ability == TrasherAbility.Gas && cd != null && cd.Gas <= CooldownEps;
+                full[(int)BotAction.GasRoom] = view.Me.Ability == TrasherAbility.Gas && cd != null && cd.Gas <= CooldownEps
+                    && ActionQuery.GasRoomWithPlayers(view, map, out _) != null; // a room with someone in it: else the command has no target
                 bool sabotageReady = cd != null && cd.Sabotage <= CooldownEps && view.Sabotage == null && !view.MachineJammed;
                 full[(int)BotAction.SabotageSmog] = sabotageReady && ActionQuery.NthOfKind(map, ConsoleKind.SmogFix, 0) != null;
                 full[(int)BotAction.SabotageMachine] = sabotageReady && machine != null;

@@ -155,15 +155,7 @@ namespace Uncycled.Bots
         /// <summary>A weighted draw from the offer: a backpack or a tool pays most, a heal or a mask is insurance.</summary>
         private UpgradeKind PickUpgrade(IReadOnlyList<UpgradeKind> offer)
         {
-            float Weight(UpgradeKind k)
-            {
-                switch (k)
-                {
-                    case UpgradeKind.Backpack: return 4f;
-                    case UpgradeKind.Tool: return 3f;
-                    default: return 2f;
-                }
-            }
+            float Weight(UpgradeKind k) => ActionQuery.UpgradeWeight(k);
 
             float total = offer.Sum(Weight);
             float roll = Rng.NextFloat() * total;

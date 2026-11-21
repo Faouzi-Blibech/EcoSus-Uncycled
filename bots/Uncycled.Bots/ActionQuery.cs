@@ -415,6 +415,44 @@ namespace Uncycled.Bots
             return best;
         }
 
+        /// <summary>How much a Cleaner wants an upgrade: a backpack or a tool pays most, a heal or a mask is insurance.</summary>
+        public static float UpgradeWeight(UpgradeKind kind)
+        {
+            switch (kind)
+            {
+                case UpgradeKind.Backpack: return 4f;
+                case UpgradeKind.Tool: return 3f;
+                default: return 2f;
+            }
+        }
+
+        /// <summary>
+        /// The upgrade a seat takes from an offer when no brain hint says which: by rule, the heaviest
+        /// (UpgradeWeight), the first offered on a tie. A policy has one PickUpgrade action and no per-item ones,
+        /// so the item is chosen by this rule, not by the network.
+        /// </summary>
+        public static UpgradeKind UpgradeByRule(IReadOnlyList<UpgradeKind> offer)
+        {
+            UpgradeKind best = offer[0];
+            for (int i = 1; i < offer.Count; i++)
+            {
+                if (UpgradeWeight(offer[i]) > UpgradeWeight(best))
+                {
+                    best = offer[i];
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// The ability a Trasher takes at its unlock when no brain hint says which: by rule, gas when a gas room
+        /// holds someone to gas right now, else the virus (it works anywhere). A policy has one PickAbility action,
+        /// so the ability is chosen by this rule, not by the network.
+        /// </summary>
+        public static TrasherAbility AbilityByRule(SeatView view, MapData map) =>
+            GasRoomWithPlayers(view, map, out _) != null ? TrasherAbility.Gas : TrasherAbility.Virus;
+
         /// <summary>The gas room (map gas_rooms) holding the most visible non-partner players, or null when none holds one.</summary>
         public static ZoneDef? GasRoomWithPlayers(SeatView view, MapData map, out int count)
         {
