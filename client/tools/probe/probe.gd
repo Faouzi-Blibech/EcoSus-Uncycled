@@ -16,6 +16,7 @@ const ARRIVE_TOLERANCE_TILES: float = 0.5
 ## One line per scenario file: name -> script.
 const EXTERNAL: Dictionary = {
 	"bots_round": preload("res://tools/probe/scenarios/bots_round.gd"),
+	"chat_typed": preload("res://tools/probe/scenarios/chat_typed.gd"),
 	"clean": preload("res://tools/probe/scenarios/clean.gd"),
 	"full_round_citizens": preload("res://tools/probe/scenarios/full_round_citizens.gd"),
 	"full_round_deadline": preload("res://tools/probe/scenarios/full_round_deadline.gd"),

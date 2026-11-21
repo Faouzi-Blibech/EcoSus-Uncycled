@@ -3,6 +3,8 @@ extends RefCounted
 ## Blocking test client for the server's WebSocket protocol. Not Net: `--script` runs have no
 ## autoloads. Every call polls the socket itself, so no scene tree or frames are needed.
 
+## The wire protocol version of the hello (Net.PROTOCOL_VERSION; a test keeps the two equal).
+const PROTOCOL_VERSION: int = 1
 const MOVE_HZ: float = 10.0
 const MAX_SPEED_TILES_PER_S: float = 2.4
 const ARRIVE_EPS: float = 0.01
@@ -29,7 +31,7 @@ func connect_to(url: String) -> bool:
 		_ws.poll()
 		var s: int = _ws.get_ready_state()
 		if s == WebSocketPeer.STATE_OPEN:
-			send("hello", {"proto": 0, "client": "windows", "build": "probe"})
+			send("hello", {"proto": PROTOCOL_VERSION, "client": "windows", "build": "probe"})
 			return true
 		if s == WebSocketPeer.STATE_CLOSED:
 			return false

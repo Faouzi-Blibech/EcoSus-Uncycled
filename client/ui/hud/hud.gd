@@ -7,6 +7,7 @@ extends CanvasLayer
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const RoleRevealScene: PackedScene = preload("res://ui/hud/role_reveal.tscn")
 const SpectatorScene: PackedScene = preload("res://ui/hud/spectator_overlay.tscn")
+const GhostChatPanel := preload("res://ui/hud/ghost_chat_panel.gd")
 
 const MARGIN_PX: float = 8.0
 const TOP_RIGHT_WIDTH_PX: float = 170.0
@@ -82,6 +83,8 @@ func _build() -> void:
 	_spectator = SpectatorScene.instantiate() as SpectatorOverlay
 	_spectator.visible = false
 	_root.add_child(_spectator)
+	# The ghost chat of an out player; it hides itself while the local player is in.
+	_root.add_child(GhostChatPanel.new())
 
 	_build_top_left()
 	_build_top_right()
@@ -506,8 +509,9 @@ static func ended_toast_key(result: String) -> String:
 
 
 ## A refused clean_cancel is the server answering a cancel for a job that already ended: no toast.
+## A refused ghost line has its note in the ghost panel.
 static func shows_rejection(data: Dictionary) -> bool:
-	return str(data.get("action", "")) != "clean_cancel"
+	return not ["clean_cancel", "chat_text", "chat_phrase"].has(str(data.get("action", "")))
 
 
 ## The window lost focus: no key release will come, so a key hold ends here.

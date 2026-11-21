@@ -4,7 +4,7 @@ extends Node
 ## updated data when their own handler of the same signal runs.
 
 const Router := preload("res://scenes/router.gd")
-const Phrases := preload("res://content/phrases.gd")
+const ChatLimits := preload("res://content/chat_limits.gd")
 const SESSION_PATH: String = "user://session.cfg"
 const BUFFER_SIZE: int = 8
 const MAX_EXTRAPOLATION_S: float = 0.2
@@ -20,6 +20,8 @@ const DEFAULT_MAX_LAG_S: float = 0.5
 ## A render time that jumps by more than this, forward or back (app paused, new match), restarts the
 ## playback clock. Smaller backward steps (a late snapshot moves the server offset) just hold it.
 const PLAYBACK_RESET_GAP_S: float = 1.0
+## Ghost lines kept for the out player's panel (the server keeps 100 for a welcome).
+const GHOST_KEEP: int = 100
 
 
 class Snap:
@@ -70,9 +72,16 @@ var out_seats: Dictionary = {}
 ## cause, by, clues, task_bar, stage (discussion/voting/results), ends_at (local time, Net.local_time()),
 ## voted (Array[int]), votes. Empty when no meeting.
 var meeting: Dictionary = {}
-## Chat phrases I sent in this meeting. The server does not report it on a rejoin: it restarts at 0
-## and a "not_allowed" rejection of chat_phrase corrects it.
-var chat_used: int = 0
+## Chat phrases I sent in this meeting. A rejoin welcome reports it (meeting.my_chat); a
+## "phrase_limit" rejection of chat_phrase corrects it.
+var phrases_used: int = 0
+## Typed chat lines I sent in this meeting (welcome meeting.my_text; "text_limit" corrects it).
+var text_used: int = 0
+## Net.local_time() of my last chat line, typed, phrase or ghost: the server keeps a gap between two.
+var last_chat_t: float = -1.0e9
+## Ghost chat lines seen so far, as the server sent them ({seat, text} or {seat, id, args}, ghost
+## true). Only an out seat receives any.
+var ghost_chat: Array = []
 var last_game_over: Dictionary = {}
 ## Polluters voted out so far in this match, as far as the client knows; -1 while unknown (rejoined
 ## on a device that has no saved count). Read it through polluters_left().
@@ -201,9 +210,41 @@ func seat_color(seat: int) -> Color:
 	return color_of(int(seat_info(seat).get("color", -1)))
 
 
+func _meeting_tuning() -> Dictionary:
+	return Net.as_dict(tuning.get("meeting"))
+
+
+func phrase_limit() -> int:
+	return int(_meeting_tuning().get("phrases_per_meeting", ChatLimits.PHRASES_PER_MEETING))
+
+
+func text_limit() -> int:
+	return int(_meeting_tuning().get("text_per_meeting", ChatLimits.TEXT_PER_MEETING))
+
+
+## Longest typed line, in characters (the server counts code points, like a Godot LineEdit).
+func text_max_chars() -> int:
+	return int(_meeting_tuning().get("text_max_chars", ChatLimits.TEXT_MAX_CHARS))
+
+
+## Seconds the server keeps between two chat lines of one seat.
+func chat_gap_s() -> float:
+	return float(_meeting_tuning().get("chat_min_gap_s", ChatLimits.MIN_GAP_S))
+
+
 ## Chat phrases I may still send in this meeting.
 func chat_left() -> int:
-	return maxi(Phrases.LIMIT - chat_used, 0)
+	return maxi(phrase_limit() - phrases_used, 0)
+
+
+## Typed chat lines I may still send in this meeting.
+func text_left() -> int:
+	return maxi(text_limit() - text_used, 0)
+
+
+## Seconds before my next chat line may go; 0 or less when it may go now.
+func chat_gap_left() -> float:
+	return last_chat_t + chat_gap_s() - Net.local_time()
 
 
 ## Polluters still hidden: tuning.polluters minus the ejected ones; -1 when the count is unknown
@@ -352,7 +393,10 @@ func _reset_match_state() -> void:
 	out_cause = ""
 	out_seats = {}
 	meeting = {}
-	chat_used = 0
+	phrases_used = 0
+	text_used = 0
+	last_chat_t = -1.0e9
+	ghost_chat = []
 	last_game_over = {}
 
 
@@ -395,6 +439,8 @@ func _on_welcome(data: Dictionary) -> void:
 	if data.has("seats"):
 		seats = Net.as_array(data.get("seats"))
 	_mark_out_from_seats()
+	# Only an out seat's welcome carries the ghost chat so far.
+	ghost_chat = Net.as_array(data.get("ghost_chat")).duplicate()
 
 	var st: Dictionary = Net.as_dict(data.get("state"))
 	if not st.is_empty():
@@ -428,9 +474,11 @@ func _on_welcome(data: Dictionary) -> void:
 		last_game_over = Net.as_dict(st.get("game_over")).duplicate()
 		ejected_polluters = _load_ejections()
 		if not mt.is_empty():
-			# The server may report how many phrases I sent already (my_chat) and who is alive
-			# (living); without them a rejoin counts from 0 and trusts what the client saw.
-			chat_used = int(mt.get("my_chat", 0))
+			# The server may report how many phrases (my_chat) and typed lines (my_text) I sent
+			# already and who is alive (living); without them a rejoin counts from 0 and trusts
+			# what the client saw.
+			phrases_used = int(mt.get("my_chat", 0))
+			text_used = int(mt.get("my_text", 0))
 			_mark_victims(Net.as_array(mt.get("clues")))
 			_apply_living()
 	_save_saved()
@@ -526,7 +574,8 @@ func _on_event(data: Dictionary) -> void:
 			sabotage = {}
 		"meeting_started":
 			phase = "meeting"
-			chat_used = 0
+			phrases_used = 0
+			text_used = 0
 			meeting = {
 				"cause": str(data.get("cause", "")),
 				"by": int(data.get("by", -1)),
@@ -542,12 +591,14 @@ func _on_event(data: Dictionary) -> void:
 			_mark_victims(meeting["clues"])
 			_apply_living()
 		"chat":
-			if int(data.get("seat", -1)) == seat_id:
-				chat_used += 1
+			_on_chat(data)
 		"action_rejected":
-			# The server counts the limit itself: a refusal for that reason closes the picker.
-			if str(data.get("action", "")) == "chat_phrase" and str(data.get("reason", "")) == "not_allowed":
-				chat_used = Phrases.LIMIT
+			# The server counts the limits itself: a refusal for a limit closes that control only.
+			var reason: String = str(data.get("reason", ""))
+			if str(data.get("action", "")) == "chat_phrase" and reason == "phrase_limit":
+				phrases_used = phrase_limit()
+			elif str(data.get("action", "")) == "chat_text" and reason == "text_limit":
+				text_used = text_limit()
 		"voting_started":
 			phase = "meeting"
 			meeting["stage"] = "voting"
@@ -579,6 +630,23 @@ func _on_event(data: Dictionary) -> void:
 		"game_over":
 			phase = "ended"
 			last_game_over = data
+
+
+## A chat line: a ghost line goes to the ghost list and counts for no meeting limit; one of mine
+## starts the gap and takes a phrase or a typed line.
+func _on_chat(data: Dictionary) -> void:
+	var mine: bool = int(data.get("seat", -1)) == seat_id
+	if bool(data.get("ghost", false)):
+		ghost_chat.append(data.duplicate())
+		if ghost_chat.size() > GHOST_KEEP:
+			ghost_chat.pop_front()
+	elif mine:
+		if data.has("text"):
+			text_used += 1
+		else:
+			phrases_used += 1
+	if mine:
+		last_chat_t = Net.local_time()
 
 
 ## A polluter voted out lowers the count; the server's own count, when it sends one, wins. An

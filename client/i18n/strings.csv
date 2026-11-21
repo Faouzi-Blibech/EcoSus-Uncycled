@@ -181,6 +181,9 @@ REJECT_ALREADY_CLEANING,Someone is already cleaning it.,Quelqu'un le nettoie dé
 REJECT_FIRE_ACTIVE,A fire is burning. Put it out first.,Un feu brûle. Éteins-le d'abord.
 REJECT_NO_EMERGENCIES_LEFT,No emergency meetings left.,Plus de réunion d'urgence.
 REJECT_RATE_LIMITED,Slow down.,Doucement.
+REJECT_TOO_LONG,That line is too long.,Ce message est trop long.
+REJECT_TEXT_LIMIT,No more typed lines this meeting.,Plus de messages écrits dans cette réunion.
+REJECT_PHRASE_LIMIT,No more phrases this meeting.,Plus de phrases dans cette réunion.
 REJECT_UNKNOWN,Action refused.,Action refusée.
 REVEAL_GOAL_CITIZEN,"Finish your tasks and find the polluters.","Termine tes tâches et démasque les pollueurs."
 REVEAL_GOAL_POLLUTER,"Dump waste and poison citizens without being seen.","Jette des déchets et empoisonne les citoyens sans te faire voir."
@@ -235,7 +238,8 @@ CHAT_KIND_REACT,React,Réagir
 CHAT_KIND_VOTE,Vote,Vote
 CHAT_KIND_FILLER,Other,Autre
 CHAT_SAY,Say something,Parler
-CHAT_LEFT,Lines left: %d,Messages restants : %d
+CHAT_PHRASES_LEFT,Phrases left: %d,Phrases restantes : %d
+CHAT_TEXT_LEFT,Typed lines left: %d,Messages écrits restants : %d
 CHAT_SEND,Send,Envoyer
 CHAT_BACK,Back,Retour
 CHAT_PICK_KIND,What do you want to say?,Que veux-tu dire ?
@@ -245,3 +249,8 @@ CHAT_PICK_ZONE,Pick a place.,Choisis un lieu.
 CHAT_CLOSED,You cannot chat now.,Tu ne peux pas parler maintenant.
 CHAT_NONE_LEFT,No lines left.,Plus de messages.
 CHAT_REJECTED,That line was not accepted.,Ce message n'a pas été accepté.
+CHAT_TYPE_HINT,Type a message,Écris un message
+CHAT_HAS_VOTED,%s has voted,%s a voté
+MEETING_GHOST_LINE,%s (ghost): %s,%s (fantôme) : %s
+CHAT_GHOST_HINT,Ghost chat: only out players see it.,Discussion des fantômes : seuls les joueurs éliminés la voient.
+GHOST_CHAT_TITLE,Ghost chat,Discussion des fantômes

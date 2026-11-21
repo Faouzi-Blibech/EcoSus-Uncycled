@@ -71,7 +71,7 @@ const TYPED_MESSAGES: Array[String] = [
 	"sabotage_ended",
 ]
 
-const PROTOCOL_VERSION: int = 0
+const PROTOCOL_VERSION: int = 1
 const TILE_PX: float = 32.0
 const DEFAULT_SPEED_TILES_PER_S: float = 2.5
 const CONNECT_TIMEOUT_S: float = 6.0
@@ -298,6 +298,11 @@ func send_chat_phrase(id: String, args: Array) -> void:
 	for a in args:
 		wire.append(a if typeof(a) == TYPE_STRING else int(a))
 	send("chat_phrase", {"id": id, "args": wire})
+
+
+## One typed chat line; the server checks the length, the limits and the gap and filters words.
+func send_chat_text(text: String) -> void:
+	send("chat_text", {"text": text})
 
 
 ## Starts the 0.5, 1, 2, 4 s backoff loop (30 s total). Emits reconnecting(attempt) per try,
