@@ -19,6 +19,8 @@ const EXTERNAL: Dictionary = {
 	"clean": preload("res://tools/probe/scenarios/clean.gd"),
 	"full_round_citizens": preload("res://tools/probe/scenarios/full_round_citizens.gd"),
 	"full_round_deadline": preload("res://tools/probe/scenarios/full_round_deadline.gd"),
+	"meeting_bots": preload("res://tools/probe/scenarios/meeting_bots.gd"),
+	"meeting_bots_listen": preload("res://tools/probe/scenarios/meeting_bots_listen.gd"),
 	"meeting_chat": preload("res://tools/probe/scenarios/meeting_chat.gd"),
 	"rejoin_meeting": preload("res://tools/probe/scenarios/rejoin_meeting.gd"),
 	"sabotage_fire": preload("res://tools/probe/scenarios/sabotage_fire.gd"),

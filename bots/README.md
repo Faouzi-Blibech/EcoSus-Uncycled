@@ -48,3 +48,27 @@ ships `"brain": "scripted"`. To play the trained networks, put `citizen.onnx`/`c
 and set `UNCYCLED_BOTS_BRAIN=neural`, which overrides the file's `brain` without a rebuild. The models are
 loaded once when the server starts; a role whose model is missing, corrupt or of another schema plays the
 scripted brain, and the reason is logged once at startup.
+
+## Bots talk in meetings
+
+In a live room each bot chats and votes in meetings with the same commands a player sends (phrases from
+`content/phrases.json`, at most 5 lines per meeting, one bot line every 2 s in the room, votes 3-20 s into the
+vote stage). Each decision is made by the rule path (always available) or, when switched on, by Clef-flash on Cloudflare Workers AI;
+the room tick never waits on the model: a call has a 3 s timeout (`bots.json` `meeting.timeout_s`), a per-day
+cap (`meeting.daily_call_cap`, 5000) and any failure, late answer or missing key falls back to the rule path.
+
+The key stays on the server. Copy `bots/.env.example` to a file kept outside the repo, fill in
+`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` (token permission: Workers AI) and pass it to the container:
+
+```bash
+docker run --rm -p 5000:8080 --env-file <path-to>/cloudflare.env uncycled-server
+```
+
+Which decisions the model makes is one setting, `bots.json` `meeting.clef_for`: `"none"` (the default: rules talk
+and vote, the model is off even when the keys are set), `"vote"` (rules talk, Clef votes, rule vote as fallback) or
+`"all"` (Clef also talks). A bot votes what it said in the chat (its vote line or the seat it accused last), so the
+model decides only for bots that said nothing. With the two variables empty or missing the bots use the rule path
+only (logged once at startup). Each decision
+the bots send is one JSON line (`source` is `clef` or `rule`, `fallback` says why the rule path answered,
+`latency_ms`): it goes to the server log (`docker logs`), or to the file named by `UNCYCLED_MEETING_LOG`. That file
+is flushed when the server stops normally, so stop the container with `docker stop`, not `kill`.

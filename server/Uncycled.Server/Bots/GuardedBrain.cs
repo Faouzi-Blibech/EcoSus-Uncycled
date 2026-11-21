@@ -41,6 +41,9 @@ public sealed class GuardedBrain : IBotBrain
         _slowStrikes = slowStrikes;
     }
 
+    /// <summary>The brain that plays now (tests look inside it).</summary>
+    internal IBotBrain Active => _active;
+
     /// <summary>0 = the chosen brain, 1 = scripted fallback, 2 = idle.</summary>
     public int Stage => _stage;
 

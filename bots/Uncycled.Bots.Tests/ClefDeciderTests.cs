@@ -571,6 +571,24 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
+        public void Settings_ClefForDefaultsToNoneAndReadsTheFile()
+        {
+            Assert.Equal("none", new BotsSettings().MeetingClefFor);
+            string path = Path.Combine(Path.GetTempPath(), "bots-" + Guid.NewGuid().ToString("N") + ".json");
+            try
+            {
+                File.WriteAllText(path, "{ \"meeting\": { \"clef_for\": \"all\" } }");
+                Assert.Equal("all", BotsSettings.Load(path).MeetingClefFor);
+                File.WriteAllText(path, "{ \"meeting\": { \"daily_call_cap\": 5 } }");
+                Assert.Equal("none", BotsSettings.Load(path).MeetingClefFor);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
         public void Settings_ReadTheMeetingCapAndTimeout()
         {
             Assert.Equal(5000, new BotsSettings().MeetingDailyCallCap);

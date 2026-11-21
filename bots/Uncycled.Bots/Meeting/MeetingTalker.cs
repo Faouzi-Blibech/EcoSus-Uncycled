@@ -42,10 +42,13 @@ namespace Uncycled.Bots.Meeting
         private MeetingStage? _stage;
         private int _lines;
         private int _seen;
+        private int _seenGen;
         private float? _nextAt;
         private float? _replyAt;
         private float? _voteAt;
         private bool _voteDone;
+        private bool _announced;
+        private byte? _announcedVote;
         private MeetingDecision? _ready;
         private MeetingState? _readyState;
         private Task<MeetingDecision>? _task;
@@ -89,6 +92,7 @@ namespace Uncycled.Bots.Meeting
                 Reset();
                 _inMeeting = true;
                 _seen = log.Acts.Count;
+                _seenGen = log.Generation;
             }
 
             if (_stage != meeting.Stage)
@@ -119,9 +123,10 @@ namespace Uncycled.Bots.Meeting
                 _nextAt = now + Between(FirstMinS, FirstMaxS);
             }
 
-            if (_seen > log.Acts.Count)
+            if (_seenGen != log.Generation)
             {
-                _seen = log.Acts.Count; // the host cleared the log: read the new acts from the start
+                _seen = 0; // the host cleared the log (it may be longer again by now): read the new acts from the start
+                _seenGen = log.Generation;
             }
 
             for (; _seen < log.Acts.Count; _seen++)
@@ -215,6 +220,17 @@ namespace Uncycled.Bots.Meeting
             LastSource = say.Source;
             Report(sayState, say);
             _lines++;
+            if ((say.PhraseId == "vote" || say.PhraseId == "sus" || say.PhraseId == "saw_dump" || say.PhraseId == "saw_hit" || say.PhraseId == "near_pile") && say.Seat != null)
+            {
+                _announced = true;
+                _announcedVote = say.Seat;
+            }
+            else if (say.PhraseId == "skip_no_proof")
+            {
+                _announced = true;
+                _announcedVote = null;
+            }
+
             _replyAt = null;
             _nextAt = now + Between(GapMinS, GapMaxS);
             _seen = log.Acts.Count;
@@ -242,7 +258,7 @@ namespace Uncycled.Bots.Meeting
                 _voteAt = now + delay;
             }
 
-            if (_task == null && now >= _voteAt.Value - LeadS)
+            if (_task == null && !_announced && now >= _voteAt.Value - LeadS)
             {
                 StartPrimary(BuildState(view, mem, log, false));
             }
@@ -253,9 +269,20 @@ namespace Uncycled.Bots.Meeting
             }
 
             MeetingState state = BuildState(view, mem, log, false);
-            MeetingDecision? primary = TakePrimary(out string? reason);
-            MeetingDecision d = primary ?? RunFallback(state);
-            d = Ground(d, state, primary == null ? reason : null);
+            MeetingDecision d;
+            if (_announced)
+            {
+                // a bot votes what it said in the chat (a vote line, or the seat it accused last): the talk is its decision
+                d = new MeetingDecision { Vote = _announcedVote, SkipVote = _announcedVote == null, Source = _fallback.Name };
+                d = Ground(d, state, "announced");
+            }
+            else
+            {
+                MeetingDecision? primary = TakePrimary(out string? reason);
+                d = primary ?? RunFallback(state);
+                d = Ground(d, state, primary == null ? reason : null);
+            }
+
             _voteDone = true;
             LastSource = d.Source;
             send(new VoteCommand(d.SkipVote ? null : d.Vote));
@@ -396,6 +423,8 @@ namespace Uncycled.Bots.Meeting
             _replyAt = null;
             _voteAt = null;
             _voteDone = false;
+            _announced = false;
+            _announcedVote = null;
             _ready = null;
             _readyState = null;
         }

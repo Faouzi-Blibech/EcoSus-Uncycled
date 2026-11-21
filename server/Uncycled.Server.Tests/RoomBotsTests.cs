@@ -44,7 +44,7 @@ namespace Uncycled.Server.Tests
             {
             }
 
-            public override IBotBrain Create(Role role, byte seat) => throw new InvalidOperationException("cannot build a brain");
+            public override IBotBrain Create(Role role, byte seat, RoomMeeting? meeting = null) => throw new InvalidOperationException("cannot build a brain");
         }
 
         private sealed class Result
