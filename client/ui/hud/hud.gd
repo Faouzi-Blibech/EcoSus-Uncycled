@@ -83,8 +83,6 @@ func _build() -> void:
 	_spectator = SpectatorScene.instantiate() as SpectatorOverlay
 	_spectator.visible = false
 	_root.add_child(_spectator)
-	# The ghost chat of an out player; it hides itself while the local player is in.
-	_root.add_child(GhostChatPanel.new())
 
 	_build_top_left()
 	_build_top_right()
@@ -102,6 +100,9 @@ func _build() -> void:
 	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_root.add_child(_toast)
+	# The ghost chat of an out player, above the other HUD parts (it docks at the top while typing on a
+	# phone); it hides itself while the local player is in.
+	_root.add_child(GhostChatPanel.new())
 
 	_reveal = RoleRevealScene.instantiate() as RoleReveal
 	_reveal.visible = false

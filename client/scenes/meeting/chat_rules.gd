@@ -23,9 +23,26 @@ static func can_text(s: Object) -> bool:
 			and not s.seat_out(s.seat_id) and s.text_left() > 0
 
 
+## The one definition of "I am out" for the chat: the session says so or the seat list does.
+static func is_out(s: Object) -> bool:
+	return s.is_out or s.seat_out(s.seat_id)
+
+
 ## I am out: ghost chat, typed or phrases, with no per-meeting cap.
 static func can_ghost(s: Object) -> bool:
-	return (s.is_out or s.seat_out(s.seat_id)) and GHOST_PHASES.has(str(s.phase))
+	return is_out(s) and GHOST_PHASES.has(str(s.phase))
+
+
+## A phone or tablet: the soft keyboard covers half the screen (and the web build cannot tell its
+## height), so the chat boxes dock at the top while they have focus.
+static func is_touch_device() -> bool:
+	return OS.has_feature("android") or OS.has_feature("ios") 			or (OS.has_feature("web") and DisplayServer.is_touchscreen_available())
+
+
+## Puts the children of `parent` first, in this order (the others keep their order after them).
+static func arrange(parent: Node, ordered: Array) -> void:
+	for i in ordered.size():
+		parent.move_child(ordered[i] as Node, i)
 
 
 ## The system line when a seat has voted: who, never for whom.

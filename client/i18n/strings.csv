@@ -250,6 +250,7 @@ CHAT_CLOSED,You cannot chat now.,Tu ne peux pas parler maintenant.
 CHAT_NONE_LEFT,No lines left.,Plus de messages.
 CHAT_REJECTED,That line was not accepted.,Ce message n'a pas été accepté.
 CHAT_TYPE_HINT,Type a message,Écris un message
+CHAT_DONE,Done,Fermer
 CHAT_HAS_VOTED,%s has voted,%s a voté
 MEETING_GHOST_LINE,%s (ghost): %s,%s (fantôme) : %s
 CHAT_GHOST_HINT,Ghost chat: only out players see it.,Discussion des fantômes : seuls les joueurs éliminés la voient.

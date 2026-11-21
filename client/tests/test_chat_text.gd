@@ -388,21 +388,68 @@ func test_ghost_lines_stay_out_of_a_living_players_meeting() -> bool:
 	return true
 
 
-func test_out_player_chats_as_a_ghost_in_the_meeting() -> bool:
+func _find_picker(node: Node) -> Node:
+	if node.get_script() == PhrasePicker:
+		return node
+	for c in node.get_children():
+		var found: Node = _find_picker(c)
+		if found != null:
+			return found
+	return null
+
+
+## Taps Say, picks the phrase "hmm" and sends it; true when a picker was there to do it.
+func _send_hmm_through_the_picker(m: Control) -> bool:
+	m._on_say()
+	var picker: Node = _find_picker(m._left)
+	if not m._picking or picker == null:
+		return false
+	picker.choose_kind("filler")
+	picker.choose_phrase("hmm")
+	picker.send()
+	return true
+
+
+func test_out_player_sends_ghost_phrases_and_lines_at_any_stage_of_the_meeting() -> bool:
 	_live_session()
 	Session.is_out = true
 	Session.out_seats[0] = true
 	var m: Control = _meeting_scene()
-	assert_true(m._text_edit.editable and not m._send_btn.disabled, "an out player may type (ghost chat)")
-	assert_true(not m._say_btn.disabled, "and pick phrases")
+	var spy: Object = track(SpyNet.new())
+	m.net = spy
+	for stage in ["discussion", "voting", "results"]:
+		Session.meeting["stage"] = stage
+		m._rebuild()
+		assert_true(m._chat_panel.visible, "%s: an out player keeps the chat panel" % stage)
+		assert_true(not m._say_btn.disabled, "%s: Say is open" % stage)
+		spy.last_type = ""
+		assert_true(_send_hmm_through_the_picker(m), "%s: Say opens the picker" % stage)
+		assert_eq(spy.last_type, "chat_phrase", "%s: a phrase was sent" % stage)
+		assert_eq(spy.last_fields, {"id": "hmm", "args": []}, "%s: the phrase as picked" % stage)
+		assert_true(not m._picking, "%s: the picker closes after the send" % stage)
+		spy.last_type = ""
+		m._awaiting_echo = false
+		Session.last_chat_t = -1.0e9
+		m._text_edit.text = "boo from stage " + stage
+		m._on_send_text()
+		assert_eq(spy.last_type, "chat_text", "%s: a typed line was sent" % stage)
+		assert_eq(spy.last_fields, {"text": "boo from stage " + stage}, "%s: the typed text" % stage)
+	_restore()
+	return true
+
+
+func test_a_living_player_gets_no_picker_outside_the_discussion() -> bool:
+	_live_session()
+	var m: Control = _meeting_scene()
+	m.net = track(SpyNet.new())
+	Session.meeting["stage"] = "voting"
+	m._rebuild()
+	assert_true(not _send_hmm_through_the_picker(m), "voting: Say is closed for a living player")
+	assert_true(not m._picking, "and nothing opens")
 	var p: Object = track(PhrasePicker.new())
 	p.session = Session
 	p.ghost = true
-	assert_true(p.is_enabled(), "the picker is open to a ghost")
-	assert_true(p.seat_options().has(2), "a ghost may name a seat that is out")
-	var living: Object = track(PhrasePicker.new())
-	living.session = Session
-	assert_true(not living.is_enabled(), "but not as a living picker")
+	assert_true(not p.is_enabled(), "a ghost picker is closed to a living player")
 	_restore()
 	return true
 
@@ -439,4 +486,203 @@ func test_a_refused_chat_line_has_no_toast() -> bool:
 	assert_true(not Hud.shows_rejection({"action": "chat_text", "reason": "rate_limited"}), "the ghost panel has its own note")
 	assert_true(not Hud.shows_rejection({"action": "chat_phrase", "reason": "too_long"}), "so for a phrase")
 	assert_true(Hud.shows_rejection({"action": "hit", "reason": "on_cooldown"}), "other refusals keep their toast")
+	return true
+
+
+# ---------------------------------------------------------------- the ghost history is capped
+
+func _ghost_lines(prefix: String, count: int) -> Array:
+	var lines: Array = []
+	for i in count:
+		lines.append({"seat": 3, "text": "%s %d" % [prefix, i], "ghost": true})
+	return lines
+
+
+func _line_texts(panel: Control) -> Array[String]:
+	var texts: Array[String] = []
+	for c in panel._lines.get_children():
+		texts.append((c as Label).text)
+	return texts
+
+
+func _out_session_panel() -> Control:
+	_live_session()
+	Session.seats = _seats()
+	Session.is_out = true
+	Session.out_seats = {0: true}
+	Session.seat_id = 0
+	Session.phase = "playing"
+	var panel: Control = track(GhostPanel.new()) as Control
+	panel._ready()
+	return panel
+
+
+func test_ghost_panel_keeps_up_when_the_history_is_full() -> bool:
+	var panel: Control = _out_session_panel()
+	Session.ghost_chat = _ghost_lines("old", 100)
+	panel.sync()
+	assert_eq(panel._lines.get_child_count(), 100, "a full history is drawn")
+	Session._on_event({"t": "chat", "seat": 3, "text": "newest", "ghost": true})
+	assert_eq(Session.ghost_chat.size(), 100, "the history stays at 100")
+	panel.sync()
+	var texts: Array[String] = _line_texts(panel)
+	assert_eq(texts.size(), 100, "still 100 labels")
+	assert_eq(texts[99], "Dee: newest", "the new line is the last")
+	assert_eq(texts[0], "Dee: old 1", "the oldest line is gone")
+	for i in 3:
+		Session._on_event({"t": "chat", "seat": 3, "text": "more %d" % i, "ghost": true})
+	panel.sync()
+	texts = _line_texts(panel)
+	assert_eq(texts.size(), 100, "several at once: still 100")
+	assert_eq(texts[99], "Dee: more 2", "in order, the last is last")
+	assert_eq(texts[96], "Dee: newest", "and the one before them follows")
+	_restore()
+	return true
+
+
+func test_ghost_panel_after_a_rejoin_with_a_full_history() -> bool:
+	var panel: Control = _out_session_panel()
+	Session.ghost_chat = _ghost_lines("before", 3)
+	panel.sync()
+	assert_eq(panel._lines.get_child_count(), 3, "the lines of the first session")
+	var welcome: Dictionary = _out_welcome(_ghost_lines("rejoin", 100))
+	Session._on_welcome(welcome)
+	panel.sync()
+	var texts: Array[String] = _line_texts(panel)
+	assert_eq(texts.size(), 100, "the welcome history replaces the old lines")
+	assert_eq(texts[0], "Dee: rejoin 0", "from its first line")
+	Session._on_event({"t": "chat", "seat": 3, "text": "after rejoin", "ghost": true})
+	panel.sync()
+	texts = _line_texts(panel)
+	assert_eq(texts.size(), 100, "a new line after the rejoin: still 100")
+	assert_eq(texts[99], "Dee: after rejoin", "it shows")
+	assert_eq(texts[0], "Dee: rejoin 1", "the oldest went")
+	Session._on_welcome(_welcome())
+	panel.sync()
+	assert_true(not panel.visible, "a living welcome hides the panel")
+	_restore()
+	return true
+
+
+func test_one_definition_of_out_and_no_ghost_line_kept_for_a_living_seat() -> bool:
+	_live_session()
+	Session.seats = _seats()
+	Session.is_out = false
+	Session.out_seats = {0: true}
+	Session.seat_id = 0
+	Session.phase = "playing"
+	var panel: Control = track(GhostPanel.new()) as Control
+	panel._ready()
+	panel.sync()
+	assert_true(panel.visible, "out by the seat list is out for the panel too")
+	_restore()
+	_live_session()
+	Session._on_event({"t": "chat", "seat": 3, "text": "leaked", "ghost": true})
+	assert_eq(Session.ghost_chat.size(), 0, "a ghost line that reaches a living seat is dropped")
+	Session._on_event({"t": "action_rejected", "action": "chat_phrase", "reason": "not_allowed"})
+	assert_eq(Session.chat_left(), 5, "not_allowed (seat out) no longer uses up the phrases")
+	_restore()
+	return true
+
+
+# ---------------------------------------------------------------- compact typing layout on touch devices
+
+func test_meeting_box_docks_at_the_top_while_it_has_focus_on_a_touch_device() -> bool:
+	_live_session()
+	var m: Control = _meeting_scene()
+	m.touch = true
+	assert_eq(m._chat_panel.get_child(0), m._chat_title, "normal layout: the title first")
+	assert_eq(m._type_row.get_index(), 4, "the box is under the list and the counters")
+	m._text_edit.focus_entered.emit()
+	assert_eq(m._chat_panel.get_child(0), m._type_row, "focus in: the text row is first")
+	assert_eq(m._chat_scroll.get_index(), 2, "the history sits right under the row and its note")
+	assert_true(not m._top_row.visible and not m._left.visible, "the title row and the left column wait")
+	assert_true(not m._say_btn.visible and not m._chat_title.visible and not m._counters.visible, "so do Say, the title and the counters")
+	assert_true(m._done_btn.visible and m._send_btn.visible and m._text_edit.visible, "the row shows box, Send and Done")
+	assert_eq(m._chat_panel.custom_minimum_size.x, 0.0, "the panel takes the whole width")
+	m._text_edit.focus_exited.emit()
+	assert_eq(m._chat_panel.get_child(0), m._chat_title, "focus out: back to the normal order")
+	assert_eq(m._type_row.get_index(), 4, "box under the counters again")
+	assert_true(m._top_row.visible and m._left.visible and m._say_btn.visible and m._counters.visible, "everything is back")
+	assert_true(not m._done_btn.visible, "no Done")
+	m._text_edit.focus_entered.emit()
+	m._done_btn.pressed.emit()
+	assert_true(m._left.visible and m._chat_panel.get_child(0) == m._chat_title, "Done leaves the compact layout")
+	m.touch = false
+	m._text_edit.focus_entered.emit()
+	assert_true(m._left.visible and m._chat_panel.get_child(0) == m._chat_title, "a desktop keeps its layout")
+	_restore()
+	return true
+
+
+func test_meeting_compact_layout_really_puts_the_box_on_top() -> bool:
+	_live_session()
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	var m: Control = load("res://scenes/meeting/meeting.tscn").instantiate() as Control
+	root.add_child(m)
+	m.touch = true
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	var before: float = m._type_row.global_position.y
+	m._text_edit.focus_entered.emit()
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	var row_y: float = m._type_row.global_position.y
+	assert_true(row_y < 24.0, "the text row is at the top of the screen (y %f)" % row_y)
+	assert_true(row_y < before, "it moved up from %f" % before)
+	assert_true(m._chat_scroll.global_position.y > row_y, "the history is under it")
+	assert_true(m._chat_scroll.size.y > 60.0, "and has room")
+	m.queue_free()
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	_restore()
+	return true
+
+
+func test_ghost_panel_box_docks_at_the_top_while_it_has_focus_on_a_touch_device() -> bool:
+	var panel: Control = _out_session_panel()
+	panel.touch = true
+	panel.sync()
+	assert_eq(panel.anchor_top, 1.0, "normal: docked at the bottom")
+	assert_eq(panel.body.get_child(0), panel._scroll, "the history first")
+	panel.text_edit.focus_entered.emit()
+	assert_eq(panel.anchor_top, 0.0, "focus in: docked at the top")
+	assert_eq(panel.anchor_left, 0.0, "full width")
+	assert_eq(panel.anchor_right, 1.0, "full width")
+	assert_eq(panel.body.get_child(0), panel._type_row, "the text row first")
+	assert_eq(panel._scroll.get_index(), 2, "the history right under the row and the note")
+	assert_true(not panel._toggle_btn.visible and not panel._say_btn.visible, "no header and no Say")
+	assert_true(panel._done_btn.visible, "Done shows")
+	panel.text_edit.focus_exited.emit()
+	assert_eq(panel.anchor_top, 1.0, "focus out: back at the bottom")
+	assert_eq(panel.body.get_child(0), panel._scroll, "history first again")
+	assert_true(panel._toggle_btn.visible and panel._say_btn.visible and not panel._done_btn.visible, "controls back")
+	panel.touch = false
+	panel.text_edit.focus_entered.emit()
+	assert_eq(panel.anchor_top, 1.0, "not on a desktop")
+	_restore()
+	return true
+
+
+func test_ghost_panel_sends_typed_lines_and_phrases_through_net() -> bool:
+	var panel: Control = _out_session_panel()
+	var spy: Object = track(SpyNet.new())
+	panel.net = spy
+	panel.sync()
+	panel.text_edit.text = "psst"
+	panel.send()
+	assert_eq(spy.last_type, "chat_text", "a typed ghost line")
+	assert_eq(spy.last_fields, {"text": "psst"}, "as typed")
+	panel._open_picker()
+	panel._picker.choose_kind("filler")
+	panel._picker.choose_phrase("idk")
+	panel._picker.send()
+	assert_eq(spy.last_type, "chat_phrase", "a ghost phrase")
+	assert_eq(spy.last_fields, {"id": "idk", "args": []}, "as picked")
+	_restore()
+	return true
+
+
+func test_inbound_buffer_holds_a_large_welcome() -> bool:
+	var n: Object = track(SpyNet.new())
+	assert_eq(n._ws.inbound_buffer_size, 1 << 20, "Net: 1 MB inbound")
+	assert_eq(ProbeClient.new()._ws.inbound_buffer_size, 1 << 20, "the probe client too")
 	return true

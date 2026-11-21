@@ -37,6 +37,16 @@ var _counters: Label
 var _text_edit: LineEdit
 var _send_btn: Button
 var _margin: MarginContainer
+var _top_row: HBoxContainer
+var _chat_title: Label
+var _type_row: HBoxContainer
+var _done_btn: Button
+## Where the messages go (the Net autoload; a test passes a recorder).
+var net: Object = Net
+## A touch device (phone, tablet): the box docks at the top while it has focus. A test sets it.
+var touch: bool = ChatRules.is_touch_device()
+## The compact typing layout is on: only the box, the note and the history show, at the top.
+var _compact: bool = false
 ## The picker replaces the clue list in the left column while it is open.
 var _picking: bool = false
 var _flash_left: float = 0.0
@@ -69,13 +79,13 @@ func _ready() -> void:
 
 	var root: VBoxContainer = UIKit.make_vbox(6)
 	_margin.add_child(root)
-	var top: HBoxContainer = HBoxContainer.new()
-	root.add_child(top)
+	_top_row = HBoxContainer.new()
+	root.add_child(_top_row)
 	_title = UIKit.make_label("", 18)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(_title)
+	_top_row.add_child(_title)
 	_timer = UIKit.make_label("", 18)
-	top.add_child(_timer)
+	_top_row.add_child(_timer)
 
 	var cols: HBoxContainer = HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 10)
@@ -87,7 +97,8 @@ func _ready() -> void:
 
 	_chat_panel = UIKit.make_vbox(2, CHAT_WIDTH)
 	cols.add_child(_chat_panel)
-	_chat_panel.add_child(UIKit.make_label(tr("MEETING_CHAT"), 12, MUTED))
+	_chat_title = UIKit.make_label(tr("MEETING_CHAT"), 12, MUTED)
+	_chat_panel.add_child(_chat_title)
 	_chat_scroll = ScrollContainer.new()
 	_chat_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_chat_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -100,17 +111,27 @@ func _ready() -> void:
 	# Two short lines that fit the column: no autowrap (a wrapping label sizes itself badly here).
 	_counters = UIKit.make_label("", 12, MUTED)
 	_chat_panel.add_child(_counters)
-	var type_row: HBoxContainer = HBoxContainer.new()
-	type_row.add_theme_constant_override("separation", 4)
-	_chat_panel.add_child(type_row)
+	_type_row = HBoxContainer.new()
+	_type_row.add_theme_constant_override("separation", 4)
+	_chat_panel.add_child(_type_row)
 	_text_edit = UIKit.make_line_edit(tr("CHAT_TYPE_HINT"), "", Session.text_max_chars())
 	_text_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_text_edit.keep_editing_on_text_submit = true
 	_text_edit.text_submitted.connect(_on_text_submitted)
-	type_row.add_child(_text_edit)
+	_text_edit.focus_entered.connect(_on_box_focus.bind(true))
+	_text_edit.focus_exited.connect(_on_box_focus.bind(false))
+	_type_row.add_child(_text_edit)
+	# Send and Done never take the focus: a tap on them must not close the keyboard (and so change the
+	# layout) before the tap is read.
 	_send_btn = UIKit.make_button(tr("CHAT_SEND"), SEND_WIDTH)
+	_send_btn.focus_mode = Control.FOCUS_NONE
 	_send_btn.pressed.connect(_on_send_text)
-	type_row.add_child(_send_btn)
+	_type_row.add_child(_send_btn)
+	_done_btn = UIKit.make_button(tr("CHAT_DONE"), SEND_WIDTH)
+	_done_btn.focus_mode = Control.FOCUS_NONE
+	_done_btn.visible = false
+	_done_btn.pressed.connect(_on_done)
+	_type_row.add_child(_done_btn)
 	_say_btn = UIKit.make_button(tr("CHAT_SAY"), CHAT_WIDTH)
 	_say_btn.pressed.connect(_on_say)
 	_chat_panel.add_child(_say_btn)
@@ -239,9 +260,12 @@ func _rebuild() -> void:
 	_confirm_btn = null
 	_skip_btn = null
 	var ejecting: bool = Session.phase == "ejection"
-	_chat_panel.visible = not ejecting and _stage() != "results"
+	# Living players have no chat once the votes are in; an out player's ghost chat goes on (not in the ejection view).
+	_chat_panel.visible = not ejecting and (_stage() != "results" or _me_out())
 	if ejecting or not _can_say():
 		_picking = false
+	if not _chat_panel.visible:
+		_set_compact(false)
 	_refresh_chat()
 	if ejecting:
 		_title.text = tr("PHASE_EJECTION")
@@ -250,26 +274,36 @@ func _rebuild() -> void:
 	match _stage():
 		"voting":
 			_title.text = tr("MEETING_VOTING")
-			_build_voting()
 		"results":
 			_title.text = tr("MEETING_RESULTS")
-			_build_results()
 		_:
 			_title.text = tr("MEETING_DISCUSSION")
+	if _picking:
+		_build_picker()
+		return
+	match _stage():
+		"voting":
+			_build_voting()
+		"results":
+			_build_results()
+		_:
 			_build_discussion()
 
 
+## The phrase picker replaces the left column at any stage (a living player only reaches it in the
+## discussion; an out player may send ghost phrases at any time).
+func _build_picker() -> void:
+	var strip: String = _clue_strip()
+	if not strip.is_empty():
+		_left.add_child(_clue_line(strip, 12, MUTED))
+	var picker: PhrasePicker = PhrasePicker.new()
+	picker.ghost = _me_out()
+	picker.send_requested.connect(_on_phrase_chosen)
+	picker.closed.connect(_on_picker_closed)
+	_left.add_child(picker)
+
+
 func _build_discussion() -> void:
-	if _picking:
-		var strip: String = _clue_strip()
-		if not strip.is_empty():
-			_left.add_child(_clue_line(strip, 12, MUTED))
-		var picker: PhrasePicker = PhrasePicker.new()
-		picker.ghost = _me_out()
-		picker.send_requested.connect(_on_phrase_chosen)
-		picker.closed.connect(_on_picker_closed)
-		_left.add_child(picker)
-		return
 	var by: int = int(Session.meeting.get("by", -1))
 	var cause_key: String = "MEETING_CAUSE_REPORT"
 	if str(Session.meeting.get("cause", "")) == "emergency":
@@ -530,9 +564,8 @@ func _refresh_chat() -> void:
 	_say_btn.disabled = not can_say or _picking
 	_text_edit.editable = can_type
 	_send_btn.disabled = not can_type or _awaiting_echo or Session.chat_gap_left() > 0.0
-	_counters.visible = not ghost
-	_counters.text = tr("CHAT_PHRASES_LEFT") % Session.chat_left() + "
-" + tr("CHAT_TEXT_LEFT") % Session.text_left()
+	_counters.visible = not ghost and not _compact
+	_counters.text = tr("CHAT_PHRASES_LEFT") % Session.chat_left() + "\n" + tr("CHAT_TEXT_LEFT") % Session.text_left()
 	if _picking:
 		_say_note.text = ""
 	elif _flash_left > 0.0:
@@ -547,11 +580,11 @@ func _refresh_chat() -> void:
 		_say_note.text = tr("CHAT_CLOSED")
 
 
-## On a phone the soft keyboard covers the bottom of the screen: while the box has focus the whole
-## view lifts its bottom margin by the keyboard height, so the box stays in sight.
+## An extra for platforms that report the keyboard height: while the box has focus the view lifts its
+## bottom margin by it. The web build reports 0, so touch devices use the compact layout instead.
 func _keep_box_above_keyboard() -> void:
 	var lift: float = 0.0
-	if _text_edit.has_focus():
+	if _text_edit.has_focus() and not _compact:
 		lift = ChatRules.lift_px(DisplayServer.virtual_keyboard_get_height(), DisplayServer.window_get_size().y,
 				get_viewport_rect().size.y)
 	if not is_equal_approx(lift, _lift):
@@ -562,7 +595,7 @@ func _keep_box_above_keyboard() -> void:
 # ---------------------------------------------------------------- input
 
 func _on_say() -> void:
-	if not PhrasePicker.can_chat(Session):
+	if not _can_say():
 		return
 	_picking = true
 	_rebuild()
@@ -574,7 +607,7 @@ func _on_picker_closed() -> void:
 
 
 func _on_phrase_chosen(id: String, args: Array) -> void:
-	Net.send_chat_phrase(id, args)
+	net.send_chat_phrase(id, args)
 
 
 func _on_text_submitted(_text: String) -> void:
@@ -587,9 +620,46 @@ func _on_send_text() -> void:
 	var text: String = _text_edit.text.strip_edges()
 	if text.is_empty() or not _can_type() or _awaiting_echo or Session.chat_gap_left() > 0.0:
 		return
-	Net.send_chat_text(text)
+	net.send_chat_text(text)
 	_awaiting_echo = true
 	_await_left = ECHO_WAIT_S
+	_refresh_chat()
+
+
+## The box gained or lost the focus: on a touch device the soft keyboard is up or gone.
+func _on_box_focus(entered: bool) -> void:
+	if touch:
+		_set_compact(entered)
+
+
+func _on_done() -> void:
+	if _text_edit.has_focus():
+		_text_edit.release_focus()
+	_set_compact(false)
+	DisplayServer.virtual_keyboard_hide()
+
+
+## The compact typing layout: the soft keyboard covers the bottom half of a landscape phone and
+## the web build cannot say how high it is, so while the box has focus the box docks at the top of the
+## screen with the history right under it, and the title, the clues, the picker and the other controls
+## wait until the focus leaves.
+func _set_compact(on: bool) -> void:
+	if on == _compact:
+		return
+	_compact = on
+	_top_row.visible = not on
+	_left.visible = not on
+	_chat_title.visible = not on
+	_say_btn.visible = not on
+	_done_btn.visible = on
+	_chat_panel.custom_minimum_size.x = 0.0 if on else CHAT_WIDTH
+	_chat_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if on else Control.SIZE_FILL
+	if on:
+		ChatRules.arrange(_chat_panel, [_type_row, _say_note, _chat_scroll])
+	else:
+		ChatRules.arrange(_chat_panel, [_chat_title, _chat_scroll, _say_note, _counters, _type_row, _say_btn])
+		_margin.add_theme_constant_override("margin_bottom", MARGIN_PX)
+		_lift = 0.0
 	_refresh_chat()
 
 

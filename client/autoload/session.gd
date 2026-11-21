@@ -637,9 +637,11 @@ func _on_event(data: Dictionary) -> void:
 func _on_chat(data: Dictionary) -> void:
 	var mine: bool = int(data.get("seat", -1)) == seat_id
 	if bool(data.get("ghost", false)):
-		ghost_chat.append(data.duplicate())
-		if ghost_chat.size() > GHOST_KEEP:
-			ghost_chat.pop_front()
+		# Only an out seat receives ghost lines; one that reaches a living seat is dropped, not kept.
+		if is_out or seat_out(seat_id):
+			ghost_chat.append(data.duplicate())
+			if ghost_chat.size() > GHOST_KEEP:
+				ghost_chat.pop_front()
 	elif mine:
 		if data.has("text"):
 			text_used += 1

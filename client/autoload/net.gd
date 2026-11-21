@@ -91,7 +91,11 @@ var server_offset: float:
 	get:
 		return _offset_snap if _have_snap else _offset_pong
 
-var _ws: WebSocketPeer = WebSocketPeer.new()
+## A welcome (tuning, tasks, seats, ghost chat history) can be larger than the 64 KB default; the
+## messages this client sends are small (a chat line is a few hundred bytes), so the outbound default is fine.
+const INBOUND_BUFFER_BYTES: int = 1 << 20
+
+var _ws: WebSocketPeer = _new_socket()
 var _was_open: bool = false
 var _connect_started: float = 0.0
 var _ping_timer: float = 0.0
@@ -151,11 +155,17 @@ func to_px(v: Variant) -> Vector2:
 	return Vector2.ZERO
 
 
+static func _new_socket() -> WebSocketPeer:
+	var ws: WebSocketPeer = WebSocketPeer.new()
+	ws.inbound_buffer_size = INBOUND_BUFFER_BYTES
+	return ws
+
+
 func connect_to(url: String) -> void:
 	close_socket()
 	_have_pong = false
 	_have_snap = false
-	_ws = WebSocketPeer.new()
+	_ws = _new_socket()
 	var err: int = _ws.connect_to_url(url)
 	if err != OK:
 		push_warning("Net: connect_to_url(%s) failed with error %d" % [url, err])
