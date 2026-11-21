@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/player/avatar.gd" id="1_avatar"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_tag"]
+light_mode = 1
+
+[node name="Avatar" type="Node2D"]
+script = ExtResource("1_avatar")
+
+[node name="Icon" type="Sprite2D" parent="."]
+
+[node name="NameLabel" type="Label" parent="."]
+material = SubResource("CanvasItemMaterial_tag")
+custom_minimum_size = Vector2(96, 14)
+offset_left = -48.0
+offset_right = 48.0
+offset_bottom = 14.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 10
+horizontal_alignment = 1

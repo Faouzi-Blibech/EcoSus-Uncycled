@@ -1,0 +1,29 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/vision/vision.gd" id="1_vision"]
+
+[sub_resource type="Gradient" id="Gradient_falloff"]
+offsets = PackedFloat32Array(0, 0.8, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_light"]
+gradient = SubResource("Gradient_falloff")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[node name="Vision" type="Node2D"]
+script = ExtResource("1_vision")
+
+[node name="Dark" type="CanvasModulate" parent="."]
+color = Color(0.45, 0.48, 0.55, 1)
+
+[node name="Light" type="PointLight2D" parent="."]
+energy = 0.8
+shadow_enabled = true
+shadow_filter = 1
+shadow_filter_smooth = 2.0
+texture = SubResource("GradientTexture2D_light")
+texture_scale = 0.1
