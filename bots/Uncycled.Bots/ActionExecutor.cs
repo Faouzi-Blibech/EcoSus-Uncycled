@@ -64,6 +64,7 @@ namespace Uncycled.Bots
         private UpgradeKind? _upgrade;
         private TrasherAbility? _ability;
         private string? _room;
+        private string? _zoneId;
 
         private byte? _targetSeat;
         private int _targetPile = -1;
@@ -114,6 +115,9 @@ namespace Uncycled.Bots
 
         public string? RoomHint { get; set; }
 
+        /// <summary>GoZoneAt: the id of the zone to walk to.</summary>
+        public string? ZoneHint { get; set; }
+
         /// <summary>Re-pollute and plant: seconds to wait at the spot while someone watches, before acting anyway.</summary>
         public float ActPatienceS { get; set; } = 3f;
 
@@ -149,8 +153,11 @@ namespace Uncycled.Bots
                 return;
             }
 
-            if (Busy && action == _action && ActionQuery.Playing(view))
+            if (Busy && action == _action && ActionQuery.Playing(view) && !HintRestarts())
             {
+                // the same action keeps running; a hint that names the target it already has is spent
+                SpotHint = null;
+                ZoneHint = null;
                 return;
             }
 
@@ -180,6 +187,8 @@ namespace Uncycled.Bots
             _upgrade = UpgradeChoice;
             _ability = AbilityChoice;
             _room = RoomHint;
+            _zoneId = ZoneHint;
+            ZoneHint = null;
             SpotHint = null;
             UpgradeChoice = null;
             AbilityChoice = null;
@@ -265,6 +274,13 @@ namespace Uncycled.Bots
                 {
                     int z = action - BotAction.GoZone0;
                     StartWalk(me, z < map.Zones.Count ? ActionQuery.ZoneCentre(map, z) : (Vec2?)null, map, now);
+                    break;
+                }
+
+                case BotAction.GoZoneAt:
+                {
+                    int z = ZoneIndex(map, _zoneId);
+                    StartWalk(me, z >= 0 ? ActionQuery.ZoneCentre(map, z) : (Vec2?)null, map, now);
                     break;
                 }
 
@@ -457,6 +473,7 @@ namespace Uncycled.Bots
                 case BotAction.GoZone0:
                 case BotAction.GoZone1:
                 case BotAction.GoZone2:
+                case BotAction.GoZoneAt:
                 case BotAction.GoEmergency:
                 case BotAction.GoFireA:
                 case BotAction.GoFireB:
@@ -1156,6 +1173,22 @@ namespace Uncycled.Bots
         }
 
         // ---------- v2: spots, machine ----------
+
+        private static int ZoneIndex(MapData map, string? id)
+        {
+            for (int z = 0; id != null && z < map.Zones.Count; z++)
+            {
+                if (map.Zones[z].Id == id)
+                {
+                    return z;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>A pending spot or zone hint that names another target than the one running (Begin of the same action restarts it).</summary>
+        private bool HintRestarts() => (SpotHint != null && SpotHint != _consoleId) || (ZoneHint != null && ZoneHint != _zoneId);
 
         private static bool SpotIs(SeatView view, string id, SpotState state)
         {
