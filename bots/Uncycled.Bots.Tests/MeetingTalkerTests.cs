@@ -346,6 +346,27 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(m.Config.Polluters, s.Polluters);
         }
 
+        [Fact]
+        public void State_EvidenceHasNoDuplicates()
+        {
+            TestMatch m = TestMatch.Create();
+            SeatView live = m.Engine.ViewFor(0);
+            PlayerView seen = live.Players[0];
+            string zone = m.Map.ZoneAt(seen.Position);
+            var mem = new BotMemory(m.Map, m.Config);
+            mem.Observe(live, 100f, new List<WitnessRecord>());
+
+            // two piles in the same zone within the near-pile window: one sighting must give one evidence item, not one per pile
+            var clues = new List<ClueInfo> { new ClueInfo(1, PileKind.Dump, zone, 103f, WasteType.Glass, null), new ClueInfo(2, PileKind.Dump, zone, 107f, WasteType.Glass, null) };
+            var meeting = new MeetingView(MeetingStage.Discussion, 30f, 0, MeetingCause.Report, clues, new List<byte>(), false, null, 0f, 0, new byte[] { 0, 1, 2, 3, 4, 5, 6, 7 });
+            var view = new SeatView(0, MatchPhase.Meeting, 30f, 130f, live.DeadlineS, live.DeadlineClock, 130f, 10f, 2, live.Me, new List<PlayerView>(), new List<PileView>(), null, meeting, null);
+
+            MeetingState s2 = MeetingStateBuilder.Build(view, mem, new MeetingLog(m.Content.Phrases!), new SuspicionModel(), null);
+
+            Assert.Contains(s2.Evidence, e => e.Kind == EvidenceItem.NearPile && e.Seat == seen.Seat);
+            Assert.Equal(s2.Evidence.Count, s2.Evidence.Select(e => (e.Kind, e.Seat, e.Zone, e.Time)).Distinct().Count());
+        }
+
         // ---------- talker in a real meeting ----------
 
         private sealed class Fixed : IMeetingDecider
@@ -906,6 +927,56 @@ namespace Uncycled.Bots.Tests
             Assert.Equal("not_me", ((ChatPhraseCommand)reply.Command).PhraseId);
         }
 
+        /// <summary>Says "I will vote for X" (or "no proof") in the discussion, then answers the vote stage with another seat.</summary>
+        private sealed class Announcer : IMeetingDecider
+        {
+            private readonly byte? _announce;
+            private readonly byte _otherVote;
+            private readonly string _phrase;
+
+            public Announcer(string phrase, byte? announce, byte otherVote)
+            {
+                _phrase = phrase;
+                _announce = announce;
+                _otherVote = otherVote;
+            }
+
+            public string Name => "fake";
+
+            public Task<MeetingDecision> DecideAsync(MeetingState state, CancellationToken ct)
+            {
+                if (state.Stage == MeetingStage.Voting)
+                {
+                    return Task.FromResult(new MeetingDecision { Vote = _otherVote, Source = "fake" });
+                }
+
+                return Task.FromResult(_announce == null ? MeetingDecision.Say("fake", "skip_no_proof") : MeetingDecision.Say("fake", _phrase, _announce));
+            }
+        }
+
+        [Theory]
+        [InlineData("vote")]
+        [InlineData("sus")] // an accusation in the chat is an announcement too: a bot votes the seat it accused
+        [InlineData("skip_no_proof")]
+        public void Talker_VotesWhatItSaid(string phrase)
+        {
+            var rig = new Rig();
+            byte bot = rig.Match.FirstSeatOf(Role.Polluter); // a polluter may name any seat that is not its partner
+            var partners = rig.Match.Engine.ViewFor(bot).Me.Partners;
+            byte[] others = rig.Match.Engine.Players.Where(p => p.IsActive && p.Seat != bot && !partners.Contains(p.Seat)).Select(p => p.Seat).ToArray();
+            byte announced = others[0];
+            byte decided = others[1];
+            bool announcesASeat = phrase != "skip_no_proof";
+            var talkers = new Dictionary<byte, MeetingTalker> { { bot, NewTalker(new Announcer(phrase, announcesASeat ? announced : (byte?)null, decided), new RuleDecider()) } };
+
+            rig.Run(talkers);
+
+            Assert.Contains(rig.Chat, c => ((ChatPhraseCommand)c.Command).PhraseId == phrase);
+            Sent vote = Assert.Single(rig.Votes);
+            Assert.True(vote.Result.IsOk);
+            Assert.Equal(announcesASeat ? (byte?)announced : null, ((VoteCommand)vote.Command).Target);
+        }
+
         // ---------- decision log ----------
 
         [Fact]
@@ -998,7 +1069,9 @@ namespace Uncycled.Bots.Tests
                 System.Text.Json.JsonElement r = System.Text.Json.JsonDocument.Parse(l).RootElement;
                 Assert.Equal("ROOM5", r.GetProperty("match").GetString());
                 Assert.Equal("rule", r.GetProperty("source").GetString());
-                Assert.Equal("http_500", r.GetProperty("fallback").GetString());
+                // a vote that follows what the bot said in the chat is logged as such, no model call is made for it
+                bool follows = r.GetProperty("stage").GetString() == "voting" && lines.Count(x => x.Contains("\"phrase\"")) > 0;
+                Assert.Equal(follows ? "announced" : "http_500", r.GetProperty("fallback").GetString());
                 Assert.True(r.GetProperty("latency_ms").GetInt64() >= 0);
             });
         }

@@ -28,6 +28,9 @@ namespace Uncycled.Bots
         /// <summary>Seconds a meeting model call may take before the rule path answers (bots.json meeting.timeout_s).</summary>
         public float MeetingTimeoutS { get; set; } = 3f;
 
+        /// <summary>Which meeting decisions the model makes: "none" (default: rules only, the model is off even with keys), "vote" (rules talk, the model votes) or "all" (the model talks and votes).</summary>
+        public string MeetingClefFor { get; set; } = "none";
+
         /// <summary>Human pace (bots.json "pace" block).</summary>
         public PaceSettings Pace { get; } = new PaceSettings();
 
@@ -59,6 +62,12 @@ namespace Uncycled.Bots
             s.FollowCapS = Number(text, "follow_cap_s", s.FollowCapS);
             s.MeetingDailyCallCap = (int)Number(text, "daily_call_cap", s.MeetingDailyCallCap);
             s.MeetingTimeoutS = Number(text, "timeout_s", s.MeetingTimeoutS);
+            Match clefFor = Regex.Match(text, "\"clef_for\"\\s*:\\s*\"([^\"]*)\"");
+            if (clefFor.Success && clefFor.Groups[1].Value.Length > 0)
+            {
+                s.MeetingClefFor = clefFor.Groups[1].Value.ToLowerInvariant();
+            }
+
             s.Pace.TaskTimeFactorMin = Number(text, "task_time_factor_min", s.Pace.TaskTimeFactorMin);
             s.Pace.TaskTimeFactorMax = Number(text, "task_time_factor_max", s.Pace.TaskTimeFactorMax);
             s.Pace.PauseChance = Number(text, "pause_chance", s.Pace.PauseChance);

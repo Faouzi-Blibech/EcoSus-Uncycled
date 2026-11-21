@@ -20,7 +20,7 @@ namespace Uncycled.Bots.Meeting
     /// human sends. The brain's memory reads the room's meeting chat for heat. If the talker ever
     /// throws, the talker is switched off for this seat and the brain votes by itself again.
     /// </summary>
-    public sealed class TalkingBrain : IBotBrain, IMeetingObserver
+    public sealed class TalkingBrain : IBotBrain, IMeetingObserver, IAccuser
     {
         private readonly IBotBrain _inner;
         private readonly ITalkingSeat _seat;
@@ -29,6 +29,7 @@ namespace Uncycled.Bots.Meeting
         private readonly Action<string>? _warn;
         private bool _failed;
         private bool _stepped;
+        private byte? _vote;
 
         public TalkingBrain(IBotBrain inner, MeetingTalker talker, MeetingLog log, Action<string>? warn = null)
         {
@@ -40,11 +41,31 @@ namespace Uncycled.Bots.Meeting
             _seat.ExternalVote = true;
         }
 
+        /// <summary>The wrapped brain's memory (null until its first Think).</summary>
+        public BotMemory? Memory => _seat.Memory;
+
+        /// <summary>The seat this bot voted for in the meeting in progress (null for a skip or no vote yet): the feed counts it as an accusation, as for the scripted brains.</summary>
+        public byte? Accusation => _vote;
+
         public void OnMeetingEnded(MeetingOutcome outcome) => (_inner as IMeetingObserver)?.OnMeetingEnded(outcome);
 
         public void Think(MatchEngine engine, byte seat, float dt, Action<ICommand> send)
         {
             _inner.Think(engine, seat, dt, send);
+            if (engine.Phase == MatchPhase.Playing)
+            {
+                _vote = null;
+            }
+
+            Action<ICommand> relay = cmd =>
+            {
+                if (cmd is VoteCommand vote)
+                {
+                    _vote = vote.Target;
+                }
+
+                send(cmd);
+            };
             BotMemory? mem = _seat.Memory;
             if (_failed || mem == null)
             {
@@ -62,7 +83,7 @@ namespace Uncycled.Bots.Meeting
             try
             {
                 SeatView view = engine.ViewFor(seat);
-                _talker.Step(engine, seat, view, mem, _log, view.MatchTime, send);
+                _talker.Step(engine, seat, view, mem, _log, view.MatchTime, relay);
             }
             catch (Exception ex)
             {

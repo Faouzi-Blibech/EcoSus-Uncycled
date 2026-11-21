@@ -75,6 +75,7 @@ namespace Uncycled.Bots.Meeting
         private static List<EvidenceItem> BuildEvidence(SeatView view, BotMemory mem, byte self)
         {
             var items = new List<EvidenceItem>();
+            var nearPiles = new HashSet<(byte, string, float)>();
 
             foreach (WitnessRecord r in mem.Witnessed)
             {
@@ -99,6 +100,11 @@ namespace Uncycled.Bots.Meeting
                         {
                             if (s.Zone == clue.ZoneId && Math.Abs(s.Time - clue.Time) <= SuspicionModel.NearPileWindowS)
                             {
+                                if (!nearPiles.Add((seat, s.Zone, s.Time)))
+                                {
+                                    break; // the same sighting fits another pile of the zone: one item, not one per pile
+                                }
+
                                 items.Add(new EvidenceItem(EvidenceItem.NearPile, seat, s.Zone, s.Time));
                                 break;
                             }
