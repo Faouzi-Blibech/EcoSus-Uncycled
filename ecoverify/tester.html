@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uncycled Verify Tester</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; margin: 0; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
+    .card { background: #1e293b; padding: 20px; border-radius: 16px; }
+    h1 { margin-top: 0; color: #22c55e; font-size: 22px; text-align: center; }
+    video, #shot { width: 100%; border-radius: 12px; background: #000; margin-bottom: 12px; }
+    video { aspect-ratio: 4/3; object-fit: cover; }
+    #shot { display: none; }
+    .row { display: flex; gap: 8px; margin-bottom: 12px; }
+    button { flex: 1; padding: 12px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; }
+    .btn-green { background: #22c55e; color: #000; }
+    .btn-blue { background: #3b82f6; color: #fff; }
+    .opt-box { font-size: 13px; color: #94a3b8; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    #player { font-size: 12px; color: #64748b; word-break: break-all; }
+    #resultBox { margin-top: 16px; padding: 16px; border-radius: 10px; display: none; font-size: 14px; line-height: 1.6; background: #334155; }
+    .success { background: #14532d !important; border: 1px solid #22c55e; color: #bbf7d0; }
+    .fail { background: #7f1d1d !important; border: 1px solid #ef4444; color: #fecaca; }
+    pre { background: #0f172a; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; color: #e2e8f0; }
+    details { background: #1e293b; border-radius: 12px; padding: 14px 18px; border: 1px solid #334155; }
+    summary { font-weight: 600; color: #38bdf8; cursor: pointer; }
+    .stream-item { background: #0f172a; border-radius: 8px; padding: 12px; border-left: 4px solid #3b82f6; margin-top: 12px; }
+    .stream-name { font-weight: bold; display: flex; justify-content: space-between; font-size: 13px; gap: 8px; }
+    .stream-badge { background: #334155; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+    .items-list { margin: 8px 0 0 0; padding-left: 18px; font-size: 12px; color: #94a3b8; }
+    .co2-val { color: #4ade80; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>♻️ Uncycled AI Tester</h1>
+      <video id="video" autoplay playsinline></video>
+      <canvas id="shot"></canvas>
+      <div class="row">
+        <button class="btn-green" id="snapBtn">📸 Take Photo & Verify</button>
+        <button class="btn-blue" id="switchBtn">🔄 Restart Cam</button>
+      </div>
+      <div class="opt-box">
+        <input type="checkbox" id="skipExif" checked />
+        <label for="skipExif">Bypass EXIF timestamp check (web test only; server may refuse)</label>
+      </div>
+      <label style="font-size: 13px; color: #94a3b8;">Or test an image file:</label>
+      <input type="file" id="fileInput" accept="image/*" style="margin-top: 6px; width: 100%; font-size: 13px; color: #cbd5e1;" />
+      <p id="player"></p>
+      <div id="resultBox"></div>
+    </div>
+    <details>
+      <summary>📖 Recycling guide (streams, items, CO₂)</summary>
+      <div id="streamGrid"></div>
+    </details>
+  </div>
+  <canvas id="grab" style="display:none;"></canvas>
+
+  <script>
+    // ── Player id (the phone app keeps its own; this one is per browser) ──
+    function newUuid() {
+      if (crypto.randomUUID) return crypto.randomUUID();
+      const b = crypto.getRandomValues(new Uint8Array(16));
+      b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+      const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+      return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+    }
+    let playerId = null;
+    try { playerId = localStorage.getItem('uncycled_player_id'); } catch (e) {}
+    if (!playerId) { playerId = newUuid(); try { localStorage.setItem('uncycled_player_id', playerId); } catch (e) {} }
+    document.getElementById('player').textContent = 'Player id: ' + playerId;
+
+    // ── Guide ──
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    fetch('/recycling-guide').then(r => r.json()).then(g => {
+      const grid = document.getElementById('streamGrid');
+      for (const [name, data] of Object.entries(g.streams)) {
+        const items = Object.entries(data.items).map(([item, info]) =>
+          `<li><b>${esc(item)}</b>: <span class="co2-val">-${info.co2_grams}g CO₂</span><br><small style="color:#64748b;">${esc(info.disposal)}</small></li>`).join('');
+        const div = document.createElement('div');
+        div.className = 'stream-item';
+        div.style.borderLeftColor = data.color;
+        div.innerHTML = `<div class="stream-name"><span>${esc(name)}</span><span class="stream-badge">${esc(data.bin)}</span></div><ul class="items-list">${items}</ul>`;
+        grid.appendChild(div);
+      }
+    });
+
+    // ── Camera ──
+    const video = document.getElementById('video');
+    const shot = document.getElementById('shot');
+    const resultBox = document.getElementById('resultBox');
+    let stream = null;
+    async function initCamera() {
+      try {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        shot.style.display = 'none';
+      } catch (err) {
+        showBox('fail', '⚠️ Camera not available. You can still test with a file.');
+      }
+    }
+    initCamera();
+    document.getElementById('switchBtn').onclick = initCamera;
+
+    function showBox(cls, html) {
+      resultBox.style.display = 'block';
+      resultBox.className = cls;
+      resultBox.innerHTML = html;
+    }
+
+    // Draw the photo, then the item outline the server returned (normalised 0..1 points).
+    function drawShot(img, data) {
+      shot.width = img.naturalWidth || img.width;
+      shot.height = img.naturalHeight || img.height;
+      const ctx = shot.getContext('2d');
+      ctx.drawImage(img, 0, 0, shot.width, shot.height);
+      shot.style.display = 'block';
+      video.style.display = 'none';
+      if (!data || !data.contour || !data.contour.length) return;
+      const colour = data.verified ? '#22c55e' : '#ef4444';
+      ctx.beginPath();
+      data.contour.forEach(([x, y], i) => {
+        const px = x * shot.width, py = y * shot.height;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      });
+      ctx.closePath();
+      ctx.fillStyle = colour + '40';
+      ctx.fill();
+      ctx.lineWidth = Math.max(3, shot.width / 160);
+      ctx.strokeStyle = colour;
+      ctx.stroke();
+    }
+
+    async function sendImage(blob) {
+      showBox('', '⏳ Analysing...');
+      const img = new Image();
+      img.src = URL.createObjectURL(blob);
+      await img.decode();
+      drawShot(img, null);
+
+      const formData = new FormData();
+      formData.append('file', blob, 'capture.jpg');
+      const skip = document.getElementById('skipExif').checked ? '?skip_exif=true' : '';
+      try {
+        const resp = await fetch('/verify-daily-photo' + skip, {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Player-Id': playerId, 'X-Tz-Offset-Minutes': String(new Date().getTimezoneOffset()) },
+        });
+        const data = await resp.json();
+        drawShot(img, data);
+        const p = data.player;
+        showBox(data.verified ? 'success' : 'fail',
+          (data.verified ? '✅ <b>VALID RECYCLING!</b>' : '❌ <b>REJECTED</b> (' + esc(data.reason || resp.status) + ')')
+          + '<br><b>Message:</b> ' + esc(data.message || data.detail)
+          + (data.detected_class ? '<br><b>Model saw:</b> ' + esc(data.detected_class) + ' (' + Math.round(data.confidence_score * 100) + '%)' : '')
+          + (data.detected_item ? '<br><b>Item:</b> ' + esc(data.detected_item) + ' [' + esc(data.kind) + ']' : '')
+          + (data.bin ? '<br><b>Bin:</b> ' + esc(data.bin) : '')
+          + (data.verified ? '<br><b>CO₂ credited:</b> ' + data.co2_saved_grams + ' g' + (data.co2_note ? ' — ' + esc(data.co2_note) : '') : '')
+          + (p ? '<br><b>Streak:</b> ' + p.streak + ' day(s) · lifetime ' + p.total_co2_grams + ' g' : '')
+          + (p && p.new_unlocks.length ? '<br>🎉 <b>Unlocked:</b> ' + p.new_unlocks.map(s => s.emoji + ' ' + esc(s.name)).join(', ') : '')
+          + '<pre>' + esc(JSON.stringify(data, null, 2)) + '</pre>');
+      } catch (err) {
+        showBox('fail', '⚠️ Error contacting server: ' + esc(err.message));
+      }
+    }
+
+    document.getElementById('snapBtn').onclick = () => {
+      const grab = document.getElementById('grab');
+      grab.width = video.videoWidth || 640;
+      grab.height = video.videoHeight || 480;
+      grab.getContext('2d').drawImage(video, 0, 0, grab.width, grab.height);
+      grab.toBlob(blob => sendImage(blob), 'image/jpeg', 0.9);
+    };
+    document.getElementById('fileInput').onchange = e => {
+      const file = e.target.files[0];
+      if (file) sendImage(file);
+    };
+  </script>
+</body>
+</html>

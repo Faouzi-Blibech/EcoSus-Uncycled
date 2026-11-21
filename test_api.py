@@ -13,6 +13,7 @@ from io import BytesIO
 from datetime import datetime
 
 API_URL = "http://localhost:8000"
+HEADERS = {"X-Player-Id": "00000000-0000-4000-8000-000000000001"}  # fixed test player
 
 def create_test_image_with_exif(filename="test_bottle.jpg"):
     """Create a simple test image with valid EXIF timestamp."""
@@ -43,7 +44,7 @@ def test_verify(image_path, label=""):
     with open(image_path, "rb") as f:
         files = {"file": (image_path, f, "image/jpeg")}
         try:
-            resp = requests.post(f"{API_URL}/verify-daily-photo", files=files, timeout=60)
+            resp = requests.post(f"{API_URL}/verify-daily-photo", headers=HEADERS, files=files, timeout=60)
             data = resp.json()
             print(json.dumps(data, indent=2))
             return data

@@ -1,0 +1,222 @@
+{
+  "_comment": "Eco photo verification data. Read by the Python verifier (ecoverify/) and later by the game server for skins.",
+  "tuning": {
+    "model": "yolov8s-seg.pt",
+    "fallback_model": "yolov8s.pt",
+    "detect_conf": 0.25,
+    "accept_conf": 0.45,
+    "min_box_px": 30,
+    "crop_pad_ratio": 0.05,
+    "day_utc_offset_hours": 1,
+    "max_photo_age_seconds": 120,
+    "allow_skip_exif": true,
+    "max_upload_bytes": 10485760,
+    "hash_max_distance": 10,
+    "hash_window_days": 7,
+    "embed_same_item_cosine": 0.92,
+    "streak_daily_co2_cap_grams": 1000,
+    "depot_max_per_day": 1,
+    "clip_model": "openai/clip-vit-base-patch32",
+    "clip_min_subtype_prob": 0.35,
+    "contour_max_points": 80,
+    "fallback_min_prob": 0.45,
+    "grabcut_max_side": 320,
+    "taco_model": "ecoverify/models/taco-seg.pt",
+    "taco_accept_conf": 0.6
+  },
+
+  "skins": [
+    {"id": "eco_novice", "name": "Eco Novice", "emoji": "🌱", "rarity": "Common", "required_streak": 1,
+     "description": "Your first step toward a greener world!"},
+    {"id": "recycled_scout", "name": "Recycled Scout", "emoji": "🍃", "rarity": "Uncommon", "required_streak": 3,
+     "description": "Three days of recycling in a row."},
+    {"id": "waste_warrior", "name": "Waste Warrior", "emoji": "🌊", "rarity": "Rare", "required_streak": 7,
+     "description": "A full week! The oceans thank you."},
+    {"id": "green_guardian", "name": "Green Guardian", "emoji": "🌍", "rarity": "Epic", "required_streak": 14,
+     "description": "Two weeks of dedication."},
+    {"id": "planet_legend", "name": "Planet Legend", "emoji": "♻️", "rarity": "Legendary", "required_streak": 30,
+     "description": "A 30-day streak. Legendary status."}
+  ],
+
+  "_detections_comment": "COCO class -> taxonomy item. kind 'streak' = everyday recyclable (counts toward the daily CO2 cap); kind 'depot' = drop-off item (counts once per physical item, at most depot_max_per_day per day, not capped). CO2 always comes from the taxonomy item.",
+  "detections": {
+    "bottle":     {"stream": "PLASTICS", "item": "Plastic bottles, jugs, and tubs (#1 PET, #2 HDPE, #5 PP)", "kind": "streak", "detail": "Bouteille plastique ou récipient PET/HDPE"},
+    "cup":        {"stream": "PAPER & CARDBOARD", "item": "Milk, juice, and soup cartons", "kind": "streak", "detail": "Gobelet ou brique carton recyclable"},
+    "book":       {"stream": "PAPER & CARDBOARD", "item": "Paperback books", "kind": "depot", "detail": "Livre, cahier ou emballage carton/papier"},
+    "wine glass": {"stream": "GLASS", "item": "Window panes, mirrors, drinking glasses, and ceramics", "kind": "depot", "detail": "Verre à boire (déchetterie)"},
+    "vase":       {"stream": "GLASS", "item": "Window panes, mirrors, drinking glasses, and ceramics", "kind": "depot", "detail": "Vase en verre ou céramique (déchetterie)"},
+    "scissors":   {"stream": "METALS", "item": "Steel parts and scrap metal", "kind": "depot", "detail": "Outil métallique (ferraille)"},
+    "fork":       {"stream": "METALS", "item": "Steel parts and scrap metal", "kind": "depot", "detail": "Couverts métalliques (ferraille)"},
+    "knife":      {"stream": "METALS", "item": "Steel parts and scrap metal", "kind": "depot", "detail": "Couverts métalliques (ferraille)"},
+    "spoon":      {"stream": "METALS", "item": "Steel parts and scrap metal", "kind": "depot", "detail": "Couverts métalliques (ferraille)"},
+    "laptop":     {"stream": "ELECTRONICS (E-WASTE)", "item": "Computers and laptops", "kind": "depot", "detail": "Ordinateur portable (DEEE)"},
+    "cell phone": {"stream": "ELECTRONICS (E-WASTE)", "item": "Mobile phones", "kind": "depot", "detail": "Téléphone portable (DEEE)"},
+    "tv":         {"stream": "ELECTRONICS (E-WASTE)", "item": "TVs and monitors", "kind": "depot", "detail": "Téléviseur ou écran (DEEE)"},
+    "keyboard":   {"stream": "ELECTRONICS (E-WASTE)", "item": "Cables and chargers", "kind": "depot", "detail": "Périphérique informatique (DEEE)"},
+    "mouse":      {"stream": "ELECTRONICS (E-WASTE)", "item": "Cables and chargers", "kind": "depot", "detail": "Souris ou accessoire électronique (DEEE)"},
+    "microwave":  {"stream": "ELECTRONICS (E-WASTE)", "item": "Small household appliances", "kind": "depot", "detail": "Micro-ondes (DEEE)"},
+    "toaster":    {"stream": "ELECTRONICS (E-WASTE)", "item": "Small household appliances", "kind": "depot", "detail": "Grille-pain (DEEE)"},
+    "hair drier": {"stream": "ELECTRONICS (E-WASTE)", "item": "Small household appliances", "kind": "depot", "detail": "Sèche-cheveux (DEEE)"},
+    "remote":     {"stream": "BATTERIES & BULBS", "item": "Household batteries (AA/AAA/9V)", "kind": "depot", "detail": "Télécommande / piles"},
+    "apple":      {"stream": "ORGANICS & YARD WASTE", "item": "Food scraps", "kind": "streak", "detail": "Biodéchets pour compost"},
+    "banana":     {"stream": "ORGANICS & YARD WASTE", "item": "Food scraps", "kind": "streak", "detail": "Peau de banane / compost"},
+    "orange":     {"stream": "ORGANICS & YARD WASTE", "item": "Food scraps", "kind": "streak", "detail": "Épluchures d'agrumes / biodéchets"},
+    "broccoli":   {"stream": "ORGANICS & YARD WASTE", "item": "Food scraps", "kind": "streak", "detail": "Légumes compostables"},
+    "carrot":     {"stream": "ORGANICS & YARD WASTE", "item": "Food scraps", "kind": "streak", "detail": "Épluchures de légumes / compost"},
+    "sandwich":   {"stream": "ORGANICS & YARD WASTE", "item": "Food scraps", "kind": "streak", "detail": "Restes de repas compostables"},
+    "backpack":   {"stream": "TEXTILES, RUBBER & OILS", "item": "Clothing", "kind": "depot", "detail": "Sac textile (don / recyclage textile)"},
+    "handbag":    {"stream": "TEXTILES, RUBBER & OILS", "item": "Clothing", "kind": "depot", "detail": "Sac ou accessoire textile"},
+    "suitcase":   {"stream": "TEXTILES, RUBBER & OILS", "item": "Clothing", "kind": "depot", "detail": "Bagage textile"},
+    "tie":        {"stream": "TEXTILES, RUBBER & OILS", "item": "Clothing", "kind": "depot", "detail": "Cravate / vêtement textile"}
+  },
+
+  "_subtypes_comment": "Second stage: CLIP picks one label for the crop, only among these. reject_message = not waste (e.g. a reusable mug).",
+  "subtypes": {
+    "bottle": [
+      {"label": "a photo of a plastic bottle", "stream": "PLASTICS", "item": "Plastic bottles, jugs, and tubs (#1 PET, #2 HDPE, #5 PP)", "kind": "streak", "detail": "Bouteille plastique PET/HDPE"},
+      {"label": "a photo of a glass bottle", "stream": "GLASS", "item": "Clear, green, and brown glass beverage bottles", "kind": "streak", "detail": "Bouteille en verre"},
+      {"label": "a photo of an aluminum drink can", "stream": "METALS", "item": "Aluminum drink cans", "kind": "streak", "detail": "Canette en aluminium"},
+      {"label": "a photo of a milk or juice carton", "stream": "PAPER & CARDBOARD", "item": "Milk, juice, and soup cartons", "kind": "streak", "detail": "Brique de lait ou de jus"}
+    ],
+    "cup": [
+      {"label": "a photo of an aluminum drink can", "stream": "METALS", "item": "Aluminum drink cans", "kind": "streak", "detail": "Canette en aluminium"},
+      {"label": "a photo of a milk or juice carton", "stream": "PAPER & CARDBOARD", "item": "Milk, juice, and soup cartons", "kind": "streak", "detail": "Brique de lait ou de jus"},
+      {"label": "a photo of a disposable paper cup", "stream": "PAPER & CARDBOARD", "item": "Paperboard (cereal & shoe boxes, cores)", "kind": "streak", "detail": "Gobelet en carton jetable"},
+      {"label": "a photo of a disposable plastic cup", "stream": "PLASTICS", "item": "Plastic bottles, jugs, and tubs (#1 PET, #2 HDPE, #5 PP)", "kind": "streak", "detail": "Gobelet plastique jetable"},
+      {"label": "a photo of a tin food can", "stream": "METALS", "item": "Steel and tin food cans", "kind": "streak", "detail": "Boîte de conserve"},
+      {"label": "a photo of a ceramic coffee mug", "reject_message": "That looks like a reusable mug. Keep using it! Scan something you are throwing away."},
+      {"label": "a photo of a drinking glass", "reject_message": "That looks like a drinking glass you still use. Scan something you are throwing away."}
+    ]
+  },
+
+  "_fallback_comment": "Used when YOLO finds no recyclable it is sure of (COCO has no paper, cardboard, cans or circuit boards). CLIP picks one label for the main object; reject_message labels stop it from inventing an item.",
+  "fallback": [
+    {"label": "a photo of a sheet of paper", "stream": "PAPER & CARDBOARD", "item": "Office paper", "kind": "streak", "detail": "Feuille de papier"},
+    {"label": "a photo of a printed document or letter", "stream": "PAPER & CARDBOARD", "item": "Office paper", "kind": "streak", "detail": "Document imprimé"},
+    {"label": "a photo of a newspaper", "stream": "PAPER & CARDBOARD", "item": "Newspapers", "kind": "streak", "detail": "Journal"},
+    {"label": "a photo of a magazine", "stream": "PAPER & CARDBOARD", "item": "Magazines and catalogs", "kind": "streak", "detail": "Magazine"},
+    {"label": "a photo of a paper envelope", "stream": "PAPER & CARDBOARD", "item": "Junk mail and envelopes", "kind": "streak", "detail": "Enveloppe papier"},
+    {"label": "a photo of a cardboard box", "stream": "PAPER & CARDBOARD", "item": "Corrugated cardboard (shipping boxes)", "kind": "streak", "detail": "Carton d'emballage"},
+    {"label": "a photo of a cereal box or paperboard packaging", "stream": "PAPER & CARDBOARD", "item": "Paperboard (cereal & shoe boxes, cores)", "kind": "streak", "detail": "Emballage carton"},
+    {"label": "a photo of an egg carton", "stream": "PAPER & CARDBOARD", "item": "Paperboard (cereal & shoe boxes, cores)", "kind": "streak", "detail": "Boîte à oeufs"},
+    {"label": "a photo of a milk or juice carton", "stream": "PAPER & CARDBOARD", "item": "Milk, juice, and soup cartons", "kind": "streak", "detail": "Brique de lait ou de jus"},
+    {"label": "a photo of a plastic bottle", "stream": "PLASTICS", "item": "Plastic bottles, jugs, and tubs (#1 PET, #2 HDPE, #5 PP)", "kind": "streak", "detail": "Bouteille plastique"},
+    {"label": "a photo of a plastic food container", "stream": "PLASTICS", "item": "Plastic bottles, jugs, and tubs (#1 PET, #2 HDPE, #5 PP)", "kind": "streak", "detail": "Barquette plastique"},
+    {"label": "a photo of a plastic bag", "stream": "PLASTICS", "item": "Plastic bags and shrink wrap", "kind": "streak", "detail": "Sac plastique"},
+    {"label": "a photo of styrofoam packaging", "stream": "PLASTICS", "item": "Expanded polystyrene / Styrofoam (#6)", "kind": "streak", "detail": "Polystyrène"},
+    {"label": "a photo of a glass bottle", "stream": "GLASS", "item": "Clear, green, and brown glass beverage bottles", "kind": "streak", "detail": "Bouteille en verre"},
+    {"label": "a photo of a glass jar", "stream": "GLASS", "item": "Glass food jars", "kind": "streak", "detail": "Bocal en verre"},
+    {"label": "a photo of an aluminum drink can", "stream": "METALS", "item": "Aluminum drink cans", "kind": "streak", "detail": "Canette en aluminium"},
+    {"label": "a photo of a tin food can", "stream": "METALS", "item": "Steel and tin food cans", "kind": "streak", "detail": "Boîte de conserve"},
+    {"label": "a photo of an aerosol spray can", "stream": "METALS", "item": "Clean aerosol cans", "kind": "streak", "detail": "Bombe aérosol"},
+    {"label": "a photo of crumpled aluminum foil", "stream": "METALS", "item": "Clean aluminum foil and food trays", "kind": "streak", "detail": "Papier aluminium"},
+    {"label": "a photo of a printed circuit board", "stream": "ELECTRONICS (E-WASTE)", "item": "Cables and chargers", "kind": "depot", "detail": "Carte électronique (DEEE)"},
+    {"label": "a photo of electronic cables and chargers", "stream": "ELECTRONICS (E-WASTE)", "item": "Cables and chargers", "kind": "depot", "detail": "Câbles et chargeurs (DEEE)"},
+    {"label": "a photo of household batteries", "stream": "BATTERIES & BULBS", "item": "Household batteries (AA/AAA/9V)", "kind": "depot", "detail": "Piles"},
+    {"label": "a photo of a light bulb", "stream": "BATTERIES & BULBS", "item": "LED and CFL light bulbs", "kind": "depot", "detail": "Ampoule"},
+    {"label": "a photo of food scraps or fruit peels", "stream": "ORGANICS & YARD WASTE", "item": "Food scraps", "kind": "streak", "detail": "Épluchures / biodéchets"},
+    {"label": "a photo of used coffee grounds", "stream": "ORGANICS & YARD WASTE", "item": "Coffee grounds", "kind": "streak", "detail": "Marc de café"},
+    {"label": "a photo of a pile of old clothes", "stream": "TEXTILES, RUBBER & OILS", "item": "Clothing", "kind": "depot", "detail": "Vêtements (don / recyclage textile)"},
+    {"label": "a photo of a pair of old shoes", "stream": "TEXTILES, RUBBER & OILS", "item": "Shoes", "kind": "depot", "detail": "Chaussures"},
+    {"label": "a photo of a person", "reject_message": ""},
+    {"label": "a photo of a person's face", "reject_message": ""},
+    {"label": "a photo of a cat or a dog", "reject_message": ""},
+    {"label": "a photo of the inside of a room", "reject_message": ""},
+    {"label": "a photo of furniture", "reject_message": ""},
+    {"label": "a photo of an empty wall or floor", "reject_message": ""},
+    {"label": "a photo of an empty desk", "reject_message": ""},
+    {"label": "a photo of a houseplant", "reject_message": ""},
+    {"label": "a photo of a car or a street", "reject_message": ""},
+    {"label": "a photo of a computer screen or TV showing a picture", "reject_message": "That looks like a picture of a screen. Photograph the real item with the camera."},
+    {"label": "a photo of a dark or blurry photo", "reject_message": "The photo is too dark or blurry. Try again with more light."}
+  ],
+
+  "taxonomy": {
+    "PAPER & CARDBOARD": {
+      "color": "#3b82f6",
+      "bin": "Blue Bin (Papiers & Cartons)",
+      "items": {
+        "Corrugated cardboard (shipping boxes)": {"co2_grams": 350, "disposal": "Flatten boxes, remove packing tape, keep dry in blue bin."},
+        "Paperboard (cereal & shoe boxes, cores)": {"co2_grams": 120, "disposal": "Flatten cereal/shoe boxes; recycle empty toilet paper/towel cores."},
+        "Office paper": {"co2_grams": 40, "disposal": "Clean dry white/colored paper. Shredded paper in paper bag."},
+        "Newspapers": {"co2_grams": 180, "disposal": "Keep dry and unbundled with plastic twine."},
+        "Magazines and catalogs": {"co2_grams": 220, "disposal": "Glossy magazines and flyers are 100% recyclable."},
+        "Junk mail and envelopes": {"co2_grams": 40, "disposal": "Paper envelopes (windows are acceptable in modern pulpers)."},
+        "Paperback books": {"co2_grams": 450, "disposal": "Donate if readable, or recycle paperback covers and pages."},
+        "Milk, juice, and soup cartons": {"co2_grams": 65, "disposal": "Rinse empty carton, recap, place in cartons/paper bin."}
+      }
+    },
+    "METALS": {
+      "color": "#eab308",
+      "bin": "Yellow / Metal Bin (Métaux)",
+      "items": {
+        "Aluminum drink cans": {"co2_grams": 170, "disposal": "Rinse, do not crush completely if automated sorting is used. 95% energy saved vs virgin bauxite!"},
+        "Steel and tin food cans": {"co2_grams": 110, "disposal": "Rinse clean, tuck lid inside can to protect recycling workers."},
+        "Clean aerosol cans": {"co2_grams": 140, "disposal": "Ensure completely empty; remove plastic nozzle cap."},
+        "Clean aluminum foil and food trays": {"co2_grams": 85, "disposal": "Ball foil up to at least 5cm diameter; rinse food trays."},
+        "Copper wiring": {"co2_grams": 480, "disposal": "Scrap metal depot or specialty drop-off. High value recycling."},
+        "Steel parts and scrap metal": {"co2_grams": 650, "disposal": "Local recycling center scrap metal container."}
+      }
+    },
+    "GLASS": {
+      "color": "#10b981",
+      "bin": "Green Bin (Verre)",
+      "items": {
+        "Clear, green, and brown glass beverage bottles": {"co2_grams": 215, "disposal": "Rinse, remove corks/caps (metal caps go to metal bin)."},
+        "Glass food jars": {"co2_grams": 190, "disposal": "Rinse pasta/jam jars thoroughly; infinitely recyclable!"},
+        "Window panes, mirrors, drinking glasses, and ceramics": {"co2_grams": 450, "disposal": "Specialty drop-off / ecocenter only (different melting point than container glass)."}
+      }
+    },
+    "PLASTICS": {
+      "color": "#06b6d4",
+      "bin": "Yellow Bin (Plastiques)",
+      "items": {
+        "Plastic bottles, jugs, and tubs (#1 PET, #2 HDPE, #5 PP)": {"co2_grams": 82, "disposal": "Empty liquids, leave cap screwed on, place in yellow bin."},
+        "Plastic bags and shrink wrap": {"co2_grams": 35, "disposal": "Store drop-off / specialty film collection (do NOT put in standard sorting conveyor)."},
+        "Expanded polystyrene / Styrofoam (#6)": {"co2_grams": 75, "disposal": "Clean packaging blocks only at dedicated EPS depot."}
+      }
+    },
+    "ELECTRONICS (E-WASTE)": {
+      "color": "#8b5cf6",
+      "bin": "E-Waste Depot (Déchets Électroniques)",
+      "items": {
+        "Computers and laptops": {"co2_grams": 15000, "disposal": "E-waste collection point. Recovers gold, copper, rare earth metals."},
+        "Mobile phones": {"co2_grams": 3500, "disposal": "Certified phone recycler or trade-in. High environmental value!"},
+        "TVs and monitors": {"co2_grams": 25000, "disposal": "E-waste drop-off center. Safe extraction of polarizing films & circuitry."},
+        "Printers": {"co2_grams": 8000, "disposal": "Electronics recycling depot; remove ink/toner cartridges separately."},
+        "Cables and chargers": {"co2_grams": 420, "disposal": "Cable collection bin at electronics store or ecocenter."},
+        "Small household appliances": {"co2_grams": 4500, "disposal": "Toasters, kettles, hair dryers go to small appliance e-bins."}
+      }
+    },
+    "BATTERIES & BULBS": {
+      "color": "#f97316",
+      "bin": "Hazardous / Battery Drop-off (Piles & Ampoules)",
+      "items": {
+        "Household batteries (AA/AAA/9V)": {"co2_grams": 120, "disposal": "Supermarket battery collection box. Never in household trash!"},
+        "Rechargeable batteries (Li-ion/NiMH)": {"co2_grams": 850, "disposal": "Specialty battery depot; tape terminals of lithium batteries."},
+        "LED and CFL light bulbs": {"co2_grams": 260, "disposal": "Hardware store drop-off box. CFLs contain mercury and must not break."}
+      }
+    },
+    "ORGANICS & YARD WASTE": {
+      "color": "#84cc16",
+      "bin": "Brown Bin / Compost (Compostage)",
+      "items": {
+        "Food scraps": {"co2_grams": 50, "disposal": "Fruit/vegetable peels, plate scrapings into home compost or brown bin. Reduces methane!"},
+        "Coffee grounds": {"co2_grams": 40, "disposal": "Direct to compost or soil fertilizer (rich in nitrogen)."},
+        "Yard trimmings": {"co2_grams": 120, "disposal": "Green waste bin or municipal composting facility."},
+        "Wood waste": {"co2_grams": 600, "disposal": "Untreated wood to timber recycling / biomass mulch."}
+      }
+    },
+    "TEXTILES, RUBBER & OILS": {
+      "color": "#ec4899",
+      "bin": "Textile & Specialty Depots",
+      "items": {
+        "Clothing": {"co2_grams": 2100, "disposal": "Textile donation bin (Friperie) or fabric shredding recycling."},
+        "Shoes": {"co2_grams": 3200, "disposal": "Shoe donation container or specialized rubber reclaim drop-off."},
+        "Tires": {"co2_grams": 12000, "disposal": "Auto repair shop or tire recycling depot (shredded for athletic turf/asphalt)."},
+        "Used cooking oil": {"co2_grams": 850, "disposal": "Pour into sealed plastic bottle and bring to collection center for biodiesel conversion."},
+        "Used motor oil": {"co2_grams": 1400, "disposal": "Service station or hazardous waste facility for industrial re-refining."}
+      }
+    }
+  }
+}
