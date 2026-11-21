@@ -212,3 +212,19 @@ func test_machine_deliver_and_fix_table() -> bool:
 	assert_eq(trasher["fix"]["visible"], false, "a Trasher does not fix")
 	assert_eq(_states({"phase": "meeting", "near_console": MACHINE, "bags": 1})["use"], false, "not in a meeting")
 	return true
+
+
+## v2 virus counterplay: HEAL (self when infected, else the nearest player in reach, the server checks
+## the infection) needs a heal; ALERT calls a meeting from anywhere, once per infection.
+func test_heal_and_alert_table() -> bool:
+	assert_eq(_states({"heals": 1, "infected": true})["heal"], true, "heal myself")
+	assert_eq(_states({"heals": 1, "heal_target": 4})["heal"], true, "heal a player in reach")
+	assert_eq(_states({"heals": 1})["heal"], false, "nobody to heal")
+	assert_eq(_states({"heals": 0, "infected": true})["heal"], false, "no heal kit")
+	assert_eq(_states({"infected": true})["alert"], true, "infected: alert from anywhere")
+	assert_eq(_states({"infected": true, "alert_used": true})["alert"], false, "one alert per infection")
+	assert_eq(_states({})["alert"], false, "not infected")
+	var trasher: Dictionary = _states({"role": "polluter", "heals": 1, "infected": true, "heal_target": 4})
+	assert_eq(trasher["heal"] or trasher["alert"], false, "Trashers do neither")
+	assert_eq(_states({"phase": "meeting", "heals": 1, "infected": true})["heal"], false, "not in a meeting")
+	return true

@@ -105,6 +105,8 @@ var upgrade_offer: Array = []
 ## second offer while the pick is on its way.
 var ability_choices: Array = []
 var ability_pick_sent: bool = false
+## True once ALERT called a meeting during the current infection (the server allows one).
+var alert_used: bool = false
 ## The room a toxic gas warning runs in ("" when none) and the seconds before it lands.
 var gas_room: String = ""
 var gas_in_s: float = 0.0
@@ -435,6 +437,7 @@ func _reset_match_state() -> void:
 	upgrade_offer = []
 	ability_choices = []
 	ability_pick_sent = false
+	alert_used = false
 	gas_room = ""
 	gas_in_s = 0.0
 	_read_private({})
@@ -655,6 +658,19 @@ func _on_event(data: Dictionary) -> void:
 			var cleaned: String = str(data.get("spot", ""))
 			if not cleaned.is_empty():
 				spots[cleaned] = "clean"
+		"infected":
+			infected_s = _num(data.get("countdown"), infected_s)
+			alert_used = false
+		"healed":
+			infected_s = -1.0
+		"mask_used":
+			masks = maxi(masks - 1, 0)
+		"gas_warning":
+			gas_room = str(data.get("room", ""))
+			gas_in_s = _num(data.get("in_s"), 0.0)
+		"gas_done":
+			gas_room = ""
+			gas_in_s = 0.0
 		"repollute_ok":
 			cooldowns["repollute"] = _num(data.get("cooldown"), 0.0)
 			repollutes = int(_num(data.get("count"), repollutes))
