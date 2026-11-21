@@ -102,15 +102,22 @@ def main(argv=None) -> int:
     run_runs.mkdir(parents=True, exist_ok=True)
     run_ckpt.mkdir(parents=True, exist_ok=True)
 
+    # map and seats go to the host on the command line, so host_cmd in run.json records them
+    host_flags = []
+    if host.get("map") is not None:
+        host_flags += ["--map", str(host["map"])]
+    if host.get("seats") is not None:
+        host_flags += ["--seats", str(host["seats"])]
     env = UncycledVecEnv(host_cmd, content_dir=str((cfg_dir / host["content_dir"]).resolve()),
                          learner=args.learner, matches=matches, seed=seed, reward_weights=cfg["rewards"],
-                         threads=host.get("threads"), extra_args=shlex.split(args.host_extra))
+                         threads=host.get("threads"), extra_args=host_flags + shlex.split(args.host_extra))
     try:
         venv = VecMonitor(env)
         info = {
             "run": args.run, "learner": args.learner, "seed": seed, "steps": args.steps, "matches": matches,
             "agents": env.num_envs, "obs_size": env.obs_size, "action_count": env.action_count,
             "schema_hash": env.schema_hash, "git_commit": git_commit(), "host_cmd": env.host_cmd,
+            "map": host.get("map"), "seats": host.get("seats"),
             "device": device, "cuda_available": torch.cuda.is_available(),
             "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
             "versions": {"python": platform.python_version(), "torch": torch.__version__,
