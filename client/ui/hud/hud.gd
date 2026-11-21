@@ -1,6 +1,6 @@
 class_name Hud
 extends CanvasLayer
-## In-round HUD: task list, pollution meter, match timer, own poison, the action buttons with
+## In-round HUD: task list, cleanliness meter, match timer, bags carried, the action buttons with
 ## cooldown rings, the sabotage banner, the role reveal card, toasts and the spectator overlay. It only shows
 ## what Session holds; actions go through the bound round (RoundScene.perform_action).
 
@@ -14,8 +14,7 @@ const TOP_RIGHT_WIDTH_PX: float = 170.0
 const TOAST_BOTTOM_OFFSET_PX: float = -84.0
 const SMALL_FONT: int = 11
 const DONE_COLOR: Color = Color(0.6, 0.6, 0.6)
-const POISON_COLOR: Color = Color(0.55, 0.85, 0.2)
-const METER_COLOR: Color = Color(0.85, 0.5, 0.2)
+const METER_COLOR: Color = Color(0.3, 0.8, 0.35)
 ## The ping line appears only above this (a good ping is a debug readout, not player information).
 const WEAK_PING_MS: int = 250
 ## Grid slot order (REPORT USE / DUMP HIT / SABOTAGE); each button keeps its slot while hidden.
@@ -42,8 +41,7 @@ var _tasks_header: Label
 var _timer_label: Label
 var _meter_label: Label
 var _meter_bar: ProgressBar
-var _poison_box: VBoxContainer
-var _poison_bar: ProgressBar
+var _bags_label: Label
 var _ping_label: Label
 var _buttons: Dictionary = {}
 var _fix_button: ActionButton
@@ -152,16 +150,11 @@ func _build_top_right() -> void:
 	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_meter_label = UIKit.make_hud_label(SMALL_FONT)
 	_meter_bar = _make_bar(METER_COLOR)
-	var poison_label: Label = UIKit.make_hud_label(SMALL_FONT)
-	poison_label.text = tr("HUD_POISON")
-	_poison_bar = _make_bar(POISON_COLOR)
-	_poison_box = UIKit.make_vbox(2)
-	_poison_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_poison_box.add_child(poison_label)
-	_poison_box.add_child(_poison_bar)
+	_bags_label = UIKit.make_hud_label(SMALL_FONT)
+	_bags_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_ping_label = UIKit.make_hud_label(SMALL_FONT)
 	_ping_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	for n in [_timer_label, _meter_label, _meter_bar, _poison_box, _ping_label]:
+	for n in [_timer_label, _meter_label, _meter_bar, _bags_label, _ping_label]:
 		box.add_child(n)
 
 
@@ -368,8 +361,11 @@ func _update_header() -> void:
 	_meter_bar.value = Session.meter
 	var left: int = maxi(ceili(Session.deadline_t - Session.clock_t), 0) if Session.deadline_t > 0.0 else 0
 	_timer_label.text = tr("HUD_TIMER") % [floori(left / 60.0), left % 60] if Session.deadline_t > 0.0 else ""
-	_poison_box.visible = Session.role == "citizen"
-	_poison_bar.value = Session.poison
+	# Only a Cleaner has bags (cap > 0); the server never sends a Trasher's.
+	_bags_label.visible = Session.bag_cap > 0
+	_bags_label.text = tr("HUD_BAGS") % [Session.bags, Session.bag_cap] if Session.bag_cap > 0 else ""
+	# v2 has no per-player task list (spots replace it): no empty "Tasks" header.
+	_tasks_header.visible = not Session.my_tasks.is_empty()
 	_ping_label.text = tr("HUD_PING") if Net.ping_ms > WEAK_PING_MS else ""
 
 

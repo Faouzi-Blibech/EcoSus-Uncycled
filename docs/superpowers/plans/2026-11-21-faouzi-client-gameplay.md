@@ -66,21 +66,23 @@ results scene. Louay owns `menu.gd`, `lobby.gd`, `settings_panel.gd` and the new
 **Files:**
 - Modify: `client/autoload/net.gd` (`PROTOCOL_VERSION = 2`), `client/autoload/session.gd` (`_on_snapshot`:
   `spots`, `machine`, `gas`, `me.*`), `client/ui/hud/hud.gd` (cleanliness bar replaces the pollution bar, bag
-  counter), `client/ui/hud/action_rules.gd` (hide hit, dump, clean pile, fire), `client/i18n/strings.csv`
-- Test: `client/tests/test_session_v2.gd` (new), `client/tests/test_action_rules.gd`
+  counter), `client/i18n/strings.csv`, `client/tools/probe/probe_client.gd` (protocol 2)
+- Test: `client/tests/test_session_v2.gd` (new), `client/tests/test_chat_text.gd` (protocol 2)
+- Done on `gameplay/hud-v2`. Hit, dump and pile clean are **not** hidden here: hiding them breaks 11 round
+  tests of those flows. F2 replaces pile clean with spot clean, F4 replaces hit/dump with the Trasher kit, and
+  each rewrites its tests then.
 
 **Interfaces:**
 - Produces on `Session`: `spots: Dictionary` (id -> `"dirty"`/`"clean"`), `machine_jammed: bool`,
   `gas_room: String` (empty when none), `gas_in_s: float`, `bags: int`, `bag_cap: int`, `has_tool: bool`,
   `heals: int`, `masks: int`, `infected_s: float` (-1 when not infected), `repollutes: int`,
-  `ability: String` (`""`, `"virus"`, `"gas"`), `cd: Dictionary`.
+  `ability: String` (`""`, `"virus"`, `"gas"`); Trasher cooldowns stay in the existing `cooldowns`.
 
 - [ ] **Step 1: Write the failing tests** in `test_session_v2.gd`: feed a Cleaner snapshot and a Trasher snapshot
   (copy the JSON shape of spec section 12) into `Session._on_snapshot` and assert every field above; a snapshot
-  without `me.infected_s` gives `infected_s == -1` (Review Focus 1). In `test_action_rules.gd`, a table: with v2
-  context, `hit`, `dump`, `clean` (pile) and `fire` are hidden for both roles.
+  without `me.infected_s` gives `infected_s == -1` (Review Focus 1).
 - [ ] **Step 2:** Run the test runner. Expected: FAIL.
-- [ ] **Step 3:** Implement the parsing and HUD: meter bar labelled `HUD_CLEANLINESS`, time left
+- [ ] **Step 3:** Implement the parsing and HUD: meter bar labelled `HUD_METER` (now "Cleanliness"), time left
   `deadline_t - clock_t` (unchanged), bag counter `HUD_BAGS` "1/1" for Cleaners only.
 - [ ] **Step 4:** Run the test runner. Expected: PASS. Run the local server and client: the HUD shows 0% and
   7:00. Commit on `gameplay/hud-v2`; merge together with Hedi's Task 2 (protocol 2 on both sides).
