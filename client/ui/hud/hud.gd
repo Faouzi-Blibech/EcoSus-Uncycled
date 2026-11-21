@@ -19,14 +19,16 @@ const METER_COLOR: Color = Color(0.3, 0.8, 0.35)
 const WEAK_PING_MS: int = 250
 ## Grid slot order (REPORT USE / DUMP HIT / SABOTAGE); each button keeps its slot while hidden.
 ## FIX shares the USE slot and CLEAN the DUMP slot (the rules never show both), see _build_buttons.
-const ACTIONS: Array[String] = ["report", "use", "dump", "hit", "sabotage"]
+## v2: the Trasher row is RE-POLLUTE and the unlocked ability (virus or gas) where v1 had HIT and DUMP;
+## they keep v1's keys (act_hit, act_dump).
+const ACTIONS: Array[String] = ["report", "use", "ability", "repollute", "sabotage"]
 const ACTION_INPUT: Dictionary = {
-	"use": "act_use", "report": "act_report", "hit": "act_hit", "dump": "act_dump", "sabotage": "act_sabotage",
+	"use": "act_use", "report": "act_report", "repollute": "act_hit", "ability": "act_dump", "sabotage": "act_sabotage",
 }
 const ACTION_LABEL: Dictionary = {
-	"use": "ACT_USE", "report": "ACT_REPORT", "hit": "ACT_HIT", "dump": "ACT_DUMP", "sabotage": "ACT_SABOTAGE",
+	"use": "ACT_USE", "report": "ACT_REPORT", "repollute": "ACT_REPOLLUTE", "ability": "ACT_VIRUS", "sabotage": "ACT_SABOTAGE",
 }
-const SABOTAGE_KINDS: Array[String] = ["fire", "smog"]
+const SABOTAGE_KINDS: Array[String] = ["machine", "smog"]
 const CHOICE_SIZE: Vector2 = Vector2(56.0, 48.0)
 const BANNER_WIDTH_PX: float = 220.0
 ## Width of the button grid (two 64 px slots and the gap), used to put the choices beside it.
@@ -45,6 +47,10 @@ var _bags_label: Label
 ## Upgrades owned (backpack, tool, heal, mask), Cleaners only.
 var _items_label: Label
 var _picker: UpgradePicker
+var _ability_picker: AbilityPicker
+var _room_picker: RoomPicker
+## The kind the ability button is labelled with ("virus" or "gas"), "" until known.
+var _ability_kind: String = ""
 var _ping_label: Label
 var _buttons: Dictionary = {}
 var _fix_button: ActionButton
@@ -110,6 +116,13 @@ func _build() -> void:
 	_picker = UpgradePicker.new()
 	_picker.picked.connect(_on_upgrade_picked)
 	_root.add_child(_picker)
+	# The Trasher's ability choice and the gas room choice, same card picker.
+	_ability_picker = AbilityPicker.new()
+	_ability_picker.picked.connect(_on_ability_picked)
+	_root.add_child(_ability_picker)
+	_room_picker = RoomPicker.new()
+	_room_picker.picked.connect(_on_room_picked)
+	_root.add_child(_room_picker)
 
 	_reveal = RoleRevealScene.instantiate() as RoleReveal
 	_reveal.visible = false
@@ -228,7 +241,7 @@ func _build_buttons() -> void:
 	_fix_button = _make_hold_button(slots["use"] as Control, "ACT_FIX", "act_use")
 	_fix_button.hold_started.connect(_on_hold_started.bind("fix"))
 	_fix_button.hold_ended.connect(_on_hold_ended.bind("fix"))
-	_clean_button = _make_hold_button(slots["dump"] as Control, "ACT_CLEAN", "act_clean")
+	_clean_button = _make_hold_button(slots["ability"] as Control, "ACT_CLEAN", "act_clean")
 	_clean_button.hold_started.connect(_on_hold_started.bind("clean"))
 	_clean_button.hold_ended.connect(_on_hold_ended.bind("clean"))
 	# An empty last slot keeps the grid two columns wide; both go when the role has no SABOTAGE.
@@ -328,6 +341,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_action_pressed(action: String) -> void:
+	# The gas asks which room first (the room picker sends it through the round).
+	var ability: Dictionary = Net.as_dict(_states.get("ability"))
+	if action == "ability" and str(ability.get("kind", "")) == "gas":
+		if bool(ability.get("ready", false)) and _round != null:
+			_room_picker.open(_round.gas_room_ids())
+		return
 	if action == "sabotage":
 		_choices.visible = not _choices.visible and bool(Net.as_dict(_states.get("sabotage")).get("ready", false))
 		return
@@ -355,6 +374,7 @@ func _process(_delta: float) -> void:
 	_update_header()
 	_update_tasks()
 	_update_buttons()
+	_update_pickers()
 	_update_banner()
 	_update_reveal()
 	_update_spectator()
@@ -422,8 +442,8 @@ func _update_buttons() -> void:
 	_states = states
 	_set_simple(states, "use")
 	_set_simple(states, "report")
-	_set_cooldown(states, "hit", "poison", "hit_cooldown_s")
-	_set_cooldown(states, "dump", "dump", "cooldown_s")
+	_set_cooldown(states, "repollute", "trasher", "repollute_cooldown_s")
+	_update_ability(Net.as_dict(states["ability"]))
 	_set_cooldown(states, "sabotage", "sabotage", "shared_cooldown_s")
 	_update_fix(Net.as_dict(states["fix"]))
 	# Only polluters have the third row; citizens keep REPORT and USE near the thumb.
@@ -522,13 +542,57 @@ func _on_event(data: Dictionary) -> void:
 			_toast.show_text(tr("HUD_SPOT_CLEANED"))
 		"delivered":
 			_toast.show_text(tr("HUD_DELIVERED") % [int(data.get("bags", 0)), float(data.get("meter", Session.meter))])
-		"upgrade_offer":
-			var items: Array[String] = []
-			for i in Net.as_array(data.get("items")):
-				items.append(str(i))
-			_picker.open(items)
+		"repollute_ok":
+			_toast.show_text(tr("REPOLLUTE_OK"))
+		"virus_planted":
+			_toast.show_text(tr("VIRUS_PLANTED"))
+		"ability_ok":
+			_toast.show_text(tr("ABILITY_OK") % tr("ABILITY_" + str(data.get("ability", "")).to_upper()))
 		"upgrade_ok":
 			_toast.show_text(tr("UPGRADE_OK") % tr("UPGRADE_" + str(data.get("item", "")).to_upper()))
+
+
+## The open offers come back after a meeting or a rejoin: Session keeps them until a pick (the server
+## keeps the upgrade offer; the ability choice is rebuilt from the snapshot after a rejoin).
+func _update_pickers() -> void:
+	if Session.phase != "playing" or Session.is_out:
+		return
+	if not Session.upgrade_offer.is_empty() and not _picker.is_open():
+		_picker.open(_as_strings(Session.upgrade_offer))
+	if not Session.ability_choices.is_empty() and not _ability_picker.is_open():
+		_ability_picker.open(_as_strings(Session.ability_choices))
+
+
+static func _as_strings(items: Array) -> Array[String]:
+	var out: Array[String] = []
+	for i in items:
+		out.append(str(i))
+	return out
+
+
+## The ability button: hidden until the unlock, then labelled VIRUS or GAS with its cooldown ring.
+func _update_ability(ability: Dictionary) -> void:
+	var b: ActionButton = _buttons["ability"] as ActionButton
+	b.visible = bool(ability.get("visible", false))
+	b.disabled = not bool(ability.get("ready", false))
+	var kind: String = str(ability.get("kind", ""))
+	if kind.is_empty():
+		return
+	if kind != _ability_kind:
+		_ability_kind = kind
+		b.text = action_text(tr("ACT_" + kind.to_upper()), _key_text("act_dump"), DisplayServer.is_touchscreen_available())
+	var total: float = float(Net.as_dict(Session.tuning.get("trasher")).get(kind + "_cooldown_s", 0.0))
+	b.set_ring(float(ability.get("cooldown", 0.0)), total)
+
+
+func _on_ability_picked(ability: String) -> void:
+	if _round != null:
+		_round.pick_ability(ability)
+
+
+func _on_room_picked(room: String) -> void:
+	if _round != null:
+		_round.send_gas(room)
 
 
 func _on_upgrade_picked(item: String) -> void:

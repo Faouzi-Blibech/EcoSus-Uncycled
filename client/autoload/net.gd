@@ -268,12 +268,20 @@ func send_task_step(task_id: int) -> void:
 	send("task_step", {"task": task_id})
 
 
-func send_hit(target: int) -> void:
-	send("hit", {"target": target})
+func send_repollute(spot_id: String) -> void:
+	send("repollute", {"spot": spot_id})
 
 
-func send_dump() -> void:
-	send("dump")
+func send_plant_virus(spot_id: String) -> void:
+	send("plant_virus", {"spot": spot_id})
+
+
+func send_gas(room_id: String) -> void:
+	send("gas", {"room": room_id})
+
+
+func send_pick_ability(ability: String) -> void:
+	send("pick_ability", {"ability": ability})
 
 
 func send_report(pile_id: int) -> void:
