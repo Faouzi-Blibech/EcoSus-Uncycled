@@ -116,7 +116,9 @@ namespace Sim.Match
                 me.BagCap,
                 me.HasTool,
                 me.Repollutes,
-                me.Ability);
+                me.Ability,
+                me.Heals,
+                me.Masks);
 
             var spots = new List<SpotView>();
             foreach (Spot spot in Spots.All)

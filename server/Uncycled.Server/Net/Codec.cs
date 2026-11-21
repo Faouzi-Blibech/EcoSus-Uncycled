@@ -244,6 +244,25 @@ public static class Codec
                 return false;
             }
 
+            case "pick_upgrade":
+            {
+                string? item = GetString(r, "item");
+                UpgradeKind kind;
+                switch (item)
+                {
+                    case "backpack": kind = UpgradeKind.Backpack; break;
+                    case "tool": kind = UpgradeKind.Tool; break;
+                    case "heal": kind = UpgradeKind.Heal; break;
+                    case "mask": kind = UpgradeKind.Mask; break;
+                    default:
+                        error = "bad_field";
+                        return false;
+                }
+
+                cmd = new PickUpgradeCommand(kind);
+                return true;
+            }
+
             case "task_step":
             {
                 if (!TryGetInt(r, "task", out int taskId))

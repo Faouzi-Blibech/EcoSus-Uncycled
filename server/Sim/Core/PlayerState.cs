@@ -66,6 +66,17 @@ namespace Sim.Core
 
         /// <summary>ActiveTime at which this Trasher may re-pollute again.</summary>
         public float RepolluteReadyAt { get; internal set; }
+        /// <summary>True once the seat owns the Backpack (bag capacity BackpackCap).</summary>
+        public bool HasBackpack { get; internal set; }
+
+        /// <summary>Heals held (citizens only, at most one).</summary>
+        public int Heals { get; internal set; }
+
+        /// <summary>Masks held (citizens only, at most one).</summary>
+        public int Masks { get; internal set; }
+
+        /// <summary>True while a Recycling Machine upgrade offer waits for a pick.</summary>
+        public bool UpgradeOfferOpen { get; internal set; }
 
         /// <summary>Movement distance budget in tiles.</summary>
         public float MoveBudget { get; internal set; }

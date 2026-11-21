@@ -32,7 +32,7 @@ namespace Sim.Tests
         public static readonly Vec2 FireAPos = new Vec2(2.5f, 1.5f);
         public static readonly Vec2 FireBPos = new Vec2(17.5f, 1.5f);
         public static readonly Vec2 SmogPos = new Vec2(12.5f, 8.5f);
-        public static readonly Vec2 MachinePos = new Vec2(1.5f, 8.5f);
+        public static readonly Vec2 MachinePos = new Vec2(1.5f, 5.5f);
 
         /// <summary>A far corner used to park seats that should not matter.</summary>
         public static readonly Vec2 Corner = new Vec2(18.5f, 8.5f);

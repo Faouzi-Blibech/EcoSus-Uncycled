@@ -80,6 +80,11 @@ namespace Sim.Match
                 return Reject(reach.Value);
             }
 
+            if (console.Kind == ConsoleKind.Machine)
+            {
+                return ApplyDeliver(p, console);
+            }
+
             if (console.Kind != ConsoleKind.Task)
             {
                 Emit(new UseOkEvent(p.Seat, console.Id, console.Kind, null, null, null));
@@ -111,6 +116,97 @@ namespace Sim.Match
             // One open session per seat; the spot can stay dirty for several seats at once, the first spot_done wins.
             _sessions[p.Seat] = new TaskSession(-1, 0, spot.Id, ActiveTime);
             Emit(new UseOkEvent(p.Seat, spot.Id, ConsoleKind.Task, null, spot.TaskType, null));
+            return CommandResult.Ok;
+        }
+
+        /// <summary>
+        /// use on the Recycling Machine: drops every bag (meter + BagMeterAdd each) and opens one upgrade
+        /// offer unless one is already open.
+        /// </summary>
+        private CommandResult ApplyDeliver(PlayerState p, ConsoleDef machine)
+        {
+            if (!p.IsCitizen)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (p.Bags <= 0)
+            {
+                return Reject(RejectReason.NoBags);
+            }
+
+            int bags = p.Bags;
+            p.Bags = 0;
+            Meter.Add(bags * Config.BagMeterAdd);
+            Emit(new UseOkEvent(p.Seat, machine.Id, ConsoleKind.Machine, null, null, null));
+            Emit(new DeliveredEvent(p.Seat, bags, Meter.Value));
+            if (!p.UpgradeOfferOpen)
+            {
+                p.UpgradeOfferOpen = true;
+                var items = new List<UpgradeKind>();
+                foreach (UpgradeKind kind in new[] { UpgradeKind.Backpack, UpgradeKind.Tool, UpgradeKind.Heal, UpgradeKind.Mask })
+                {
+                    // Backpack and tool are not offered once owned; heal and mask are always offered.
+                    if (kind == UpgradeKind.Heal || kind == UpgradeKind.Mask || !IsUpgradeOwned(p, kind))
+                    {
+                        items.Add(kind);
+                    }
+                }
+
+                Emit(new UpgradeOfferEvent(p.Seat, items));
+            }
+
+            TryEndMatch();
+            return CommandResult.Ok;
+        }
+
+        // Heal and mask are held at most once; the backpack and tool do not stack.
+        private const int HeldItemMax = 1;
+
+        private bool IsUpgradeOwned(PlayerState p, UpgradeKind kind)
+        {
+            switch (kind)
+            {
+                case UpgradeKind.Backpack: return p.HasBackpack;
+                case UpgradeKind.Tool: return p.HasTool;
+                case UpgradeKind.Heal: return p.Heals >= HeldItemMax;
+                default: return p.Masks >= HeldItemMax;
+            }
+        }
+
+        /// <summary>pick_upgrade: only while an offer is open (else no_item); an owned backpack/tool or a full heal/mask is refused.</summary>
+        private CommandResult ApplyPickUpgrade(PlayerState p, PickUpgradeCommand c)
+        {
+            if (Phase != MatchPhase.Playing)
+            {
+                return Reject(RejectReason.WrongPhase);
+            }
+
+            if (!p.IsActive || !p.IsCitizen)
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            if (!p.UpgradeOfferOpen)
+            {
+                return Reject(RejectReason.NoItem);
+            }
+
+            if (IsUpgradeOwned(p, c.Item))
+            {
+                return Reject(RejectReason.NotAllowed);
+            }
+
+            switch (c.Item)
+            {
+                case UpgradeKind.Backpack: p.HasBackpack = true; p.BagCap = Config.BackpackCap; break;
+                case UpgradeKind.Tool: p.HasTool = true; break;
+                case UpgradeKind.Heal: p.Heals++; break;
+                default: p.Masks++; break;
+            }
+
+            p.UpgradeOfferOpen = false;
+            Emit(new UpgradeOkEvent(p.Seat, c.Item));
             return CommandResult.Ok;
         }
 

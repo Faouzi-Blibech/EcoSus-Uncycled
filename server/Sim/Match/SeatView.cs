@@ -121,13 +121,17 @@ namespace Sim.Match
             int bagCap = 0,
             bool hasTool = false,
             int repollutes = 0,
-            TrasherAbility ability = TrasherAbility.None)
+            TrasherAbility ability = TrasherAbility.None,
+            int heals = 0,
+            int masks = 0)
         {
             Repollutes = repollutes;
             Ability = ability;
             Bags = bags;
             BagCap = bagCap;
             HasTool = hasTool;
+            Heals = heals;
+            Masks = masks;
             Seat = seat;
             Role = role;
             Partners = partners;
@@ -177,6 +181,11 @@ namespace Sim.Match
 
         /// <summary>The picked ability, None before. Trashers only.</summary>
         public TrasherAbility Ability { get; }
+        /// <summary>Heals held (0 or 1). Private to the carrier; the wire sends it to citizens only.</summary>
+        public int Heals { get; }
+
+        /// <summary>Masks held (0 or 1). Private to the carrier; the wire sends it to citizens only.</summary>
+        public int Masks { get; }
     }
 
     public sealed class SabotageView

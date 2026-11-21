@@ -51,20 +51,18 @@ namespace Sim.Tests
             Assert.Equal(expected >= 100f, meter.IsFull);
         }
 
-        // 10-testing.md section 2, row by row, plus deadline rows.
+        // v2 win order (spec section 7): polluters out, meter full, deadline, parity. No task or pollution rule.
         [Theory]
-        [InlineData(0, 3, 99f, false, false, "citizens", "polluters_voted_out")]
-        [InlineData(0, 3, 100f, false, false, "citizens", "polluters_voted_out")]
-        [InlineData(1, 3, 100f, false, false, "polluters", "pollution_full")]
-        [InlineData(2, 2, 50f, false, false, "polluters", "parity")]
-        [InlineData(1, 3, 50f, false, true, "citizens", "tasks_done")]
-        [InlineData(1, 3, 50f, false, false, null, null)]
-        [InlineData(1, 3, 50f, true, true, "polluters", "deadline")]
-        [InlineData(1, 3, 100f, true, false, "polluters", "pollution_full")]
-        [InlineData(0, 3, 50f, true, false, "citizens", "polluters_voted_out")]
-        public void Win_order(int polluters, int citizens, float meter, bool deadline, bool tasksDone, string? winner, string? reason)
+        [InlineData(0, 4, 50f, false, "citizens", "polluters_voted_out")]
+        [InlineData(0, 4, 100f, true, "citizens", "polluters_voted_out")]
+        [InlineData(1, 4, 100f, false, "citizens", "meter_full")]
+        [InlineData(1, 4, 99f, true, "polluters", "deadline")]
+        [InlineData(1, 4, 100f, true, "citizens", "meter_full")]
+        [InlineData(2, 2, 50f, false, "polluters", "parity")]
+        [InlineData(1, 4, 99f, false, null, null)]
+        public void Win_order(int polluters, int citizens, float meter, bool deadline, string? winner, string? reason)
         {
-            WinResult? r = WinEvaluator.Evaluate(polluters, citizens, meter, deadline, tasksDone);
+            WinResult? r = WinEvaluator.Evaluate(polluters, citizens, meter, deadline);
             if (winner == null)
             {
                 Assert.Null(r);

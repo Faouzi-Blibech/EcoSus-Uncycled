@@ -15,15 +15,14 @@ namespace Sim.Uncycled
         public GameOverReason Reason { get; }
     }
 
-    /// <summary>Win order of 04 section 9. Returns null to continue.</summary>
+    /// <summary>Win order of spec section 7: polluters out, meter full, deadline, parity. Returns null to continue.</summary>
     public static class WinEvaluator
     {
         public static WinResult? Evaluate(
             int activePolluters,
             int activeCitizens,
             float meter,
-            bool deadlineReached,
-            bool allTaskStepsDone)
+            bool deadlineReached)
         {
             if (activePolluters == 0)
             {
@@ -32,7 +31,7 @@ namespace Sim.Uncycled
 
             if (meter >= PollutionMeter.Max)
             {
-                return new WinResult(Winner.Polluters, GameOverReason.PollutionFull);
+                return new WinResult(Winner.Citizens, GameOverReason.MeterFull);
             }
 
             if (deadlineReached)
@@ -43,11 +42,6 @@ namespace Sim.Uncycled
             if (activePolluters >= activeCitizens)
             {
                 return new WinResult(Winner.Polluters, GameOverReason.Parity);
-            }
-
-            if (allTaskStepsDone)
-            {
-                return new WinResult(Winner.Citizens, GameOverReason.TasksDone);
             }
 
             return null;

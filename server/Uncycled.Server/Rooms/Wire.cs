@@ -399,7 +399,7 @@ public static class Wire
             WriteSabotage(w, "sabotage", v.Sabotage, extras?.RepairElapsed);
         });
 
-    /// <summary>bags, cap and tool: Cleaners only (a Trasher never carries bags).</summary>
+    /// <summary>bags, cap, tool, heals and masks: Cleaners only (a Trasher never carries bags).</summary>
     private static void WriteBags(Utf8JsonWriter w, MyView me)
     {
         if (me.Role != Role.Citizen)
@@ -410,6 +410,8 @@ public static class Wire
         w.WriteNumber("bags", me.Bags);
         w.WriteNumber("cap", me.BagCap);
         w.WriteBoolean("tool", me.HasTool);
+        w.WriteNumber("heals", me.Heals);
+        w.WriteNumber("masks", me.Masks);
     }
 
     /// <summary>repollutes and ability: Trashers only (a Cleaner's message never mentions them).</summary>
@@ -637,6 +639,34 @@ public static class Wire
                     w.WriteString("t", "spot_cleaned");
                     w.WriteString("spot", e.Spot);
                     w.WriteNumber("bags", e.Bags);
+                });
+
+            case DeliveredEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "delivered");
+                    w.WriteNumber("bags", e.Bags);
+                    w.F("meter", e.Meter);
+                });
+
+            case UpgradeOfferEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "upgrade_offer");
+                    w.WriteStartArray("items");
+                    foreach (UpgradeKind item in e.Items)
+                    {
+                        w.WriteStringValue(Snake(item));
+                    }
+
+                    w.WriteEndArray();
+                });
+
+            case UpgradeOkEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "upgrade_ok");
+                    w.WriteString("item", Snake(e.Item));
                 });
 
             case TaskProgressEvent e:
