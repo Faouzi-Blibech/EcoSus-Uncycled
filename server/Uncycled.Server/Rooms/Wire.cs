@@ -51,11 +51,24 @@ public static class Wire
 
     // ---------- lobby / welcome ----------
 
-    public static string Lobby(IReadOnlyList<Seat> seats, int hostSeat) =>
+    private static void WriteSizes(Utf8JsonWriter w, int size, IReadOnlyList<int> sizes)
+    {
+        w.WriteNumber("size", size);
+        w.WriteStartArray("sizes");
+        foreach (int n in sizes)
+        {
+            w.WriteNumberValue(n);
+        }
+
+        w.WriteEndArray();
+    }
+
+    public static string Lobby(IReadOnlyList<Seat> seats, int hostSeat, int size, IReadOnlyList<int> sizes) =>
         JsonOut.Build(w =>
         {
             w.WriteString("t", "lobby");
             w.WriteNumber("host_seat", hostSeat);
+            WriteSizes(w, size, sizes);
             w.WriteStartArray("seats");
             foreach (Seat s in seats)
             {
@@ -76,7 +89,7 @@ public static class Wire
             w.WriteEndArray();
         });
 
-    public static string Welcome(string code, int seat, string token, int hostSeat, ContentBundle content, string phase, SeatView? state, IReadOnlyList<Seat> seats, Func<byte, bool> isOut) =>
+    public static string Welcome(string code, int seat, string token, int hostSeat, ContentBundle content, string phase, SeatView? state, IReadOnlyList<Seat> seats, Func<byte, bool> isOut, int size = 0) =>
         JsonOut.Build(w =>
         {
             w.WriteString("t", "welcome");
@@ -84,6 +97,7 @@ public static class Wire
             w.WriteNumber("seat", seat);
             w.WriteString("token", token);
             w.WriteNumber("host_seat", hostSeat);
+            WriteSizes(w, size > 0 ? size : content.Config.DefaultSize, content.Config.RoomSizes);
             w.WritePropertyName("tuning");
             w.WriteRawValue(content.TuningJson);
             w.WritePropertyName("tasks");

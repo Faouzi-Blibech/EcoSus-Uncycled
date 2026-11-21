@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Sim.Core;
 
 namespace Sim.Match
@@ -12,6 +13,27 @@ namespace Sim.Match
         // seats
         public int Seats { get; set; } = 8;
         public int Polluters { get; set; } = 2;
+
+        /// <summary>Room sizes the host may pick (rooms.sizes).</summary>
+        public int[] RoomSizes { get; set; } = { 6, 8, 10 };
+
+        /// <summary>Size of a new room (rooms.default_size).</summary>
+        public int DefaultSize { get; set; } = 8;
+
+        /// <summary>Trashers (Polluters) per room size (rooms.trashers); a size missing here falls back to Polluters.</summary>
+        public Dictionary<int, int> RoomTrashers { get; set; } = new Dictionary<int, int> { { 6, 1 }, { 8, 2 }, { 10, 2 } };
+
+        /// <summary>Trashers in a room of this size.</summary>
+        public int TrashersFor(int size) => RoomTrashers.TryGetValue(size, out int n) ? n : Polluters;
+
+        /// <summary>A copy of this config for one match of the given room size: Seats and Polluters follow the size.</summary>
+        public MatchConfig ForSize(int size)
+        {
+            var c = (MatchConfig)MemberwiseClone();
+            c.Seats = size;
+            c.Polluters = TrashersFor(size);
+            return c;
+        }
 
         // movement
         public float SpeedTilesPerS { get; set; } = 2.5f;
