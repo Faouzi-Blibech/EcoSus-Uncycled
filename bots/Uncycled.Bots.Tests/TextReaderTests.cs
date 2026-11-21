@@ -57,6 +57,24 @@ namespace Uncycled.Bots.Tests
         [InlineData("skip", "skip_no_proof(-,-)")]
         [InlineData("I was in the depot. Bot 3 is sus.", "i_was(-,depot);sus(3,-)")]
         [InlineData("bot 3 is sus, not bot 4", "sus(3,-)")]
+        // hedged or reported: a plain accusation at most, never an eyewitness line
+        [InlineData("maybe bot 5 dumped in the market", "sus(5,-)")]
+        [InlineData("if bot 5 dumped in the market we lose", "sus(5,-)")]
+        [InlineData("someone told me bot 5 dumped in the market", "sus(5,-)")]
+        [InlineData("I think bot 5 re-polluted the depot", "sus(5,-)")]
+        [InlineData("i heard bot 5 repolluted the market", "sus(5,-)")]
+        [InlineData("probably bot 5 made it dirty in the garden", "sus(5,-)")]
+        [InlineData("bot 5 might have dumped in the depot", "sus(5,-)")]
+        [InlineData("they said bot 5 dumped in the market", "sus(5,-)")]
+        // passive or about the victim: no accusation
+        [InlineData("bot 5 got infected in the garden", "")]
+        [InlineData("bot 5 was gassed in the depot", "")]
+        [InlineData("bot 5 was in the polluted market", "")]
+        [InlineData("the spot was dirtied by bot 5 in the market", "")]
+        [InlineData("someone gassed bot 5 in the depot", "")]
+        [InlineData("I saw bot 5 infected in the garden", "")]
+        // a hit named with its victim is still a hit by the subject
+        [InlineData("I saw bot 5 gassed someone in the depot", "saw_hit(5,depot)")]
         // not clear: no act
         [InlineData("it's not bot 3", "")]
         [InlineData("bot 3 is not sus", "")]

@@ -4,8 +4,8 @@
   "lang": {
     "en": {
       "accuse": ["sus", "suspicious", "suspect", "suspected", "guilty", "polluter", "trasher", "fishy", "shady", "is the trasher", "is a trasher", "is a polluter"],
-      "saw_dump": ["dump", "dumped", "dumping", "repollute", "re-pollute", "re pollute", "repolluted", "re-polluted", "re polluted", "repolluting", "re-polluting", "made it dirty", "made the spot dirty", "made a spot dirty", "dirtied", "dirtying", "trashed", "polluted"],
-      "saw_hit": ["hit", "poison", "poisoned", "poisoning", "gassed", "gassing", "infected", "infecting", "planted a virus", "killed"],
+      "saw_dump": ["dump", "dumped", "dumping", "repollute", "re-pollute", "re pollute", "repolluted", "re-polluted", "re polluted", "repolluting", "re-polluting", "made it dirty", "made the spot dirty", "made a spot dirty", "dirtied", "dirtying", "trashed"],
+      "saw_hit": ["hit", "hits", "poison", "poisons", "poisoning", "gas", "gases", "infect", "infects", "infecting", "kill", "kills", "planted a virus", "plant a virus", "poisoned someone", "poisoned somebody", "gassed someone", "gassed somebody", "infected someone", "infected somebody", "killed someone", "killed somebody"],
       "near_pile": ["near the pile", "near a pile", "next to the pile", "next to a pile", "by the pile", "near the body", "near a body", "next to the body", "next to a body", "by the body", "near the waste", "next to the waste"],
       "alibi": ["i was in", "i was at", "i was inside", "i am in", "im in"],
       "with": ["i was with", "i am with", "im with"],
@@ -13,6 +13,8 @@
       "lying": ["liar", "lying", "lies", "lie", "lied"],
       "vote": ["vote", "voting"],
       "skip": ["skip", "skipping"],
+      "hedge": ["maybe", "perhaps", "might", "could", "probably", "possibly", "if", "think", "guess", "suppose", "believe", "thought", "told", "tell", "said", "says", "say", "heard", "hear", "rumor", "rumour", "apparently", "reportedly", "people"],
+      "passive": ["was", "were", "got", "get", "gets", "been", "being", "be", "is", "are"],
       "negation": ["not", "isn't", "isnt", "wasn't", "wasnt", "never", "no", "don't", "dont", "doesn't", "doesnt", "didn't", "didnt", "aren't", "arent", "won't", "wont", "cant", "can't", "nobody", "neither"]
     }
   },

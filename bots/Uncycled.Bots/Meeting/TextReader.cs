@@ -236,7 +236,16 @@ namespace Uncycled.Bots.Meeting
                 // the strongest act named in the clause decides; a negated one cancels the accusation
                 if (!Negated(t, words, Math.Max(at, nameStart)))
                 {
-                    bool eyewitness = kind != "accuse" && oneZone != null;
+                    bool act = kind == "saw_dump" || kind == "saw_hit";
+                    bool passive = act && Find(t, words.Tokens("passive"), taken, at) >= 0; // "was gassed", "got infected": the named seat is the one it happened to
+                    bool victim = kind == "saw_hit" && nameStart > at; // "someone gassed bot 5"
+                    if (passive || victim)
+                    {
+                        break;
+                    }
+
+                    // a first-person report with a zone is an eyewitness line (40 for the listeners): not when the speaker hedges or passes on what he heard
+                    bool eyewitness = kind != "accuse" && oneZone != null && Find(t, words.Tokens("hedge"), taken) < 0;
                     Add(acts, speaker, eyewitness ? kind : "sus", oneSeat, eyewitness ? oneZone : null, time);
                 }
 
@@ -275,13 +284,13 @@ namespace Uncycled.Bots.Meeting
         }
 
         /// <summary>Index of the first token where one of the words (each possibly several tokens) starts, not on a name token; -1 when none.</summary>
-        private static int Find(string[] t, string[][] list, bool[] taken)
+        private static int Find(string[] t, string[][] list, bool[] taken, int before = int.MaxValue)
         {
             int best = -1;
             foreach (string[] phrase in list)
             {
                 List<int> at = Occurrences(t, phrase, taken);
-                if (at.Count > 0 && (best < 0 || at[0] < best))
+                if (at.Count > 0 && at[0] < before && (best < 0 || at[0] < best))
                 {
                     best = at[0];
                 }
