@@ -563,6 +563,9 @@ func _refresh_chat() -> void:
 	var can_type: bool = _can_type()
 	_say_btn.disabled = not can_say or _picking
 	_text_edit.editable = can_type
+	# The stage moved on or the last line went while the box had focus: hand the screen back.
+	if _compact and not can_type:
+		_on_done()
 	_send_btn.disabled = not can_type or _awaiting_echo or Session.chat_gap_left() > 0.0
 	_counters.visible = not ghost and not _compact
 	_counters.text = tr("CHAT_PHRASES_LEFT") % Session.chat_left() + "\n" + tr("CHAT_TEXT_LEFT") % Session.text_left()

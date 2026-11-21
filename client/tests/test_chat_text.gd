@@ -615,6 +615,49 @@ func test_meeting_box_docks_at_the_top_while_it_has_focus_on_a_touch_device() ->
 	return true
 
 
+func _compact_normal(m: Control) -> bool:
+	return not m._compact and m._left.visible and m._top_row.visible and m._chat_panel.get_child(0) == m._chat_title
+
+
+func test_stage_change_under_a_focused_box_leaves_the_compact_layout() -> bool:
+	_live_session()
+	var m: Control = _meeting_scene()
+	m.touch = true
+	m._text_edit.focus_entered.emit()
+	assert_true(m._compact and not m._left.visible, "compact while typing")
+	_feed(m, {"t": "voting_started", "voting_s": 30.0})
+	assert_true(_compact_normal(m), "voting: the cards, buttons and timer are back, compact is off")
+	assert_true(m._confirm_btn != null and m._confirm_btn.is_visible_in_tree() == m.is_visible_in_tree(), "the vote buttons are built")
+	assert_true(not m._text_edit.has_focus(), "the box lost the focus")
+	_restore()
+	return true
+
+
+func test_last_typed_line_leaves_the_compact_layout() -> bool:
+	_live_session()
+	var m: Control = _meeting_scene()
+	m.touch = true
+	m._text_edit.focus_entered.emit()
+	Session.text_used = Session.text_limit()
+	m._refresh_chat()
+	assert_true(_compact_normal(m), "text_left 0 while compact: the normal layout is back")
+	m.touch = false
+	_restore()
+	return true
+
+
+func test_a_desktop_keeps_its_layout_when_the_stage_changes() -> bool:
+	_live_session()
+	var m: Control = _meeting_scene()
+	m.touch = false
+	m._text_edit.focus_entered.emit()
+	_feed(m, {"t": "voting_started", "voting_s": 30.0})
+	assert_true(_compact_normal(m), "never compact on a desktop, voting UI present")
+	assert_true(m._confirm_btn != null, "vote buttons built")
+	_restore()
+	return true
+
+
 func test_meeting_compact_layout_really_puts_the_box_on_top() -> bool:
 	_live_session()
 	var root: Window = (Engine.get_main_loop() as SceneTree).root
