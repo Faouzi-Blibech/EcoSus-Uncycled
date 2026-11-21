@@ -1,0 +1,22 @@
+{
+  "bins": [
+    {"id": "plastic_metal", "name_key": "BIN_PLASTIC_METAL"},
+    {"id": "paper", "name_key": "BIN_PAPER"},
+    {"id": "glass", "name_key": "BIN_GLASS"},
+    {"id": "organic", "name_key": "BIN_ORGANIC"}
+  ],
+  "items": [
+    {"id": "water_bottle", "name_key": "ITEM_WATER_BOTTLE", "bin": "plastic_metal"},
+    {"id": "tin_can", "name_key": "ITEM_TIN_CAN", "bin": "plastic_metal"},
+    {"id": "yogurt_pot", "name_key": "ITEM_YOGURT_POT", "bin": "plastic_metal"},
+    {"id": "newspaper", "name_key": "ITEM_NEWSPAPER", "bin": "paper"},
+    {"id": "cardboard_box", "name_key": "ITEM_CARDBOARD_BOX", "bin": "paper"},
+    {"id": "magazine", "name_key": "ITEM_MAGAZINE", "bin": "paper"},
+    {"id": "jam_jar", "name_key": "ITEM_JAM_JAR", "bin": "glass"},
+    {"id": "wine_bottle", "name_key": "ITEM_WINE_BOTTLE", "bin": "glass"},
+    {"id": "perfume_flask", "name_key": "ITEM_PERFUME_FLASK", "bin": "glass"},
+    {"id": "apple_core", "name_key": "ITEM_APPLE_CORE", "bin": "organic"},
+    {"id": "banana_peel", "name_key": "ITEM_BANANA_PEEL", "bin": "organic"},
+    {"id": "eggshell", "name_key": "ITEM_EGGSHELL", "bin": "organic"}
+  ]
+}
