@@ -1,0 +1,247 @@
+keys,en,fr
+BOOT_TITLE,Uncycled,Uncycled
+BOOT_CONNECTING,Connecting to the server...,Connexion au serveur...
+BOOT_OFFLINE,"Cannot reach the game server. Check the address in Settings.\n%s","Impossible de joindre le serveur de jeu. Vérifie l'adresse dans les Paramètres.\n%s"
+BOOT_RETRY,Retry,Réessayer
+BOOT_UPDATE_NEEDED,This version is out of date. Reload the page or install the latest version.,Cette version est périmée. Recharge la page ou installe la dernière version.
+BOOT_ERROR,Something went wrong (%s). Please try again.,Un problème est survenu (%s). Réessaie.
+COMMON_SETTINGS,Settings,Paramètres
+COMMON_SAVE,Save,Enregistrer
+COMMON_CANCEL,Cancel,Annuler
+SETTINGS_TITLE,Settings,Paramètres
+SETTINGS_NAME,Player name,Nom du joueur
+SETTINGS_LANGUAGE,Language,Langue
+SETTINGS_SERVER,Server address,Adresse du serveur
+SETTINGS_BAD_URL,"The address must start with ws:// or wss://","L'adresse doit commencer par ws:// ou wss://"
+LANG_EN,English,English
+LANG_FR,Français,Français
+MENU_NAME_PLACEHOLDER,Your name,Ton nom
+MENU_CREATE,Create a room,Créer une salle
+MENU_CODE_PLACEHOLDER,Code,Code
+MENU_JOIN,Join,Rejoindre
+MENU_NAME_REQUIRED,Please enter a name.,Entre un nom d'abord.
+MENU_BAD_CODE,The room code has 4 letters.,Le code de la salle a 4 lettres.
+MENU_WORKING,Please wait...,Un instant...
+MENU_NO_ANSWER,"The server did not answer, try again.","Le serveur n'a pas répondu, réessaie."
+MENU_SESSION_EXPIRED,Your last game has ended. Create or join a room.,Ta dernière partie est terminée. Crée ou rejoins une salle.
+JOIN_FAILED_NO_ROOM,This room does not exist.,Cette salle n'existe pas.
+JOIN_FAILED_FULL,This room is full.,Cette salle est pleine.
+JOIN_FAILED_IN_MATCH,A match is in progress. Join when it ends.,Une partie est en cours. Rejoins quand elle sera finie.
+JOIN_FAILED_BAD_NAME,This name is not allowed.,Ce nom n'est pas autorisé.
+JOIN_FAILED_UNKNOWN,Could not join the room.,Impossible de rejoindre la salle.
+LOBBY_CODE,Room code,Code de la salle
+LOBBY_YOU,(you),(toi)
+LOBBY_HUMAN,Player,Joueur
+LOBBY_BOT,Bot,Bot
+LOBBY_READY,Ready,Prêt
+LOBBY_COLOR,Colour,Couleur
+LOBBY_START,Start (bots fill empty seats),Lancer (des bots remplissent les places vides)
+LOBBY_LEAVE,Leave,Quitter
+LOBBY_WAITING_HOST,Waiting for the host to start the match.,En attente du lancement par l'hôte.
+RECONNECT_TITLE,Connection lost,Connexion perdue
+RECONNECT_WAITING,Reconnecting...,Reconnexion...
+RECONNECT_TRYING,Reconnecting...,Reconnexion...
+ROLE_CITIZEN,Citizen,Citoyen
+ROLE_POLLUTER,Polluter,Pollueur
+HUD_ROLE,Role: %s,Rôle : %s
+HUD_PARTNER,Partner: %s,Complice : %s
+HUD_METER,Pollution: %.0f%%,Pollution : %.0f%%
+HUD_PHASE,Phase: %s,Phase : %s
+HUD_PING,Weak connection,Connexion faible
+PHASE_LOBBY,Lobby,Salon
+PHASE_INTRO,Get ready,Prépare-toi
+PHASE_PLAYING,Find the polluters!,Trouve les pollueurs !
+PHASE_MEETING,Meeting,Réunion
+PHASE_EJECTION,Ejection,Éjection
+PHASE_ENDED,Game over,Partie terminée
+PLACEHOLDER_HINT,Please wait...,Un instant...
+MG_CLOSE,Close,Fermer
+MG_SORT_HINT,Drag each item into the right bin.,Glisse chaque objet dans le bon bac.
+MG_COMPOST_TURN_HINT,Turn the handle around the pile %d times.,Tourne la manivelle %d fois autour du tas.
+MG_COMPOST_HOLD_HINT,Hold the gauge and release in the green zone.,Maintiens la jauge et relâche dans la zone verte.
+BIN_PLASTIC_METAL,Plastic and metal packaging,Emballages plastique et métal
+BIN_PAPER,Paper,Papier
+BIN_GLASS,Glass,Verre
+BIN_ORGANIC,Organic,Organique
+ITEM_WATER_BOTTLE,Water bottle,Bouteille d'eau
+ITEM_TIN_CAN,Tin can,Boîte de conserve
+ITEM_YOGURT_POT,Yogurt pot,Pot de yaourt
+ITEM_NEWSPAPER,Newspaper,Journal
+ITEM_CARDBOARD_BOX,Cardboard box,Boîte en carton
+ITEM_MAGAZINE,Magazine,Magazine
+ITEM_JAM_JAR,Jam jar,Pot de confiture
+ITEM_WINE_BOTTLE,Wine bottle,Bouteille de vin
+ITEM_PERFUME_FLASK,Perfume flask,Flacon de parfum
+ITEM_APPLE_CORE,Apple core,Trognon de pomme
+ITEM_BANANA_PEEL,Banana peel,Peau de banane
+ITEM_EGGSHELL,Eggshell,Coquille d'oeuf
+MEETING_CAUSE_REPORT,%s reported a waste pile,%s a signalé un tas de déchets
+MEETING_CAUSE_EMERGENCY,%s called an emergency meeting,%s a lancé une réunion d'urgence
+MEETING_CLUES,Clues,Indices
+MEETING_NO_CLUES,No clues.,Aucun indice.
+MEETING_CLUE_PLAIN,%s (%s),%s (%s)
+MEETING_TASK_BAR,Tasks done: %.0f%%,Tâches faites : %.0f%%
+MEETING_CHAT,Chat,Discussion
+MEETING_DISCUSSION,Discussion,Discussion
+MEETING_VOTING,Vote,Vote
+MEETING_CONFIRM,Vote,Voter
+MEETING_SKIP,Skip vote,Passer le vote
+MEETING_VOTED,Voted,A voté
+MEETING_YOU_VOTED,Your vote is in.,Ton vote est enregistré.
+MEETING_OUT_NOTE,You are out and cannot vote.,Tu es éliminé et ne peux pas voter.
+MEETING_SEAT_OUT,Out,Éliminé
+MEETING_RESULTS,Results,Résultats
+MEETING_VOTES_FOR,%s: %d,%s : %d
+MEETING_VOTES_SKIP,Skipped votes: %d,Abstentions : %d
+MEETING_TIE,Tie. Nobody is ejected.,Égalité. Personne n'est éjecté.
+MEETING_EJECTED,%s is ejected.,%s est éjecté.
+MEETING_NO_EJECTION,Nobody is ejected.,Personne n'est éjecté.
+EJECTION_WAS_POLLUTER,%s was a polluter.,%s était un pollueur.
+EJECTION_WAS_NOT_POLLUTER,%s was not a polluter.,%s n'était pas un pollueur.
+EJECTION_PENDING,Ejection in progress...,Éjection en cours...
+ZONE_MARKET,Market,Marché
+ZONE_GARDEN,Garden,Jardin
+ZONE_DEPOT,Depot,Dépôt
+WASTE_PLASTIC,plastic,plastique
+WASTE_GLASS,glass,verre
+WASTE_PAPER,paper,papier
+WASTE_METAL,metal,métal
+WASTE_ORGANIC,organic,organique
+WASTE_ELECTRONIC,electronic,électronique
+MEETING_RESULTS_PENDING,Counting the votes...,Dépouillement des votes...
+MEETING_SEAT_TAG,%s (%s),%s (%s)
+MEETING_SEAT_VOTED_TAG,%s [%s],%s [%s]
+MEETING_CHAT_LINE,%s: %s,%s : %s
+RESULT_WINNER_CITIZENS,Citizens win,Les citoyens gagnent
+RESULT_WINNER_POLLUTERS,Polluters win,Les pollueurs gagnent
+RESULT_POLLUTERS_VOTED_OUT,The polluters were voted out.,Les pollueurs ont été éliminés par le vote.
+RESULT_TASKS_DONE,Every task is done.,Toutes les tâches sont faites.
+RESULT_POLLUTION_FULL,The pollution meter is full.,La jauge de pollution est pleine.
+RESULT_DEADLINE,Time ran out.,Le temps est écoulé.
+RESULT_PARITY,There are now as many polluters as citizens.,Il y a maintenant autant de pollueurs que de citoyens.
+RESULT_REASON_UNKNOWN,The match is over.,La partie est terminée.
+RESULT_ROLES,Roles,Rôles
+RESULT_ROLE_LINE,%s: %s,%s : %s
+RESULT_TIMELINE,Timeline,Chronologie
+RESULT_NO_TIMELINE,Nothing happened.,Rien ne s'est passé.
+RESULT_TL_LINE,%s  %s,%s  %s
+RESULT_TL_AT,%s (%s),%s (%s)
+RESULT_TL_DUMP,%s dumped waste,%s a jeté des déchets
+RESULT_TL_HIT,%s poisoned %s,%s a empoisonné %s
+RESULT_TL_POISONED_OUT,%s was knocked out by poison,%s a été éliminé par le poison
+RESULT_TL_REPORT,%s reported a waste pile,%s a signalé un tas de déchets
+RESULT_TL_MEETING,%s called a meeting,%s a lancé une réunion
+RESULT_TL_EJECTION,%s was ejected,%s a été éjecté
+RESULT_FACT_LABEL,Did you know?,Le savais-tu ?
+FACT_01,Glass can be recycled again and again without losing quality.,Le verre se recycle à l'infini sans perdre en qualité.
+RESULT_COUNTDOWN,Back to the lobby in %d s,Retour au salon dans %d s
+RESULT_ROLE_UNKNOWN,Unknown,Inconnu
+MG_METER_HINT,Key in the number shown on the sensor.,Saisis le nombre affiché par le capteur.
+MG_METER_READING,Sensor: %s,Capteur : %s
+MG_METER_WRONG,Wrong value. Try again.,Valeur incorrecte. Réessaie.
+MG_METER_CLEAR,Clear,Effacer
+MG_CANS_HINT,Tap each can to crush it flat (%d cans).,Touche chaque canette pour l'écraser (%d canettes).
+MG_CANS_CAN,Can,Canette
+MG_CANS_FLAT,Flat,Écrasée
+MG_RINSE_HINT,Hold the tap and release in the green zone to rinse the bottles.,Maintiens le robinet et relâche dans la zone verte pour rincer les bouteilles.
+MG_RINSE_RETRY,Missed the green zone. Hold and try again.,Zone verte manquée. Maintiens et réessaie.
+MG_GLASS_LIFT_HINT,Drag the crate up to lift it.,Tire la caisse vers le haut pour la soulever.
+MG_GLASS_DROP_HINT,"Drop the %d bottles into the bank, one by one.","Dépose les %d bouteilles dans le conteneur, une par une."
+MG_GLASS_CRATE,Crate,Caisse
+MG_GLASS_BANK,Bottle bank,Conteneur à verre
+MG_GLASS_BOTTLE,Bottle,Bouteille
+HUD_TASKS,Tasks,Tâches
+HUD_TASK_STEPS,%d/%d,%d/%d
+HUD_TASK_ZONE,(%s),(%s)
+HUD_TASK_DONE,done,fait
+HUD_POISON,Poison (out at 100%),Poison (éliminé à 100 %)
+HUD_TIMER,%d:%02d,%d:%02d
+ACT_USE,Use,Agir
+ACT_REPORT,Report,Signaler
+ACT_HIT,Poison,Empoisonner
+ACT_DUMP,Dump,Jeter
+TASK_SORT_WASTE,Sort waste,Trier les déchets
+TASK_SORT_WASTE_DEPOT,Sort waste,Trier les déchets
+TASK_TURN_COMPOST,Turn the compost,Retourner le compost
+TASK_CHECK_METER,Check the meter,Relever le compteur
+TASK_CRUSH_CANS,Crush cans,Écraser les canettes
+TASK_CRUSH_CANS_GARDEN,Crush cans,Écraser les canettes
+TASK_RINSE_BOTTLES,Rinse bottles,Rincer les bouteilles
+TASK_RINSE_BOTTLES_MARKET,Rinse bottles,Rincer les bouteilles
+TASK_DELIVER_GLASS,Deliver glass,Livrer le verre
+REJECT_ON_COOLDOWN,"Not ready yet, wait a moment.","Pas encore prêt, patiente un instant."
+REJECT_OUT_OF_RANGE,Move closer.,Rapproche-toi.
+REJECT_WALL_BETWEEN,A wall is in the way.,Un mur bloque le passage.
+REJECT_WRONG_PHASE,Not possible right now.,Impossible pour le moment.
+REJECT_NOT_ALLOWED,You cannot do that.,Tu ne peux pas faire ça.
+REJECT_TARGET_INVALID,Nobody to target here.,Personne à viser ici.
+REJECT_TARGET_IMMUNE,That player is protected for now.,Ce joueur est protégé pour le moment.
+REJECT_ALREADY_REPORTED,Already reported.,Déjà signalé.
+REJECT_ALREADY_CLEANING,Someone is already cleaning it.,Quelqu'un le nettoie déjà.
+REJECT_FIRE_ACTIVE,A fire is burning. Put it out first.,Un feu brûle. Éteins-le d'abord.
+REJECT_NO_EMERGENCIES_LEFT,No emergency meetings left.,Plus de réunion d'urgence.
+REJECT_RATE_LIMITED,Slow down.,Doucement.
+REJECT_UNKNOWN,Action refused.,Action refusée.
+REVEAL_GOAL_CITIZEN,"Finish your tasks and find the polluters.","Termine tes tâches et démasque les pollueurs."
+REVEAL_GOAL_POLLUTER,"Dump waste and poison citizens without being seen.","Jette des déchets et empoisonne les citoyens sans te faire voir."
+REVEAL_SIGNATURE,Your dumps leave %s waste: it shows up as a clue.,Tes déchets jetés sont de type %s : ils apparaissent comme un indice.
+SPECTATOR_TITLE,You are out,Tu es éliminé
+SPECTATOR_HINT,You can still watch the meetings and the results.,Tu peux encore suivre les réunions et les résultats.
+SPECTATOR_CAUSE_POISON,You were poisoned.,Tu as été empoisonné.
+SPECTATOR_CAUSE_VOTE,You were voted out.,Tu as été éjecté par un vote.
+LOBBY_COLOR_TAKEN,That colour is taken.,Cette couleur est prise.
+LOBBY_START_FAILED,Could not start the match. Try again.,Impossible de lancer la partie. Réessaie.
+RECONNECT_BACK,Back to menu,Retour au menu
+ROTATE_HINT,Turn your phone sideways to play.,Tourne ton téléphone à l'horizontale pour jouer.
+MG_CHECKING,Checking... %d s,Vérification... %d s
+MG_COMPOST_WATER_HINT,Water the heap: hold the tap and release in the green zone.,Arrose le tas : maintiens le robinet et relâche dans la zone verte.
+MG_TOO_FAR,Too far from the console.,Trop loin de la console.
+MEETING_CLUE_WASTE_LINE,Waste: %s,Déchet : %s
+MEETING_CLUE_VICTIM_LINE,Found poisoned: %s,Retrouvé empoisonné : %s
+EJECTION_LEFT_ONE,%d polluter remains.,Il reste %d pollueur.
+EJECTION_LEFT_MANY,%d polluters remain.,Il reste %d pollueurs.
+SPECTATOR_PHASE_PLAYING,The round goes on.,La partie continue.
+ACT_SABOTAGE,Sabotage,Saboter
+ACT_FIX,Fix,Réparer
+ACT_FIX_HOLD,Hold,Maintenir
+SABOTAGE_FIRE,Fire,Feu
+SABOTAGE_SMOG,Smog,Smog
+SABOTAGE_BANNER_FIRE,FIRE! Out of control in %s,FEU ! Hors de contrôle dans %s
+SABOTAGE_BANNER_FIRE_HELD,Hold every fire console together (%d/%d),Maintiens toutes les consoles de feu ensemble (%d/%d)
+SABOTAGE_BANNER_SMOG,SMOG! Visibility is low. Fix the filter panel.,SMOG ! Visibilité réduite. Répare le panneau de filtre.
+SABOTAGE_REPAIRING,Repairing...,Réparation...
+SABOTAGE_FIXED,Sabotage fixed.,Sabotage réparé.
+SABOTAGE_EXPIRED,Too late: the sabotage was not fixed.,Trop tard : le sabotage n'a pas été réparé.
+ACT_CLEAN,Clean,Nettoyer
+CHAT_SUS,I suspect %s.,Je soupçonne %s.
+CHAT_SAW_DUMP,I saw %s dump waste in %s.,J'ai vu %s jeter des déchets en zone %s.
+CHAT_SAW_HIT,I saw %s poison someone in %s.,J'ai vu %s empoisonner quelqu'un en zone %s.
+CHAT_NEAR_PILE,%s was next to a waste pile in %s.,%s était près d'un tas de déchets en zone %s.
+CHAT_I_WAS,I was in %s.,J'étais en zone %s.
+CHAT_WITH,I was with %s in %s.,J'étais avec %s en zone %s.
+CHAT_WHERE,Where was %s?,Où était %s ?
+CHAT_AGREE,I agree with %s.,Je suis d'accord avec %s.
+CHAT_DOUBT,I doubt %s.,Je doute de %s.
+CHAT_NOT_ME,It wasn't me.,Ce n'était pas moi.
+CHAT_LYING,I think %s is lying.,Je pense que %s ment.
+CHAT_SKIP_NO_PROOF,No proof. I will skip.,Pas de preuve. Je passe.
+CHAT_VOTE,I will vote for %s.,Je vais voter pour %s.
+CHAT_HMM,Hmm...,Hmm...
+CHAT_IDK,I don't know.,Je ne sais pas.
+CHAT_KIND_ACCUSE,Accuse,Accuser
+CHAT_KIND_ALIBI,Alibi,Alibi
+CHAT_KIND_QUESTION,Ask,Demander
+CHAT_KIND_REACT,React,Réagir
+CHAT_KIND_VOTE,Vote,Vote
+CHAT_KIND_FILLER,Other,Autre
+CHAT_SAY,Say something,Parler
+CHAT_LEFT,Lines left: %d,Messages restants : %d
+CHAT_SEND,Send,Envoyer
+CHAT_BACK,Back,Retour
+CHAT_PICK_KIND,What do you want to say?,Que veux-tu dire ?
+CHAT_PICK_PHRASE,Pick a line.,Choisis une phrase.
+CHAT_PICK_SEAT,Pick a player.,Choisis un joueur.
+CHAT_PICK_ZONE,Pick a place.,Choisis un lieu.
+CHAT_CLOSED,You cannot chat now.,Tu ne peux pas parler maintenant.
+CHAT_NONE_LEFT,No lines left.,Plus de messages.
+CHAT_REJECTED,That line was not accepted.,Ce message n'a pas été accepté.

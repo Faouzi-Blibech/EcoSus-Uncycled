@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/reconnect/reconnecting.gd" id="1_reconnect"]
+
+[node name="Reconnecting" type="Control"]
+script = ExtResource("1_reconnect")
