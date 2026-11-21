@@ -92,6 +92,9 @@ namespace Uncycled.Bots
         /// </summary>
         public string? GasWarnedRoom { get; set; }
 
+        /// <summary>Match time at which the meeting in progress started, as this bot saw it (the phase turning to Meeting); null before the first meeting.</summary>
+        public float? MeetingStartedAt { get; private set; }
+
         /// <summary>Match time of this bot's first sighting of the current machine jam; null while the machine runs.</summary>
         public float? MachineJamSeenAt { get; private set; }
 
@@ -131,6 +134,11 @@ namespace Uncycled.Bots
             if (view.Phase == MatchPhase.Playing && (_prevPhase == MatchPhase.Meeting || _prevPhase == MatchPhase.Ejection))
             {
                 _lastMeetingEnd = matchTime;
+            }
+
+            if (view.Phase == MatchPhase.Meeting && _prevPhase != MatchPhase.Meeting)
+            {
+                MeetingStartedAt = matchTime;
             }
 
             _prevPhase = view.Phase;

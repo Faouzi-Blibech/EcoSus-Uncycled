@@ -140,6 +140,70 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(SuspicionModel.NearPileWeight + SuspicionModel.VoteThreshold, model2.Score(seen));
         }
 
+        /// <summary>
+        /// Bot 0 saw the first visible player at t=100, then the meeting starts at `meetingAt` with no clue pile:
+        /// only the bot's own sightings can contradict a claim. Returns the model after Update and Observe(meeting).
+        /// </summary>
+        private static (SuspicionModel Model, BotMemory Mem, byte Seen, string Zone) SetupNoClue(TestMatch m, float meetingAt)
+        {
+            SeatView live = m.Engine.ViewFor(Self);
+            PlayerView seenPlayer = live.Players[0];
+            string zone = m.Map.ZoneAt(seenPlayer.Position);
+            var mem = new BotMemory(m.Map, m.Config);
+            var one = new SeatView(Self, MatchPhase.Playing, 0f, 100f, live.DeadlineS, live.DeadlineClock, 100f, 10f, 2, live.Me, new List<PlayerView> { seenPlayer }, new List<PileView>(), null, null, null);
+            mem.Observe(one, 100f, new List<WitnessRecord>());
+            var meeting = new MeetingView(MeetingStage.Discussion, 30f, 0, MeetingCause.Emergency, new List<ClueInfo>(), new List<byte>(), false, null, 0f);
+            var view = new SeatView(Self, MatchPhase.Meeting, 30f, meetingAt, live.DeadlineS, live.DeadlineClock, meetingAt, 10f, 2, live.Me, new List<PlayerView>(), new List<PileView>(), null, meeting, null);
+            mem.Observe(view, meetingAt, new List<WitnessRecord>());
+            var model = new SuspicionModel();
+            model.Update(mem, view);
+            return (model, mem, seenPlayer.Seat, zone);
+        }
+
+        [Fact]
+        public void Eyewitness_WithNoCluePile_IsContradicted_WhenTheBotSawTheAccusedElsewhereJustBefore()
+        {
+            TestMatch m = TestMatch.Create();
+            (SuspicionModel model, BotMemory mem, byte seen, string zone) = SetupNoClue(m, 110f); // seen 10 s before the meeting
+            string elsewhere = zone == "depot" ? "market" : "depot";
+            byte accuser = OtherSeat(mem, seen);
+            MeetingLog log = NewLog(m);
+            log.Add(Say(accuser, "saw_dump", ChatArg.ForSeat(seen), ChatArg.ForZone(elsewhere)), 5f);
+
+            model.ApplyChat(log, mem, Self);
+
+            Assert.Equal(0f, model.Score(seen));
+        }
+
+        [Fact]
+        public void Eyewitness_WithNoCluePile_Counts_WhenTheBotSawTheAccusedInTheClaimedZone()
+        {
+            TestMatch m = TestMatch.Create();
+            (SuspicionModel model, BotMemory mem, byte seen, string zone) = SetupNoClue(m, 110f);
+            byte accuser = OtherSeat(mem, seen);
+            MeetingLog log = NewLog(m);
+            log.Add(Say(accuser, "saw_dump", ChatArg.ForSeat(seen), ChatArg.ForZone(zone)), 5f);
+
+            model.ApplyChat(log, mem, Self);
+
+            Assert.Equal(SuspicionModel.VoteThreshold, model.Score(seen));
+        }
+
+        [Fact]
+        public void Eyewitness_WithNoCluePile_Counts_WhenTheOwnSightingIsOlderThanTheWindow()
+        {
+            TestMatch m = TestMatch.Create();
+            (SuspicionModel model, BotMemory mem, byte seen, string zone) = SetupNoClue(m, 100f + SuspicionModel.NearPileWindowS + 10f); // seen long before the meeting
+            string elsewhere = zone == "depot" ? "market" : "depot";
+            byte accuser = OtherSeat(mem, seen);
+            MeetingLog log = NewLog(m);
+            log.Add(Say(accuser, "saw_dump", ChatArg.ForSeat(seen), ChatArg.ForZone(elsewhere)), 5f);
+
+            model.ApplyChat(log, mem, Self);
+
+            Assert.Equal(SuspicionModel.VoteThreshold, model.Score(seen));
+        }
+
         [Fact]
         public void Eyewitness_FromAnAccuserTheBotAlreadySuspects_IsHearsay()
         {

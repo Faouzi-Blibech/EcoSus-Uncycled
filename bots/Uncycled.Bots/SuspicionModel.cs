@@ -25,10 +25,12 @@ namespace Uncycled.Bots
         private readonly Dictionary<byte, float> _chat = new Dictionary<byte, float>();
         private IReadOnlyList<ClueInfo> _clues = new List<ClueInfo>();
         private BotMemory? _mem;
+        private float _now;
 
         public void Update(BotMemory mem, SeatView view)
         {
             _mem = mem;
+            _now = view.MatchTime;
             _scores.Clear();
             _chat.Clear();
             _clues = view.Meeting?.Clues ?? (IReadOnlyList<ClueInfo>)new List<ClueInfo>();
@@ -133,7 +135,7 @@ namespace Uncycled.Bots
                 {
                     AddChat(accused, HearsayWeight);
                 }
-                else if (Contradicts(mem, accused, claim.Value))
+                else if (ContradictsClaim(mem, accused, claim.Value))
                 {
                     continue; // this bot saw him elsewhere then: the line does not hold
                 }
@@ -167,6 +169,37 @@ namespace Uncycled.Bots
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// An eyewitness line says the accused did an act in a zone. It carries no act time, so the claim can
+        /// refer to the last NearPileWindowS seconds before the meeting started (the window the alibi check
+        /// uses around a clue pile). It is contradicted when a clue pile time puts the accused elsewhere
+        /// (Contradicts) or when this bot's own sightings in that window saw the accused and never in the
+        /// claimed zone. Only this bot's own memory is read.
+        /// </summary>
+        private bool ContradictsClaim(BotMemory mem, byte accused, string claimedZone)
+        {
+            if (Contradicts(mem, accused, claimedZone))
+            {
+                return true;
+            }
+
+            float end = mem.MeetingStartedAt ?? _now;
+            bool saw = false;
+            bool sawInClaimed = false;
+            foreach (Sighting s in mem.SightingsOf(accused))
+            {
+                if (s.Time > end || s.Time < end - NearPileWindowS)
+                {
+                    continue;
+                }
+
+                saw = true;
+                sawInClaimed |= s.Zone == claimedZone;
+            }
+
+            return saw && !sawInClaimed;
         }
 
         private bool Contradicts(BotMemory mem, byte speaker, string claimedZone)
