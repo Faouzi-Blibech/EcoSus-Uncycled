@@ -557,7 +557,7 @@ func _update_reveal() -> void:
 	var on: bool = Session.phase == "intro" and not Session.role.is_empty()
 	if on and not _reveal_shown:
 		var partner: String = Session.seat_name(Session.partner_seat) if Session.partner_seat >= 0 else ""
-		_reveal.setup(Session.role, partner, str(Session.signature) if Session.signature != null else "")
+		_reveal.setup(Session.role, partner)
 	_reveal_shown = on
 	_reveal.visible = on
 
