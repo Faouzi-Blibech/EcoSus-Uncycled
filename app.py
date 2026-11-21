@@ -125,6 +125,8 @@ async def update_eco_stats(item_type: str, co2_grams: int):
 
 # ─── 4. EXIF Live-Capture Verification ───────────────────────
 MAX_PHOTO_AGE_SECONDS = 120  # Reject images older than 2 minutes
+# Server-side switch for local tests only; clients can never turn the check off.
+SKIP_EXIF = os.environ.get("UNCYCLED_DEV_SKIP_EXIF") == "1"
 
 def check_exif_timestamp(image: Image.Image) -> dict:
     """
@@ -174,7 +176,7 @@ def check_exif_timestamp(image: Image.Image) -> dict:
 
 # ─── 5. Main Verification Endpoint ───────────────────────────
 @app.post("/verify-daily-photo")
-async def verify_photo(file: UploadFile = File(...), skip_exif: bool = False):
+async def verify_photo(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type.")
 
@@ -185,8 +187,8 @@ async def verify_photo(file: UploadFile = File(...), skip_exif: bool = False):
 
     image = Image.open(io.BytesIO(image_data)).convert("RGB")
 
-    # ── EXIF live-capture check (can be skipped for local/dev testing) ─
-    if not skip_exif:
+    # ── EXIF live-capture check (skipped only when the server sets UNCYCLED_DEV_SKIP_EXIF=1 for local tests) ─
+    if not SKIP_EXIF:
         image_with_exif = Image.open(io.BytesIO(image_data))
         exif_check = check_exif_timestamp(image_with_exif)
         if not exif_check["live"]:
@@ -302,11 +304,6 @@ async def web_tester():
       <button class="btn-blue" id="switchBtn">🔄 Switch / Restart Cam</button>
     </div>
 
-    <div class="opt-box">
-      <input type="checkbox" id="skipExif" checked />
-      <label for="skipExif">Bypass EXIF timestamp check (recommended for web test)</label>
-    </div>
-
     <div style="margin-top: 10px;">
       <label style="font-size: 13px; color: #94a3b8;">Or test an image file from your PC:</label>
       <input type="file" id="fileInput" accept="image/*" style="margin-top: 6px; width: 100%; font-size: 13px; color: #cbd5e1;" />
@@ -321,7 +318,6 @@ async def web_tester():
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const resultBox = document.getElementById('resultBox');
-    const skipExifCheck = document.getElementById('skipExif');
     let stream = null;
 
     async function initCamera() {
@@ -349,10 +345,8 @@ async def web_tester():
 
       const formData = new FormData();
       formData.append('file', blob, 'capture.jpg');
-      const skip = skipExifCheck.checked ? '?skip_exif=true' : '';
-
       try {
-        const resp = await fetch('/verify-daily-photo' + skip, { method: 'POST', body: formData });
+        const resp = await fetch('/verify-daily-photo', { method: 'POST', body: formData });
         const data = await resp.json();
         
         resultBox.className = data.verified ? 'success' : 'fail';
