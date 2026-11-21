@@ -1,0 +1,13 @@
+{
+  "tasks": [
+    { "type": "sort_waste",           "category": "short",  "steps": 1, "min_s": 4, "consoles": ["market_bins"] },
+    { "type": "sort_waste_depot",     "category": "short",  "steps": 1, "min_s": 4, "consoles": ["depot_bins"] },
+    { "type": "turn_compost",         "category": "long",   "steps": 2, "min_s": 6, "consoles": ["garden_compost", "garden_tap"] },
+    { "type": "check_meter",          "category": "common", "steps": 1, "min_s": 3, "consoles": ["depot_meter"] },
+    { "type": "crush_cans",           "category": "short",  "steps": 1, "min_s": 4, "consoles": ["market_cans"] },
+    { "type": "crush_cans_garden",    "category": "short",  "steps": 1, "min_s": 4, "consoles": ["garden_cans"] },
+    { "type": "rinse_bottles",        "category": "short",  "steps": 1, "min_s": 4, "consoles": ["depot_sink"] },
+    { "type": "rinse_bottles_market", "category": "short",  "steps": 1, "min_s": 4, "consoles": ["market_sink"] },
+    { "type": "deliver_glass",        "category": "long",   "steps": 2, "min_s": 6, "consoles": ["depot_glass", "market_bottle_bank"] }
+  ]
+}

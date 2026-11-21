@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "phrases": [
+    {
+      "id": "sus",
+      "kind": "accuse",
+      "slots": [
+        "seat"
+      ]
+    },
+    {
+      "id": "saw_dump",
+      "kind": "accuse",
+      "slots": [
+        "seat",
+        "zone"
+      ]
+    },
+    {
+      "id": "saw_hit",
+      "kind": "accuse",
+      "slots": [
+        "seat",
+        "zone"
+      ]
+    },
+    {
+      "id": "near_pile",
+      "kind": "accuse",
+      "slots": [
+        "seat",
+        "zone"
+      ]
+    },
+    {
+      "id": "i_was",
+      "kind": "alibi",
+      "slots": [
+        "zone"
+      ]
+    },
+    {
+      "id": "with",
+      "kind": "alibi",
+      "slots": [
+        "seat",
+        "zone"
+      ]
+    },
+    {
+      "id": "where",
+      "kind": "question",
+      "slots": [
+        "seat"
+      ]
+    },
+    {
+      "id": "agree",
+      "kind": "react",
+      "slots": [
+        "seat"
+      ]
+    },
+    {
+      "id": "doubt",
+      "kind": "react",
+      "slots": [
+        "seat"
+      ]
+    },
+    {
+      "id": "not_me",
+      "kind": "react",
+      "slots": []
+    },
+    {
+      "id": "lying",
+      "kind": "react",
+      "slots": [
+        "seat"
+      ]
+    },
+    {
+      "id": "skip_no_proof",
+      "kind": "vote",
+      "slots": []
+    },
+    {
+      "id": "vote",
+      "kind": "vote",
+      "slots": [
+        "seat"
+      ]
+    },
+    {
+      "id": "hmm",
+      "kind": "filler",
+      "slots": []
+    },
+    {
+      "id": "idk",
+      "kind": "filler",
+      "slots": []
+    }
+  ]
+}
