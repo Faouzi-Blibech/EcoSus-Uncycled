@@ -382,6 +382,21 @@ public static class ContentLoader
             }
         }
 
+        var gasRooms = new List<ZoneDef>();
+        if (m.TryGetProperty("gas_rooms", out JsonElement gs))
+        {
+            foreach (JsonElement g in gs.EnumerateArray())
+            {
+                JsonElement rect = g.GetProperty("rect");
+                gasRooms.Add(new ZoneDef(
+                    g.GetProperty("id").GetString() ?? "",
+                    rect[0].GetSingle(),
+                    rect[1].GetSingle(),
+                    rect[2].GetSingle(),
+                    rect[3].GetSingle()));
+            }
+        }
+
         var consoles = new List<ConsoleDef>();
         foreach (string listName in new[] { "consoles", "special" })
         {
@@ -409,6 +424,6 @@ public static class ContentLoader
 
         string id = m.TryGetProperty("id", out JsonElement idEl) ? idEl.GetString() ?? "" : "";
         string version = m.TryGetProperty("version", out JsonElement vEl) ? vEl.GetString() ?? "" : "";
-        return new MapData(width, height, walkable, sightWalls, zones, consoles, spawns, id, version, dark);
+        return new MapData(width, height, walkable, sightWalls, zones, consoles, spawns, id, version, dark, gasRooms);
     }
 }

@@ -655,4 +655,43 @@ namespace Sim.Match
 
         public float MatchTime { get; }
     }
+
+    /// <summary>gas_warning {room, in_s}. To everyone.</summary>
+    public sealed class GasWarningEvent : GameEvent
+    {
+        public GasWarningEvent(string room, float inS)
+            : base(null)
+        {
+            Room = room;
+            InS = inS;
+        }
+
+        public string Room { get; }
+
+        public float InS { get; }
+    }
+
+    /// <summary>gas_done {room}. To everyone, when the warning ends.</summary>
+    public sealed class GasDoneEvent : GameEvent
+    {
+        public GasDoneEvent(string room)
+            : base(null)
+        {
+            Room = room;
+        }
+
+        public string Room { get; }
+    }
+
+    /// <summary>mask_used. To the masked seat that the gas did not kill.</summary>
+    public sealed class MaskUsedEvent : GameEvent
+    {
+        public MaskUsedEvent(byte seat)
+            : base(Only(seat))
+        {
+            Seat = seat;
+        }
+
+        public byte Seat { get; }
+    }
 }

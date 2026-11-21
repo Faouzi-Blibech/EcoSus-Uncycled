@@ -438,6 +438,19 @@ public static class Codec
                 return true;
             }
 
+            case "gas":
+            {
+                string? room = GetString(r, "room");
+                if (string.IsNullOrEmpty(room) || room.Length > 64)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new GasCommand(room);
+                return true;
+            }
+
             default:
                 error = "unknown_type";
                 return false;

@@ -66,6 +66,9 @@ namespace Sim.Core
 
         /// <summary>ActiveTime at which this Trasher may re-pollute again.</summary>
         public float RepolluteReadyAt { get; internal set; }
+
+        /// <summary>ActiveTime at which this Trasher may use the Toxic Gas again.</summary>
+        public float GasReadyAt { get; internal set; }
         /// <summary>True once the seat owns the Backpack (bag capacity BackpackCap).</summary>
         public bool HasBackpack { get; internal set; }
 

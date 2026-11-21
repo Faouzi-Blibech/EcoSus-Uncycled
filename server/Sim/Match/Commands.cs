@@ -227,6 +227,17 @@ namespace Sim.Match
         public string Text { get; }
     }
 
+    /// <summary>protocol: gas {room}. A Trasher that picked the gas; the room is a map gas_rooms id.</summary>
+    public sealed class GasCommand : ICommand
+    {
+        public GasCommand(string roomId)
+        {
+            RoomId = roomId;
+        }
+
+        public string RoomId { get; }
+    }
+
     /// <summary>Ok, or rejected with a protocol reason.</summary>
     public readonly struct CommandResult
     {

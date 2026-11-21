@@ -302,6 +302,7 @@ namespace Sim.Match
                 case VoteCommand c: return ApplyVote(p, c);
                 case RepolluteCommand c: return ApplyRepollute(p, c);
                 case PickAbilityCommand c: return ApplyPickAbility(p, c);
+                case GasCommand c: return ApplyGas(p, c);
                 case SabotageCommand c: return ApplySabotage(p, c);
                 case FixCommand c: return ApplyFix(p, c);
                 case CleanStartCommand _: return Reject(RejectReason.NotAllowed);
@@ -381,6 +382,7 @@ namespace Sim.Match
             Smog.Ease(dt, Config.SmogEaseS);
             TickSmogRepair(dt);
             TickMachineRepair(dt);
+            TickGas(dt);
             TickFire(dt);
             TickCleaning(dt);
             UpdateSightMemory();
@@ -445,6 +447,7 @@ namespace Sim.Match
             Smog.CancelRepair();
             _smogRepairConsole = null;
             Machine.CancelRepair();
+            _gasRoom = null;
             if (Fire.Active)
             {
                 Fire.Stop();
@@ -604,6 +607,10 @@ namespace Sim.Match
                 string zone = Map.ZoneAt(p.Position);
                 Piles.AddBody(p.Position, zone, MatchTime, p.Seat);
                 AddTimeline(TimelineKind.PoisonedOut, p.Seat, null, zone);
+            }
+            else if (cause == OutCause.Gas)
+            {
+                Piles.AddBody(p.Position, Map.ZoneAt(p.Position), MatchTime, p.Seat);
             }
 
             Emit(new YouAreOutEvent(p.Seat, cause));
