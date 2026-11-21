@@ -49,10 +49,11 @@ def make_cfg(tmp_path, turns=3, first="polluter", **kw):
         w_current=0.6, w_scripted=0.3, w_previous=0.1, seed=1, **kw)
 
 
-def test_keep_rule_is_strictly_better():
-    assert league.keep_new(0.51, 0.50) is True
-    assert league.keep_new(0.50, 0.50) is False
-    assert league.keep_new(0.40, 0.50) is False
+def test_keep_new_needs_better_vs_current_and_not_worse_vs_scripted():
+    assert league.keep_new(0.51, 0.50, 0.60, 0.60) is True
+    assert league.keep_new(0.50, 0.50, 0.60, 0.60) is False  # a tie vs the current opponent is a rejection
+    assert league.keep_new(0.60, 0.50, 0.56, 0.60) is False  # 4 points worse vs scripted
+    assert league.keep_new(0.60, 0.50, 0.58, 0.60) is True   # within the 0.03 noise allowance
 
 
 def test_opponent_mix_drops_previous_when_there_is_none():
@@ -105,7 +106,8 @@ def test_new_and_previous_face_the_same_opponent_and_scripted_is_for_the_kept_on
     assert len(vs_cit) == 2  # new and previous polluter, both against the citizen's current network
     assert {e[1].split(":", 1)[-1].split("/")[-1].split("\\")[-1] for e in vs_cit} == {"t1-polluter.onnx", "pol.onnx"}
     scripted = [e for e in ops.evals if e[0] == "scripted"]
-    assert len(scripted) == 1 and scripted[0][1].endswith("t1-polluter.onnx")
+    assert len(scripted) == 2  # new and previous polluter, for the scripted half of the gate
+    assert any(e[1].endswith("t1-polluter.onnx") for e in scripted)
     assert result["turns"][0]["vs_scripted"]["onnx"].endswith("t1-polluter.onnx")
 
 
@@ -134,3 +136,29 @@ def test_bad_weights_are_refused():
         league.opponent_mix("c.onnx", None, 0.0, 0.0, 0.0)
     with pytest.raises(ValueError):
         league.opponent_mix("c.onnx", None, -1.0, 1.0, 0.0)
+
+
+def test_worse_vs_scripted_is_rejected_even_if_better_vs_current(tmp_path):
+    class Ops(FakeOps):
+        def evaluate(self, citizen, polluter):
+            new = "t1-polluter" in polluter
+            if citizen == "scripted":
+                return summary(0.5, 0.40 if new else 0.50)  # polluter 10 points worse vs scripted
+            return summary(0.5, 0.60 if new else 0.50)
+    ops = Ops({})
+    ops.role = "polluter"
+    result = league.run_league(make_cfg(tmp_path, turns=1), ops)
+    t = result["turns"][0]
+    assert t["kept"] is False
+    assert t["new"]["win_rate"] > t["previous"]["win_rate"]
+    assert t["new_vs_scripted"]["win_rate"] < t["previous_vs_scripted"]["win_rate"]
+
+
+def test_turn_report_lists_ejections_right_and_wrong(tmp_path):
+    ops = FakeOps({"t1-polluter.onnx": 0.6, "pol.onnx": 0.5})
+    result = league.run_league(make_cfg(tmp_path, turns=1), ops)
+    t = result["turns"][0]
+    for key in ("vs_scripted", "new"):
+        assert "correct_ejections" in t[key] and "wrong_ejections" in t[key]
+    md = (tmp_path / "league.md").read_text(encoding="utf-8")
+    assert "ejections" in md

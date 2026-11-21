@@ -14,9 +14,11 @@ Each turn (roles alternate, --first-learner starts):
   b) export the new checkpoint to ONNX;
   c) evaluate on --eval-seeds (default 100000-100499): the NEW network and the PREVIOUS network of the learner,
      each against the other role's current network;
-  d) keep the new version only if its win rate is strictly higher than the previous one's, else log "rejected"
-     and keep the previous one;
-  e) evaluate the kept network against scripted opponents.
+  d) evaluate both against scripted opponents too; keep the new version only if its win rate against the
+     other role's network is strictly higher than the previous one's AND its win rate against scripted is not
+     more than 0.03 below the previous one's, else log "rejected" and keep the previous one;
+  e) the turn report gives the kept network's rates against scripted and the other role's network, with
+     ejections right/wrong per 100 matches.
 league.json and league.md are rewritten after every turn. Everything lives under --out-dir. One training
 process at a time. Paths given to the host (--host-cmd, --host-extra) use forward slashes: train.py splits
 them like a shell line.
@@ -41,9 +43,15 @@ def other(role: str) -> str:
     return "polluter" if role == "citizen" else "citizen"
 
 
-def keep_new(new_rate: float, previous_rate: float) -> bool:
-    """The approved rule: the new version stays only when strictly better than the previous one."""
-    return new_rate > previous_rate
+SCRIPTED_NOISE_ALLOWANCE = 0.03  # assumption: about 1.4 standard errors at n = 500
+
+
+def keep_new(new_vs_current: float, prev_vs_current: float, new_vs_scripted: float,
+             prev_vs_scripted: float) -> bool:
+    """Keep the new version only when strictly better against the other role's current network and not
+    more than the noise allowance worse against scripted opponents."""
+    return (new_vs_current > prev_vs_current
+            and new_vs_scripted >= prev_vs_scripted - SCRIPTED_NOISE_ALLOWANCE)
 
 
 def opponent_mix(current: str | Path, previous: str | Path | None, w_current: float, w_scripted: float,
@@ -86,8 +94,10 @@ def pct(x: float) -> str:
 
 
 def side_stats(summary: dict, role: str, onnx) -> dict:
+    per_100 = summary.get("per_100", {})
     return {"onnx": str(onnx), "win_rate": summary[f"{role}_win_rate"], "ci95": list(summary[f"{role}_win_ci95"]),
-            "matches": summary["matches"]}
+            "matches": summary["matches"], "correct_ejections": per_100.get("correct_ejections", 0.0),
+            "wrong_ejections": per_100.get("wrong_ejections", 0.0)}
 
 
 def spec_of(onnx) -> str:
@@ -138,24 +148,33 @@ def run_league(cfg: LeagueConfig, ops) -> dict:
 
         new = evaluate_role(ops, learner, onnx, theirs["onnx"])
         previous = evaluate_role(ops, learner, mine["onnx"], theirs["onnx"])
-        kept = keep_new(new["win_rate"], previous["win_rate"])
+
+        def vs_scripted_of(path):
+            key = (learner, str(path))
+            if key not in scripted_cache:
+                scripted_cache[key] = evaluate_role(ops, learner, path, None)
+            return scripted_cache[key]
+
+        new_scripted = vs_scripted_of(onnx)
+        previous_scripted = vs_scripted_of(mine["onnx"])
+        kept = keep_new(new["win_rate"], previous["win_rate"], new_scripted["win_rate"],
+                        previous_scripted["win_rate"])
         decision = "kept" if kept else "rejected"
         print(f"[league] turn {turn} {learner}: new {pct(new['win_rate'])} vs previous {pct(previous['win_rate'])} "
-              f"against the {opp} network -> {decision}", flush=True)
+              f"against the {opp} network; vs scripted new {pct(new_scripted['win_rate'])} previous "
+              f"{pct(previous_scripted['win_rate'])} -> {decision}", flush=True)
         if kept:
             mine["ckpt"], mine["onnx"] = ckpt, onnx
             mine["history"].append(onnx)
 
-        key = (learner, str(mine["onnx"]))
-        if key not in scripted_cache:
-            scripted_cache[key] = evaluate_role(ops, learner, mine["onnx"], None)
-        vs_scripted = scripted_cache[key]
+        vs_scripted = new_scripted if kept else previous_scripted
         print(f"[league] turn {turn} kept {learner} network vs scripted: {pct(vs_scripted['win_rate'])}", flush=True)
 
         result["turns"].append({
             "turn": turn, "role": learner, "steps": cfg.turn_steps, "run": run, "opponents": mix,
             "opponent_onnx": str(theirs["onnx"]), "new": new, "previous": previous, "kept": kept,
-            "decision": decision, "vs_scripted": vs_scripted, "train_seconds": trained_s,
+            "decision": decision, "vs_scripted": vs_scripted,
+            "new_vs_scripted": new_scripted, "previous_vs_scripted": previous_scripted, "train_seconds": trained_s,
             "paths": {"ckpt": str(ckpt), "onnx": str(onnx)},
         })
         result["final"] = {r: {"ckpt": str(state[r]["ckpt"]), "onnx": str(state[r]["onnx"])} for r in ROLES}
@@ -167,7 +186,9 @@ def run_league(cfg: LeagueConfig, ops) -> dict:
 
 def cell(stats: dict) -> str:
     lo, hi = stats["ci95"]
-    return f"{pct(stats['win_rate'])} [{pct(lo)}, {pct(hi)}]"
+    return (f"{pct(stats['win_rate'])} [{pct(lo)}, {pct(hi)}] "
+            f"(ejections/100 right {stats.get('correct_ejections', 0.0):.1f}, "
+            f"wrong {stats.get('wrong_ejections', 0.0):.1f})")
 
 
 def render_md(result: dict) -> str:
