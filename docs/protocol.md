@@ -90,12 +90,12 @@ follows on the next tick.
 | S->C | `correct` | `pos` | move rejected, snap here |
 | S->C | `snapshot` | see 4.1 | 20 Hz, filtered per seat |
 | S->C | `phase_changed` | `phase` ("playing"/"meeting"/"ejection"/"ended"), `stage?` ("discussion"/"voting"/"results") | to everyone, once per phase or meeting-stage change; `stage` only in a meeting. Snapshots also carry `phase` |
-| C->S | `use` | `console` | a spot id opens a clean session (Cleaner, dirty spot, free bag slot); `"machine"` delivers all carried bags |
+| C->S | `use` | `console` | Cleaner: a spot id opens a clean session (dirty spot, free bag slot); `"machine"` delivers all carried bags. A Trasher sending `use` on a spot is rejected with `not_allowed`: Trashers fake-clean on the client only and send nothing |
 | S->C | `use_ok` | `console`, `kind` ("task"/"emergency"/"fire_fix"/"smog_fix"/"spot"/"machine"), `task?`, `type?`, `step?` | to the sender; opens the minigame or action. `spot` comes with the minigame `type`. `task` and `fire_fix` are out of play in v2 |
 | C->S | `task_step` | `task` | out of play in v2: rejected with `not_allowed` (replaced by `spot_done`) |
-| C->S | `spot_done` | `spot` | Cleaner with an open session on that spot, after at least `min_s` of its task (times `spots.tool_time_mult` with the tool) |
-| S->C | `spot_cleaned` | `spot`, `bags` | the cleaner; `bags` = bags carried now |
-| S->C | `delivered` | `bags`, `meter` | the deliverer; `bags` = bags delivered, `meter` = new cleanliness |
+| C->S | `spot_done` | `spot` | Cleaner with an open session on that spot, after at least `min_s` of its task (times `spots.tool_time_mult` with the tool); a Trasher sending it is rejected with `not_allowed` |
+| S->C | `spot_cleaned` | `spot`, `bags` | the cleaner; `bags` = bags the cleaner carries now (after this clean) |
+| S->C | `delivered` | `bags`, `meter` | the deliverer; `bags` = bags dropped in this delivery (the carried count is 0 afterwards), `meter` = the meter after the delivery |
 | S->C | `upgrade_offer` | `items` | the deliverer; one open offer at a time |
 | C->S | `pick_upgrade` | `item` ("backpack"/"tool"/"heal"/"mask") | only while an offer is open, else `no_item` |
 | S->C | `upgrade_ok` | `item` | sender |
@@ -114,10 +114,10 @@ follows on the next tick.
 | S->C | `dump_ok` | `pile`, `cooldown` | out of play in v2, not sent |
 | C->S | `report` | `pile` | `piles` now only hold bodies |
 | C->S | `call_meeting` | - | at the emergency console; also accepted anywhere from an infected Cleaner, once per infection (not counted in `emergencies_left`) |
-| C->S | `sabotage` | `kind` ("machine"/"smog") | Trasher. `"machine"` jams the Recycling Machine; `"fire"` is out of play (`not_allowed`). Shared cooldown |
+| C->S | `sabotage` | `kind` ("machine"/"smog") | Trasher. `"machine"` jams the Recycling Machine; `"fire"` is out of play (`not_allowed`; server behaviour, the design doc only says fire is gone). Shared cooldown |
 | C->S | `fix` | `console`, `holding` | `"machine"`: hold true/false for `machine.fix_s` (4 s); smog: `holding` ignored; fire consoles are out of play |
-| S->C | `sabotage_started` | `kind` ("machine"/"smog"), `countdown?` | |
-| S->C | `sabotage_ended` | `kind`, `result` ("fixed"/"expired"/"cleared") | |
+| S->C | `sabotage_started` | `kind` ("machine"/"smog"), `countdown?` | to everyone. A machine jam sends `{kind: "machine"}` with no `countdown`; the snapshot also carries `machine.jammed: true` |
+| S->C | `sabotage_ended` | `kind`, `result` ("fixed"/"expired"/"cleared") | to everyone. A machine jam ends with `{kind: "machine", result: "fixed"}` when a Cleaner finishes the `machine.fix_s` (4 s) hold; `machine.jammed` is then false |
 | S->C | `action_rejected` | `action`, `reason` | sender only |
 | C->S | `repollute` | `spot` | Trasher, clean spot in range, off cooldown |
 | S->C | `repollute_ok` | `cooldown`, `count` | sender; `count` = re-pollutes so far |
@@ -139,12 +139,10 @@ follows on the next tick.
 ```json
 {
   "t": "snapshot", "tick": 1234, "s": 61.70,
-  "phase": "playing", "match_t": 132.5, "deadline_t": 600, "clock_t": 98.0,
+  "phase": "playing", "match_t": 132.5, "deadline_t": 420, "clock_t": 98.0,
   "meter": 30.0,
   "me": { "pos": [12.0, 8.5], "vision": 4.0, "emergencies_left": 2,
-          "bags": 1, "cap": 1, "tool": false, "heals": 0, "masks": 1, "infected_s": 24.0,
-          "repollutes": 2, "ability": null,
-          "cd": { "repollute": 0, "virus": 0, "gas": 0, "sabotage": 0 } },
+          "bags": 1, "cap": 1, "tool": false, "heals": 0, "masks": 1, "infected_s": 24.0 },
   "players": [ { "seat": 3, "pos": [13.1, 9.0], "color": 2, "out": false } ],
   "piles": [ { "id": 7, "pos": [20.0, 4.0], "kind": "body", "state": "fresh" } ],
   "spots": [ { "id": "market_bins", "state": "dirty" } ],
@@ -162,18 +160,28 @@ v2 hidden fields, and who receives each:
 
 - `meter` is the cleanliness 0..100 (0 at start), sent to every seat. It is not the v1 pollution meter.
 - `spots` lists every spot for every seat (positions come from the map). `state` is "dirty" or "clean". A planted virus never appears in any snapshot.
-- `me.bags`, `me.cap`, `me.tool`, `me.heals`, `me.masks`: Cleaners only. Bags are private: other seats never see them.
+- `me.bags` (bags carried now), `me.cap`, `me.tool`, `me.heals`, `me.masks`: Cleaners only. Bags are private: other seats never see them.
 - `me.infected_s`: only the infected seat.
-- `me.repollutes`, `me.ability` (`null`, "virus" or "gas"), `me.cd.repollute`, `me.cd.virus`, `me.cd.gas`, `me.cd.sabotage`: Trashers only. `cd.sabotage` starts at `trasher.start_cooldown_s` (10 s): a `sabotage` sent before it reaches 0 is rejected with `on_cooldown`, like the first repollute.
+- `me.repollutes`, `me.ability` (`null`, "virus" or "gas"), `me.cd.repollute`, `me.cd.virus`, `me.cd.gas`, `me.cd.sabotage`: Trashers only. `cd.sabotage` starts at `trasher.start_cooldown_s` (10 s): a `sabotage` sent before it reaches 0 is rejected with `on_cooldown`. Server behaviour, not in the design doc: whether `start_cooldown_s` also delays the first repollute is not specified.
 - `machine.repair_t`: only the seat repairing the machine (seconds of the repair counted so far); omitted for everyone else. `machine.jammed` goes to everyone.
 - `gas` goes to everyone and is `null` when no warning runs.
-- `piles` now only hold bodies (`kind` "body"). The v1 `me.poison`, `me.cd.hit` and `me.cd.dump` are out of play and absent. `sabotage.held` and the fire kind are out of play.
+- `piles` now only hold bodies (`kind` "body"). The v1 `me.poison`, `me.cd.hit` and `me.cd.dump` are out of play and absent. Server behaviour, not in the design doc: `sabotage.held` and the fire kind are absent.
 
 `me.vision` is the radius the server filters `players` and `piles` with: a citizen standing in a dark room (the map JSON `dark` rects) gets `tuning.vision.citizen * tuning.vision.dark_mult`, or the smog value if that is lower; polluters are not affected. The `sabotage` object also carries `smog_level` (0..1, smog easing) for smog. A smog repair takes `tuning.sabotage.smog_fix_s` at the panel. `me.smog_level` (0..1) is the smog strength vision follows; it stays above 0 for about two seconds after the smog ends while vision eases back (the `sabotage` object is already `null` then), so a client can keep its light radius in step. `sabotage.repair_t` (smog only) is the seconds of the repair counted so far, sent only to the seat that is repairing and omitted for everyone else (nobody learns who is at the panel); it vanishes when the server drops the repair (the repairer left range). A second `fix` tap while repairing is accepted and does not restart the count.
 `emergencies_left` is the match-wide count. `players` and `piles` hold only what is within
 vision **and** line of sight (a seat that just left sight keeps its last visible position for
 0.3 s, never updated). Spectators (out) receive snapshots **without** `players` and `piles`.
-`sabotage` is `null` when none (smog only; a machine jam is reported in `machine.jammed`).
+`sabotage` is `null` when none (the object describes smog; a machine jam is reported by `machine.jammed` and by `sabotage_started`/`sabotage_ended` with kind "machine").
+
+`me` above is the Cleaner shape (`infected_s` only while infected). The Trasher shape has no `bags`, `cap`, `tool`, `heals`, `masks`, `infected_s`; it has instead:
+
+```json
+"me": { "pos": [12.0, 8.5], "vision": 4.0, "emergencies_left": 2,
+        "repollutes": 2, "ability": null,
+        "cd": { "repollute": 0, "virus": 0, "gas": 0, "sabotage": 0 } }
+```
+
+In the rejoin `welcome.state` (2.1) the `cooldowns` object is likewise Trasher-only. `me.bags` is the bags carried now.
 
 ## 5. Meeting
 
