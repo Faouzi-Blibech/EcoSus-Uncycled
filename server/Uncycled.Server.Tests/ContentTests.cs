@@ -141,7 +141,7 @@ namespace Uncycled.Server.Tests
             ContentBundle content = LoadReal();
 
             Assert.Equal(
-                new[] { "gas_dark", "gas_depot", "gas_garden", "gas_market" },
+                new[] { "gas_amphi", "gas_club", "gas_lounge", "gas_office" },
                 content.Map.GasRooms.Select(z => z.Id).OrderBy(x => x, System.StringComparer.Ordinal).ToArray());
             Assert.All(content.Map.GasRooms, z => Assert.True(z.Width > 0 && z.Height > 0));
         }

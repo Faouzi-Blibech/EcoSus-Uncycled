@@ -52,7 +52,7 @@ public sealed class ContentBundle
 
 public static class ContentLoader
 {
-    public const string DefaultMapId = "greybox_01";
+    public const string DefaultMapId = "tbs_01";
 
     /// <summary>
     /// UNCYCLED_CONTENT_DIR when set, else the first "content" folder holding tuning.json found in
