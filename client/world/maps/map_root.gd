@@ -12,6 +12,11 @@ func floor_layer() -> TileMapLayer:
 	return get_node("Floor") as TileMapLayer
 
 
+## Pieces of the art drawn in front of players standing above them (y-sorted), or null.
+func occluders() -> Node2D:
+	return get_node_or_null("Occluders") as Node2D
+
+
 func markers() -> Array[MapMarker]:
 	var out: Array[MapMarker] = []
 	var holder: Node = get_node_or_null("Markers")
