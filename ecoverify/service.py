@@ -37,8 +37,15 @@ class Verifier:
         last_day = datetime.fromisoformat(row["last_day"]).date() if row and row["last_day"] else None
         total = int(row["total_co2"]) if row else 0
         new_ids = set(new_unlock_ids or [])
+        per_day = self.store.scans_per_day(pid)
         return {
             "player_id": pid,
+            # game fields (plan L1): 10 points per scan, at most 3 scans a day count
+            "points": rules.points(list(per_day.values()), self.t["points_per_scan"],
+                                   self.t["max_scored_scans_per_day"]),
+            "scans_today": per_day.get(today.isoformat(), 0),
+            "skins": [s["id"] for s in config.SKINS if s["id"] in unlocked],
+            "new_skins": [s["id"] for s in config.SKINS if s["id"] in new_ids],
             "streak": rules.live_streak(last_day, today, int(row["streak"]) if row else 0),
             "best_streak": int(row["best_streak"]) if row else 0,
             "verified_today": last_day == today,

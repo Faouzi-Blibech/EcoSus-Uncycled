@@ -25,18 +25,18 @@ def sample(name: str) -> bytes:
     return (Path(ultralytics.__file__).parent / "assets" / name).read_bytes()
 
 
-def paper_photo() -> bytes:
+def paper_photo(seed: int = 0) -> bytes:
     """A printed sheet on a wooden table: an item COCO has no class for."""
     import numpy as np
     from PIL import ImageDraw
-    rng = np.random.default_rng(0)
+    rng = np.random.default_rng(seed)
     bg = np.full((720, 960, 3), (139, 94, 60), np.int16) + rng.integers(-18, 18, (720, 960, 3))
     table = Image.fromarray(bg.clip(0, 255).astype("uint8"))
     sheet = Image.new("RGB", (420, 590), (245, 245, 240))
     d = ImageDraw.Draw(sheet)
     d.text((40, 40), "INVOICE  No. 2026-1121", fill=(20, 20, 20))
     for i in range(28):
-        d.line((40, 90 + i * 17, 380 - (i * 37 % 120), 90 + i * 17), fill=(60, 60, 60), width=3)
+        d.line((40, 90 + i * 17, 380 - ((i + seed * 5) * 37 % 120), 90 + i * 17), fill=(60, 60, 60), width=3)
     sheet = sheet.rotate(8, expand=True)
     table.paste(sheet, (260, 40), sheet.convert("L").point(lambda v: 255 if v > 10 else 0))
     buf = io.BytesIO()
@@ -65,6 +65,17 @@ def post(base: str, data: bytes, player: str | None, with_exif: bool = True) -> 
         headers["X-Player-Id"] = player
     url = f"{base}/verify-daily-photo"
     return _send(urllib.request.Request(url, data=body, headers=headers, method="POST"))
+
+
+def upload_scan(base: str, token: str, data: bytes) -> tuple[int, dict]:
+    """POST /scan/upload as the scan page does (form fields token + file, no EXIF needed)."""
+    boundary = uuid.uuid4().hex
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"token\"\r\n\r\n{token}\r\n"
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"scan.jpg\"\r\n"
+            f"Content-Type: image/jpeg\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(f"{base}/scan/upload", data=body, method="POST",
+                                 headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    return _send(req)
 
 
 def get(base: str, path: str) -> tuple[int, dict]:
@@ -132,6 +143,23 @@ def main() -> int:
     check("sheet of paper (no COCO class) -> accepted", r.get("verified") and r.get("stream") == "PAPER & CARDBOARD",
           f"{r.get('detected_class')} {r.get('confidence_score')} -> {r.get('detected_item')}")
     check("paper gets an outline", len(r.get("contour") or []) >= 3, f"{len(r.get('contour') or [])} pts")
+
+    # ── scan links (game -> phone page), with their own player so earlier photos are not duplicates ──
+    scan_player = str(uuid.uuid4())
+    req = urllib.request.Request(f"{base}/scan/start", data=json.dumps({"player_id": scan_player}).encode(),
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    status, s = _send(req)
+    check("scan link issued", status == 200 and "/scan?t=" in s.get("url", ""), s.get("url"))
+    token = s.get("token", "")
+    with urllib.request.urlopen(f"{base}/scan?t={token}", timeout=30) as r:
+        check("scan page served", r.status == 200 and b'"valid": true' in r.read())
+    with urllib.request.urlopen(f"{base}/scan/qr?t={token}", timeout=30) as r:
+        check("QR code is a PNG", r.read(4) == b"\x89PNG")
+    status, r = upload_scan(base, token, paper_photo(seed=1))
+    check("scan upload accepted (no EXIF needed)", status == 200 and r.get("verified"), r.get("message"))
+    check("scan earns 10 points", (r.get("profile") or {}).get("points") == 10, (r.get("profile") or {}).get("points"))
+    status, r = upload_scan(base, token, paper_photo(seed=2))
+    check("used scan link -> 410", status == 410, status)
 
     status, p = get(base, f"/players/{player}")
     check("profile kept on server", p.get("streak") == 1 and p.get("total_items") == 2,

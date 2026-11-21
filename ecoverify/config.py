@@ -5,11 +5,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CONTENT_FILE = ROOT / "content" / "eco_verify.json"
 TACO_FILE = ROOT / "content" / "taco_classes.json"
+SKINS_FILE = ROOT / "content" / "skins.json"
 
 
-def load(path: Path = CONTENT_FILE, taco_path: Path = TACO_FILE) -> dict:
+def load(path: Path = CONTENT_FILE, taco_path: Path = TACO_FILE, skins_path: Path = SKINS_FILE) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
+    with open(skins_path, "r", encoding="utf-8") as f:
+        # skins.json uses "streak" (shared with the game server); the mobile app reads "required_streak"
+        data["skins"] = [dict(s, required_streak=s["streak"]) for s in json.load(f)["skins"]]
     data["taco"] = {}
     if taco_path.exists():
         with open(taco_path, "r", encoding="utf-8") as f:

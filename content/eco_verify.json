@@ -21,22 +21,11 @@
     "fallback_min_prob": 0.45,
     "grabcut_max_side": 320,
     "taco_model": "ecoverify/models/taco-seg.pt",
-    "taco_accept_conf": 0.6
+    "taco_accept_conf": 0.6,
+    "scan_token_ttl_s": 120,
+    "points_per_scan": 10,
+    "max_scored_scans_per_day": 3
   },
-
-  "skins": [
-    {"id": "eco_novice", "name": "Eco Novice", "emoji": "🌱", "rarity": "Common", "required_streak": 1,
-     "description": "Your first step toward a greener world!"},
-    {"id": "recycled_scout", "name": "Recycled Scout", "emoji": "🍃", "rarity": "Uncommon", "required_streak": 3,
-     "description": "Three days of recycling in a row."},
-    {"id": "waste_warrior", "name": "Waste Warrior", "emoji": "🌊", "rarity": "Rare", "required_streak": 7,
-     "description": "A full week! The oceans thank you."},
-    {"id": "green_guardian", "name": "Green Guardian", "emoji": "🌍", "rarity": "Epic", "required_streak": 14,
-     "description": "Two weeks of dedication."},
-    {"id": "planet_legend", "name": "Planet Legend", "emoji": "♻️", "rarity": "Legendary", "required_streak": 30,
-     "description": "A 30-day streak. Legendary status."}
-  ],
-
   "_detections_comment": "COCO class -> taxonomy item. kind 'streak' = everyday recyclable (counts toward the daily CO2 cap); kind 'depot' = drop-off item (counts once per physical item, at most depot_max_per_day per day, not capped). CO2 always comes from the taxonomy item.",
   "detections": {
     "bottle":     {"stream": "PLASTICS", "item": "Plastic bottles, jugs, and tubs (#1 PET, #2 HDPE, #5 PP)", "kind": "streak", "detail": "Bouteille plastique ou récipient PET/HDPE"},

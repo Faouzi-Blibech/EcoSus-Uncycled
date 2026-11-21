@@ -28,7 +28,8 @@ RUN python -c "from ultralytics import YOLO; YOLO('yolov8s-seg.pt')" \
 ENV HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1
 
-COPY content/eco_verify.json content/taco_classes.json content/
+# The whole folder (72 KB): copying files one by one twice shipped an image without a data file it needed.
+COPY content/ content/
 # Includes ecoverify/models/taco-seg.pt (the TACO litter model) when it has been trained or copied
 # there; without it the verifier runs on COCO + CLIP only (see /health).
 COPY ecoverify/ ecoverify/

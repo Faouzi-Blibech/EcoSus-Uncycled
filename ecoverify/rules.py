@@ -31,6 +31,11 @@ def next_skin(unlocked_ids: set[str], skins: list[dict]) -> dict | None:
     return next((s for s in skins if s["id"] not in unlocked_ids), None)
 
 
+def points(scans_per_day: list[int], per_scan: int, max_per_day: int) -> int:
+    """Game points: per_scan for each verified scan, at most max_per_day scans count per day."""
+    return per_scan * sum(min(n, max_per_day) for n in scans_per_day)
+
+
 def award_co2(kind: str, item_co2: int, streak_co2_today: int, depot_count_today: int,
               daily_cap: int, depot_max_per_day: int) -> tuple[int, str | None]:
     """CO2 credited for one verified item, and a note when it was reduced.
