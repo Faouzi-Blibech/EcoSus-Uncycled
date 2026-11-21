@@ -16,6 +16,7 @@ namespace Sim.Core
     {
         Poison,
         Vote,
+        Virus,
     }
 
     public enum MatchPhase
@@ -192,6 +193,7 @@ namespace Sim.Core
         Report,
         Meeting,
         Ejection,
+        Infected,
     }
 
     public enum ChatArgKind

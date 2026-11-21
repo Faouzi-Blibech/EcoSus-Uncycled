@@ -227,6 +227,28 @@ namespace Sim.Match
         public string Text { get; }
     }
 
+    /// <summary>protocol: plant_virus {spot}. A Trasher with the virus plants it on a dirty spot.</summary>
+    public sealed class PlantVirusCommand : ICommand
+    {
+        public PlantVirusCommand(string spotId)
+        {
+            SpotId = spotId ?? "";
+        }
+
+        public string SpotId { get; }
+    }
+
+    /// <summary>protocol: heal {target}. A Cleaner with a heal cures an infected seat (itself or one in reach).</summary>
+    public sealed class HealCommand : ICommand
+    {
+        public HealCommand(byte target)
+        {
+            Target = target;
+        }
+
+        public byte Target { get; }
+    }
+
     /// <summary>Ok, or rejected with a protocol reason.</summary>
     public readonly struct CommandResult
     {

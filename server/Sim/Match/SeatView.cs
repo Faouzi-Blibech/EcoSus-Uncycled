@@ -123,8 +123,10 @@ namespace Sim.Match
             int repollutes = 0,
             TrasherAbility ability = TrasherAbility.None,
             int heals = 0,
-            int masks = 0)
+            int masks = 0,
+            float? infectedS = null)
         {
+            InfectedS = infectedS;
             Repollutes = repollutes;
             Ability = ability;
             Bags = bags;
@@ -186,6 +188,9 @@ namespace Sim.Match
 
         /// <summary>Masks held (0 or 1). Private to the carrier; the wire sends it to citizens only.</summary>
         public int Masks { get; }
+
+        /// <summary>Seconds until the virus puts this Cleaner out; null unless the viewer is infected. Never about another seat.</summary>
+        public float? InfectedS { get; }
     }
 
     public sealed class SabotageView

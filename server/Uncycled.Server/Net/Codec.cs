@@ -225,6 +225,31 @@ public static class Codec
                 return true;
             }
 
+            case "plant_virus":
+            {
+                string? spot = GetString(r, "spot");
+                if (string.IsNullOrEmpty(spot) || spot.Length > 64)
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new PlantVirusCommand(spot);
+                return true;
+            }
+
+            case "heal":
+            {
+                if (!TryByte(r, "target", out byte target))
+                {
+                    error = "bad_field";
+                    return false;
+                }
+
+                cmd = new HealCommand(target);
+                return true;
+            }
+
             case "pick_ability":
             {
                 string? ability = GetString(r, "ability");

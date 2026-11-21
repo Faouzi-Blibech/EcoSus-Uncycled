@@ -177,6 +177,18 @@ namespace Sim.Match
         /// <summary>Seconds between the gas warning and the gas (trasher.gas_warning_s); used by the gas rule.</summary>
         public float GasWarningS { get; set; } = 3f;
 
+        /// <summary>Countdown of a virus that triggers at once (virus.start_s).</summary>
+        public float VirusStartS { get; set; } = 60f;
+
+        /// <summary>Countdown of a virus that is at least VirusGrowS old (virus.fatal_s).</summary>
+        public float VirusFatalS { get; set; } = 10f;
+
+        /// <summary>Active seconds a planted virus takes to reach its deadliest (virus.grow_s).</summary>
+        public float VirusGrowS { get; set; } = 90f;
+
+        /// <summary>Reach of a heal on another seat, in tiles (virus.heal_range).</summary>
+        public float HealRange { get; set; } = 1.5f;
+
         /// <summary>Seconds a Cleaner holds fix at the jammed machine (machine.fix_s).</summary>
         public float MachineFixS { get; set; } = 4f;
 

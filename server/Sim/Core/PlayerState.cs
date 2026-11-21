@@ -81,6 +81,15 @@ namespace Sim.Core
         /// <summary>Movement distance budget in tiles.</summary>
         public float MoveBudget { get; internal set; }
 
+        /// <summary>ActiveTime at which the infection kills this Cleaner (null = not infected). Runs on active time, so a meeting freezes it.</summary>
+        public float? InfectedDeathAt { get; internal set; }
+
+        /// <summary>True once the infected Cleaner used the free meeting call of the current infection.</summary>
+        public bool InfectedMeetingUsed { get; internal set; }
+
+        /// <summary>ActiveTime at which this Trasher may plant a virus again (set when a planted virus triggers).</summary>
+        public float VirusReadyAt { get; internal set; }
+
         public bool IsActive => Status == PlayerStatus.Active;
 
         public bool IsPolluter => Role == Role.Polluter;

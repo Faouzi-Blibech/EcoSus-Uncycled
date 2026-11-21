@@ -655,4 +655,49 @@ namespace Sim.Match
 
         public float MatchTime { get; }
     }
+
+    /// <summary>infected {countdown}. To the victim only: seconds until the virus puts them out.</summary>
+    public sealed class InfectedEvent : GameEvent
+    {
+        public InfectedEvent(byte seat, float countdown)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Countdown = countdown;
+        }
+
+        public byte Seat { get; }
+
+        public float Countdown { get; }
+    }
+
+    /// <summary>healed {by}. To the cured seat.</summary>
+    public sealed class HealedEvent : GameEvent
+    {
+        public HealedEvent(byte seat, byte by)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            By = by;
+        }
+
+        public byte Seat { get; }
+
+        public byte By { get; }
+    }
+
+    /// <summary>virus_planted {spot}. To the planting Trasher only.</summary>
+    public sealed class VirusPlantedEvent : GameEvent
+    {
+        public VirusPlantedEvent(byte seat, string spot)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Spot = spot;
+        }
+
+        public byte Seat { get; }
+
+        public string Spot { get; }
+    }
 }

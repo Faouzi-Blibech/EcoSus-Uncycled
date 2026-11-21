@@ -220,6 +220,7 @@ public static class Wire
         w.WriteEndArray();
         WriteBags(w, me);
         WriteTrasherFields(w, me);
+        WriteInfected(w, me);
         if (me.Cooldowns != null)
         {
             WriteCooldowns(w, "cooldowns", me.Cooldowns);
@@ -340,6 +341,7 @@ public static class Wire
 
             WriteBags(w, me);
             WriteTrasherFields(w, me);
+            WriteInfected(w, me);
             if (me.Cooldowns != null)
             {
                 WriteCooldowns(w, "cd", me.Cooldowns);
@@ -430,6 +432,15 @@ public static class Wire
         else
         {
             w.WriteString("ability", Snake(me.Ability));
+        }
+    }
+
+    /// <summary>infected_s: only while the viewer is infected (the engine leaves it null for every other seat).</summary>
+    private static void WriteInfected(Utf8JsonWriter w, MyView me)
+    {
+        if (me.InfectedS.HasValue)
+        {
+            w.F("infected_s", me.InfectedS.Value);
         }
     }
 
@@ -667,6 +678,27 @@ public static class Wire
                 {
                     w.WriteString("t", "upgrade_ok");
                     w.WriteString("item", Snake(e.Item));
+                });
+
+            case InfectedEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "infected");
+                    w.F("countdown", e.Countdown);
+                });
+
+            case HealedEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "healed");
+                    w.WriteNumber("by", (int)e.By);
+                });
+
+            case VirusPlantedEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "virus_planted");
+                    w.WriteString("spot", e.Spot);
                 });
 
             case TaskProgressEvent e:
