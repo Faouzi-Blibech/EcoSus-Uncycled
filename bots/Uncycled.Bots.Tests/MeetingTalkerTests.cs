@@ -389,6 +389,30 @@ namespace Uncycled.Bots.Tests
             }
         }
 
+        /// <summary>Asks "where was X" about a seat nobody asked about yet: a new line every time (a bot never repeats a line), for the pacing tests.</summary>
+        private sealed class Varied : IMeetingDecider
+        {
+            public string Name => "varied";
+
+            public Task<MeetingDecision> DecideAsync(MeetingState state, CancellationToken ct)
+            {
+                if (state.Stage == MeetingStage.Voting)
+                {
+                    return Task.FromResult(MeetingDecision.Quiet(Name));
+                }
+
+                foreach (byte seat in state.Living)
+                {
+                    if (seat != state.Self && !Grounding.IsRepeat(state.Chat, "where", seat, null))
+                    {
+                        return Task.FromResult(MeetingDecision.Say(Name, "where", seat));
+                    }
+                }
+
+                return Task.FromResult(MeetingDecision.Quiet(Name));
+            }
+        }
+
         private sealed class Never : IMeetingDecider
         {
             public string Name => "never";
@@ -546,7 +570,7 @@ namespace Uncycled.Bots.Tests
         {
             var rig = new Rig();
             byte bot = rig.OtherThan(rig.Reporter);
-            var talkers = new Dictionary<byte, MeetingTalker> { { bot, NewTalker(new Fixed("fake", "hmm"), new RuleDecider()) } };
+            var talkers = new Dictionary<byte, MeetingTalker> { { bot, NewTalker(new Varied(), new RuleDecider()) } };
 
             rig.Run(talkers);
 
@@ -571,7 +595,7 @@ namespace Uncycled.Bots.Tests
             for (int i = 0; i < 4; i++)
             {
                 byte bot = rig.OtherThan(new[] { rig.Reporter }.Concat(talkers.Keys).ToArray());
-                talkers[bot] = NewTalker(new Fixed("fake", "hmm"), new RuleDecider(), floor, 10 + i);
+                talkers[bot] = NewTalker(new Varied(), new RuleDecider(), floor, 10 + i);
             }
 
             rig.Run(talkers);

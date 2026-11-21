@@ -40,6 +40,89 @@ namespace Uncycled.Bots.Meeting
 
         private static MeetingDecision CheckSpeak(MeetingDecision d, MeetingState s)
         {
+            MeetingDecision g = CheckGrounded(d, s);
+            return g.Speak && IsRepeat(s.Chat, g.PhraseId!, g.Seat, g.Zone) ? InsteadOfRepeat(g, s) : g;
+        }
+
+        // ---------- no repeats ----------
+
+        /// <summary>True when the meeting chat already holds a line with this phrase id and these slots (said by anyone).</summary>
+        public static bool IsRepeat(IReadOnlyList<ChatAct> chat, string phraseId, byte? seat, string? zone)
+        {
+            foreach (ChatAct a in chat)
+            {
+                if (a.PhraseId == phraseId && a.Seat == seat && a.Zone == zone)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// What a bot says when its grounded line was already said in this meeting. A standing accusation of seat X:
+        /// its own evidence line about X, else "agree" with an accuser of X, "where X", its vote for X. A denial
+        /// becomes the alibi. Anything else, or when every choice was said too: nothing.
+        /// </summary>
+        private static MeetingDecision InsteadOfRepeat(MeetingDecision repeat, MeetingState s)
+        {
+            string src = repeat.Source;
+            string id = repeat.PhraseId!;
+            if (id == "not_me")
+            {
+                MeetingDecision alibi = s.GaveAlibi() ? MeetingDecision.Quiet(src) : CheckAlibi(null, false, s, src);
+                return alibi.PhraseId == "i_was" && !IsRepeat(s.Chat, "i_was", null, alibi.Zone) ? alibi : MeetingDecision.Quiet(src);
+            }
+
+            if (repeat.Seat == null || (id != "sus" && id != EvidenceItem.SawDump && id != EvidenceItem.SawHit && id != EvidenceItem.NearPile))
+            {
+                return MeetingDecision.Quiet(src);
+            }
+
+            byte target = repeat.Seat.Value;
+            foreach (string kind in new[] { EvidenceItem.SawDump, EvidenceItem.SawHit, EvidenceItem.NearPile })
+            {
+                foreach (EvidenceItem e in s.Evidence)
+                {
+                    if (e.Kind == kind && e.Seat == target && !IsRepeat(s.Chat, kind, target, e.Zone))
+                    {
+                        return MeetingDecision.Say(src, kind, target, e.Zone);
+                    }
+                }
+            }
+
+            foreach (ChatAct a in s.Chat)
+            {
+                if (a.Kind == "accuse" && a.Seat == target && a.Speaker != s.Self && !IsRepeat(s.Chat, "agree", a.Speaker, null))
+                {
+                    MeetingDecision agree = CheckAgree(a.Speaker, s, src);
+                    if (agree.PhraseId == "agree")
+                    {
+                        return agree;
+                    }
+                }
+            }
+
+            if (IsLiving(s, target) && !IsRepeat(s.Chat, "where", target, null))
+            {
+                return MeetingDecision.Say(src, "where", target);
+            }
+
+            if (!IsRepeat(s.Chat, "vote", target, null))
+            {
+                MeetingDecision vote = CheckGrounded(MeetingDecision.Say(src, "vote", target), s);
+                if (vote.PhraseId == "vote")
+                {
+                    return vote;
+                }
+            }
+
+            return MeetingDecision.Quiet(src);
+        }
+
+        private static MeetingDecision CheckGrounded(MeetingDecision d, MeetingState s)
+        {
             string src = d.Source;
             if (!d.Speak || string.IsNullOrEmpty(d.PhraseId))
             {

@@ -66,6 +66,8 @@ namespace Uncycled.Train
             int dumps = 0;
             int meetings = 0;
             int chatLines = 0;
+            int identicalLines = 0;
+            var saidInMeeting = new HashSet<string>();
             int wrongEjections = 0;
             int deliveries = 0;
             int repollutes = 0;
@@ -113,10 +115,15 @@ namespace Uncycled.Train
                     else if (e is MeetingStartedEvent)
                     {
                         meetings++;
+                        saidInMeeting.Clear();
                     }
                     else if (e is ChatEvent chat && !chat.Ghost)
                     {
                         chatLines++;
+                        if (chat.PhraseId != null && !saidInMeeting.Add(LineKey(chat)))
+                        {
+                            identicalLines++; // the same phrase id and slots said twice in one meeting
+                        }
                     }
                 }
             }
@@ -138,9 +145,22 @@ namespace Uncycled.Train
             sb.Append(",\"dumps\":").Append(dumps.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"meetings\":").Append(meetings.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"chat_lines\":").Append(chatLines.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"identical_lines\":").Append(identicalLines.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"match_time\":").Append(engine.MatchTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append(",\"active_time\":").Append(engine.ActiveTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append('}');
+            return sb.ToString();
+        }
+
+        /// <summary>A phrase line as one key: the id and its slots in order, so two lines are identical when the keys are equal.</summary>
+        private static string LineKey(ChatEvent chat)
+        {
+            var sb = new StringBuilder(chat.PhraseId);
+            foreach (ChatArg arg in chat.Args)
+            {
+                sb.Append('|').Append(arg.Kind == ChatArgKind.Seat ? "s" + arg.Seat.ToString(CultureInfo.InvariantCulture) : "z" + arg.Zone);
+            }
+
             return sb.ToString();
         }
 
