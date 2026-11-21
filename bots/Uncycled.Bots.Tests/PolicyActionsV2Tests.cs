@@ -127,7 +127,8 @@ namespace Uncycled.Bots.Tests
             }
 
             _out.WriteLine("policy indices that were valid at least once: " + string.Join(",", seen.OrderBy(x => x)));
-            Assert.True(seen.Count >= 8, "the scripted matches exercised only " + seen.Count + " policy indices");
+            string missing = string.Join(",", Enumerable.Range(0, PolicyActionsV2.Count).Where(i => !seen.Contains(i)).Select(i => PolicyActionsV2.Names[i]));
+            Assert.True(missing.Length == 0, "never valid in 20 scripted matches: " + missing);
         }
 
         [Fact]
@@ -330,6 +331,106 @@ namespace Uncycled.Bots.Tests
                 Assert.True(mask[1 + k]);
                 Assert.Equal(BotAction.GoZone0 + ranked[k], PolicyActionsV2.Resolve(1 + k, view, mem, m.Map).Action);
             }
+        }
+
+        // ---------- the resolved choice makes the executor send the matching command ----------
+
+        /// <summary>ApplyTo + Begin + Step on a real executor: the commands it sends for the policy index.</summary>
+        private static List<ICommand> Play(TestMatch m, int index, SeatView view, BotMemory mem)
+        {
+            var exec = new ActionExecutor(new Navigator(m.Map.Walk, m.Config.SpeedTilesPerS), new MoveSender()) { Memory = mem };
+            PolicyChoice choice = PolicyActionsV2.Resolve(index, view, mem, m.Map);
+            Assert.NotEqual(BotAction.Stay, choice.Action);
+            choice.ApplyTo(exec);
+            exec.Begin(choice.Action, view, m.Map, view.MatchTime);
+            var sent = new List<ICommand>();
+            exec.Step(view, TestMatch.Dt, view.MatchTime, sent.Add);
+            return sent;
+        }
+
+        [Theory]
+        [InlineData(PickBackpack, UpgradeKind.Backpack)]
+        [InlineData(PickTool, UpgradeKind.Tool)]
+        [InlineData(PickHeal, UpgradeKind.Heal)]
+        [InlineData(PickMask, UpgradeKind.Mask)]
+        public void PickIndex_SendsPickUpgradeWithThatKind(int index, UpgradeKind kind)
+        {
+            TestMatch m = TestMatch.Create(2);
+            SeatView view = m.Engine.ViewFor(m.FirstSeatOf(Role.Citizen));
+            var mem = new BotMemory(m.Map, m.Config)
+            {
+                // the first kind in the offer is a different one, so a send that ignores the hint is caught
+                UpgradeOffer = new List<UpgradeKind> { UpgradeKind.Backpack, UpgradeKind.Tool, UpgradeKind.Heal, UpgradeKind.Mask },
+            };
+            Assert.True(PolicyActionsV2.Mask(view, mem, m.Map)[index]);
+
+            List<ICommand> sent = Play(m, index, view, mem);
+
+            PickUpgradeCommand cmd = Assert.IsType<PickUpgradeCommand>(Assert.Single(sent));
+            Assert.Equal(kind, cmd.Item);
+        }
+
+        [Theory]
+        [InlineData(PickVirus, TrasherAbility.Virus)]
+        [InlineData(PickGas, TrasherAbility.Gas)]
+        public void PickAbilityIndex_SendsPickAbilityWithThatAbility(int index, TrasherAbility ability)
+        {
+            TestMatch m = TestMatch.Create(2);
+            SeatView start = m.Engine.ViewFor(m.FirstSeatOf(Role.Polluter));
+            var unlocked = new MyView(start.Me.Seat, start.Me.Role, start.Me.Partners, start.Me.Signature, start.Me.Status, start.Me.Position, start.Me.Vision,
+                start.Me.Poison, start.Me.Cooldowns, start.Me.Tasks, 0, 0, false, m.Config.UnlockAfter);
+            SeatView view = WithPlayers(start, start.Players, unlocked);
+            var mem = new BotMemory(m.Map, m.Config);
+            Assert.True(PolicyActionsV2.Mask(view, mem, m.Map)[index]);
+
+            List<ICommand> sent = Play(m, index, view, mem);
+
+            PickAbilityCommand cmd = Assert.IsType<PickAbilityCommand>(Assert.Single(sent));
+            Assert.Equal(ability, cmd.Ability);
+        }
+
+        [Fact]
+        public void GasBusiestRoom_SendsGasToTheRoomWithPlayers()
+        {
+            TestMatch m = TestMatch.Create(2);
+            SeatView live = m.Engine.ViewFor(m.FirstSeatOf(Role.Polluter));
+            ZoneDef room = m.Map.GasRooms[m.Map.GasRooms.Count - 1]; // not the first in map order: a default of "first room" would be caught
+            var inside = new Vec2(room.X + room.Width / 2f, room.Y + room.Height / 2f);
+            SeatView view = WithPlayers(live, new List<PlayerView> { new PlayerView(1, inside, 1, false) }, AsGasTrasher(live.Me));
+            var mem = new BotMemory(m.Map, m.Config);
+            Assert.True(PolicyActionsV2.Mask(view, mem, m.Map)[GasBusiestRoom]);
+
+            List<ICommand> sent = Play(m, GasBusiestRoom, view, mem);
+
+            GasCommand cmd = Assert.IsType<GasCommand>(Assert.Single(sent));
+            Assert.Equal(room.Id, cmd.RoomId);
+        }
+
+        [Theory]
+        [InlineData(RepolluteNearest, 0)]
+        [InlineData(RepolluteSecond, 1)]
+        public void RepolluteIndex_SendsRepolluteAtTheHintedSpot(int index, int rank)
+        {
+            TestMatch m = TestMatch.Create(2);
+            var bot = new SyntheticBot(m, Role.Polluter) { Seat = 0 };
+            foreach (SpotView s in m.Engine.ViewFor(0).Spots)
+            {
+                bot.Spots.Add(new SpotView(s.Id, SpotState.Clean));
+            }
+
+            List<string> order = ByDistance(m, bot.View());
+            Assert.True(order.Count >= 2);
+            bot.Observe();
+            Assert.True(PolicyActionsV2.Mask(bot.View(), bot.Memory, m.Map)[index]);
+            PolicyChoice choice = PolicyActionsV2.Resolve(index, bot.View(), bot.Memory, m.Map);
+            Assert.Equal(order[rank], choice.Spot);
+
+            choice.ApplyTo(bot.Executor);
+            bot.Begin(choice.Action);
+            bot.RunUntilIdle(120f);
+
+            RepolluteCommand cmd = Assert.Single(bot.Sent.OfType<RepolluteCommand>());
+            Assert.Equal(order[rank], cmd.SpotId);
         }
     }
 }
