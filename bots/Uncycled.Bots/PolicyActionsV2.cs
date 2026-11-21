@@ -13,13 +13,14 @@ namespace Uncycled.Bots
     /// </summary>
     public readonly struct PolicyChoice
     {
-        public PolicyChoice(BotAction action, string? spot = null, UpgradeKind? upgrade = null, TrasherAbility? ability = null, string? room = null)
+        public PolicyChoice(BotAction action, string? spot = null, UpgradeKind? upgrade = null, TrasherAbility? ability = null, string? room = null, string? zone = null)
         {
             Action = action;
             Spot = spot;
             Upgrade = upgrade;
             Ability = ability;
             Room = room;
+            Zone = zone;
         }
 
         public BotAction Action { get; }
@@ -32,7 +33,9 @@ namespace Uncycled.Bots
 
         public string? Room { get; }
 
-        /// <summary>Sets the executor's one-shot hints (all four, so none from an earlier choice is left over). Call before ActionExecutor.Begin.</summary>
+        public string? Zone { get; }
+
+        /// <summary>Sets the executor's one-shot hints (all five, so none from an earlier choice is left over). Call before ActionExecutor.Begin.</summary>
         public void ApplyTo(ActionExecutor exec)
         {
             if (exec == null)
@@ -44,6 +47,7 @@ namespace Uncycled.Bots
             exec.UpgradeChoice = Upgrade;
             exec.AbilityChoice = Ability;
             exec.RoomHint = Room;
+            exec.ZoneHint = Zone;
         }
     }
 
@@ -55,8 +59,6 @@ namespace Uncycled.Bots
     /// </summary>
     public static class PolicyActionsV2
     {
-        private const int ZoneActions = 3; // the executor has GoZone0..2 only: the zones it can walk to are the first three of the map
-
         private static readonly string[] NameList =
         {
             "Stay",
@@ -140,7 +142,7 @@ namespace Uncycled.Bots
 
             public List<ConsoleDef> Clean => _clean ??= ActionQuery.SpotsNearestFirst(View, Map, SpotState.Clean);
 
-            /// <summary>Map indices of the reachable zones among the first three, nearest first by walking distance (ties by index).</summary>
+            /// <summary>Map indices of the reachable zones of the whole map, nearest first by walking distance (ties by index).</summary>
             public List<int> NearZones
             {
                 get
@@ -149,7 +151,7 @@ namespace Uncycled.Bots
                     {
                         MapDistances dist = MapDistances.For(Map);
                         var ranked = new List<KeyValuePair<int, int>>();
-                        for (int z = 0; z < ZoneActions && z < Map.Zones.Count; z++)
+                        for (int z = 0; z < Map.Zones.Count; z++)
                         {
                             int d = dist.Path(View.Me.Position, ActionQuery.ZoneCentre(Map, z));
                             if (d != MapDistances.Unreachable)
@@ -207,13 +209,20 @@ namespace Uncycled.Bots
                 case 3:
                 {
                     List<int> zones = w.NearZones;
-                    int k = index - 1;
+                    int k = index - 1; // GoZoneNear0..2: the k-th nearest zone of the whole map, whatever its map index
                     if (k >= zones.Count)
                     {
                         return false;
                     }
 
-                    choice = new PolicyChoice(BotAction.GoZone0 + zones[k]);
+                    ZoneDef target = w.Map.Zones[zones[k]];
+                    ZoneDef? avoid = ActionQuery.WarnedRoomToAvoid(w.View, w.Mem, w.Map);
+                    if (avoid != null && avoid.Contains(ActionQuery.ZoneCentre(w.Map, zones[k])))
+                    {
+                        return false; // a Cleaner without a mask does not walk into the room whose gas warning runs
+                    }
+
+                    choice = new PolicyChoice(BotAction.GoZoneAt, zone: target.Id);
                     return true;
                 }
 

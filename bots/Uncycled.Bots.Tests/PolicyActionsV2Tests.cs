@@ -322,7 +322,7 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
-        public void GoZoneNear_ResolvesToTheNearestZonesMapIndex()
+        public void GoZoneNear_ResolvesToTheNearestZonesId()
         {
             TestMatch m = TestMatch.Create(2);
             SeatView view = m.Engine.ViewFor(0);
@@ -338,7 +338,9 @@ namespace Uncycled.Bots.Tests
             for (int k = 0; k < 3; k++)
             {
                 Assert.True(mask[1 + k]);
-                Assert.Equal(BotAction.GoZone0 + ranked[k], PolicyActionsV2.Resolve(1 + k, view, mem, m.Map).Action);
+                PolicyChoice choice = PolicyActionsV2.Resolve(1 + k, view, mem, m.Map);
+                Assert.Equal(BotAction.GoZoneAt, choice.Action);
+                Assert.Equal(m.Map.Zones[ranked[k]].Id, choice.Zone);
             }
         }
 
