@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sim.Tests" />
+    <InternalsVisibleTo Include="Uncycled.Server.Tests" />
   </ItemGroup>
 
 </Project>
