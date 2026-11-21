@@ -163,5 +163,71 @@ namespace Uncycled.Bots.Tests
 
             Assert.True(bot.Executor.Committed, "only the start of an infection stops a step");
         }
+
+        [Fact]
+        public void CommittedStep_KeepsGoing_ForATrasherInAWarnedGasRoom()
+        {
+            TestMatch m = TestMatch.Create();
+            var bot = new SyntheticBot(m, Role.Polluter, Near(m, Machine(m))) { Seat = 0, MatchTime = 100f, MachineJammed = true };
+            bot.Observe();
+            bot.Begin(BotAction.FixMachine);
+            Steps(bot, 4);
+            Assert.True(bot.Executor.Committed);
+
+            bot.Position = new Vec2(4.5f, 4.5f); // inside gas_market
+            bot.Gas = new GasView("gas_market", 6f);
+            Steps(bot, 5);
+
+            Assert.True(bot.Executor.Committed, "the gas warning is for Cleaners");
+        }
+
+        [Fact]
+        public void CommittedStep_KeepsGoing_ForACleanerWithAMaskInAWarnedGasRoom()
+        {
+            SyntheticBot bot = Holding(TestMatch.Create());
+            bot.Masks = 1;
+            bot.Position = new Vec2(4.5f, 4.5f);
+            bot.Gas = new GasView("gas_market", 6f);
+
+            Steps(bot, 5);
+
+            Assert.True(bot.Executor.Committed, "the mask takes the gas");
+        }
+
+        // ---------- a meeting ends every commitment ----------
+
+        [Fact]
+        public void AMeetingStartingDuringTheMachineHold_ClearsTheCommitment()
+        {
+            SyntheticBot bot = Holding(TestMatch.Create());
+            Assert.True(bot.Executor.Committed);
+
+            bot.Phase = MatchPhase.Meeting;
+            bot.Step();
+            bot.Phase = MatchPhase.Playing;
+
+            Assert.False(bot.Executor.Committed);
+            Assert.False(bot.Executor.Busy);
+        }
+
+        [Fact]
+        public void AMeetingStartingDuringTheWatchedWait_ClearsTheCommitment()
+        {
+            TestMatch m = TestMatch.Create();
+            var bot = new SyntheticBot(m, Role.Polluter, Near(m, SpotConsole(m, 0))) { Seat = 0, MatchTime = 100f };
+            bot.Spots.Add(new SpotView(SpotConsole(m, 0).Id, SpotState.Clean));
+            bot.Players.Add(SyntheticBot.Player(3, bot.Position.X + 0.3f, bot.Position.Y));
+            bot.Observe();
+            bot.Begin(BotAction.Repollute);
+            Steps(bot, 3);
+            Assert.True(bot.Executor.Committed);
+
+            bot.Phase = MatchPhase.Meeting;
+            bot.Step();
+            bot.Phase = MatchPhase.Playing;
+
+            Assert.False(bot.Executor.Committed);
+            Assert.False(bot.Executor.Busy);
+        }
     }
 }

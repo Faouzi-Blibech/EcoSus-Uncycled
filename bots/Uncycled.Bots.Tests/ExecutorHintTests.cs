@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using Sim.Core;
 using Sim.Match;
@@ -141,6 +142,61 @@ namespace Uncycled.Bots.Tests
             bot.RunUntilIdle(30f);
 
             Assert.True(zones[4].Contains(bot.Position), "the bot ended at " + bot.Position.X + "," + bot.Position.Y);
+        }
+
+        private sealed class Fixed : IRandom
+        {
+            public int NextInt(int maxExclusive) => 0;
+
+            public float NextFloat() => 0f;
+        }
+
+        private static PacePolicy AlwaysPauses(float seconds)
+        {
+            var s = new PaceSettings { PauseChance = 1f, PauseMinS = seconds, PauseMaxS = seconds, WrongZoneChance = 0f, GroupChance = 0f, TaskFailChance = 0f };
+            return new PacePolicy(s, new Fixed());
+        }
+
+        private static int Moves(SyntheticBot bot) => bot.Sent.Count(c => c is MoveCommand);
+
+        [Fact]
+        public void GoZoneAt_StartsWithTheHumanPause_AsGoZone0Does()
+        {
+            TestMatch m = TestMatch.Create();
+            MapData map = FiveZones(out List<ZoneDef> zones);
+            var bot = new SyntheticBot(m, Role.Citizen, new Vec2(3.5f, 5.5f), map) { Seat = 0, MatchTime = 100f };
+            bot.Executor.Pace = AlwaysPauses(2f);
+            bot.Observe();
+            bot.Executor.ZoneHint = "z0";
+            bot.Begin(BotAction.GoZoneAt);
+
+            Steps(bot, 30); // 1.5 s of a 2 s pause
+            Assert.Equal(0, Moves(bot));
+
+            Steps(bot, 20);
+            Assert.True(Moves(bot) > 0, "the walk starts once the pause is over");
+        }
+
+        [Fact]
+        public void Begin_WithTheSameHintAsTheRunningActionStartedWith_DoesNotRestart_EvenWhenChooseSpotRefusedIt()
+        {
+            TestMatch m = TestMatch.Create();
+            ConsoleDef a = SpotConsole(m, 0);
+            ConsoleDef b = SpotConsole(m, 1);
+            var bot = new SyntheticBot(m, Role.Citizen, Near(m, a)) { Seat = 0, MatchTime = 100f };
+            bot.Spots.Add(new SpotView(a.Id, SpotState.Clean)); // the hint names a spot that is no longer dirty: the executor walks to b
+            bot.Spots.Add(new SpotView(b.Id, SpotState.Dirty));
+            bot.Executor.Pace = AlwaysPauses(2f);
+            bot.Observe();
+            bot.Executor.SpotHint = a.Id;
+            bot.Begin(BotAction.GoDirtySpot);
+            Steps(bot, 30);
+
+            bot.Executor.SpotHint = a.Id; // the network picks the same index again
+            bot.Begin(BotAction.GoDirtySpot);
+            Steps(bot, 15);
+
+            Assert.True(Moves(bot) > 0, "a restart would have drawn a fresh 2 s pause");
         }
     }
 }
