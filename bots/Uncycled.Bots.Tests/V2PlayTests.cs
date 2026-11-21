@@ -170,6 +170,28 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
+        public void CleanerBot_RepairsTheJam_EvenWhenABystanderStandsNextToTheMachine()
+        {
+            TestMatch m = TestMatch.Create(2);
+            byte cit = m.FirstSeatOf(Role.Citizen);
+            byte pol = m.FirstSeatOf(Role.Polluter);
+            m.TickFor(m.Config.TrasherStartCooldownS + 1f);
+            Assert.True(m.Engine.Apply(pol, new SabotageCommand(SabotageKind.Machine)).IsOk);
+            Vec2 machine = m.Map.ConsolesOfKind(ConsoleKind.Machine)[0].Position;
+            m.Engine.TestTeleport(pol, new MapDistances_Helper(m).WalkableNear(machine, 1.5f)); // stands there, never fixes
+            m.Engine.TestTeleport(cit, new MapDistances_Helper(m).WalkableNear(machine, 4f));
+            BrainRig rig = OneSeat(m, cit);
+
+            rig.RunUntil(() => false, 3f);
+            Assert.True(m.Engine.Machine.Jammed);
+            Assert.DoesNotContain(rig.Sent, c => c.Command is FixCommand f && f.Holding); // first the Cleaner leaves it to the one standing there
+
+            rig.RunUntil(() => !m.Engine.Machine.Jammed, m.Config.MachineFixS + 2f + 12f);
+
+            Assert.False(m.Engine.Machine.Jammed, "a bystander blocked the repair for good");
+        }
+
+        [Fact]
         public void CleanerBot_DeliversItsBagAtTheMachine()
         {
             TestMatch m = TestMatch.Create(2);

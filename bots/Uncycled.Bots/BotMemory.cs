@@ -92,6 +92,9 @@ namespace Uncycled.Bots
         /// </summary>
         public string? GasWarnedRoom { get; set; }
 
+        /// <summary>Match time of this bot's first sighting of the current machine jam; null while the machine runs.</summary>
+        public float? MachineJamSeenAt { get; private set; }
+
         /// <summary>True once this seat called its one free meeting for the current infection (cleared when it is no longer infected).</summary>
         public bool InfectedCallUsed { get; set; }
 
@@ -144,6 +147,15 @@ namespace Uncycled.Bots
             if ((alarm && !_prevAlarm) || gasStarted)
             {
                 _dwell.Clear();
+            }
+
+            if (!view.MachineJammed)
+            {
+                MachineJamSeenAt = null;
+            }
+            else if (MachineJamSeenAt == null)
+            {
+                MachineJamSeenAt = matchTime;
             }
 
             _prevAlarm = alarm;

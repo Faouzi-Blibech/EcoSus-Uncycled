@@ -17,6 +17,7 @@ namespace Uncycled.Bots
     {
         private const int FixMaxPathTiles = 6;
         private const float TakenRadius = 2.5f;
+        private const float TakenGraceS = 2f;
         private const int SmogMaxPathTiles = 25;
         private const float WanderStayChance = 0.3f;
         private const float EarlyDeliverChance = 0.2f;
@@ -67,8 +68,11 @@ namespace Uncycled.Bots
                     return Choice.Keep;
                 }
 
-                // someone already stands at the machine: they are fixing it (one repairer at a time), leave it to them
-                bool taken = ActionQuery.SomeoneNear(view, machine.Position, TakenRadius) && Vec2.Distance(me, machine.Position) > TakenRadius;
+                // someone already stands at the machine: they are fixing it (one repairer at a time), leave it to them,
+                // but only for a repair's time (fix_s + 2 s from the first sighting of the jam): after that the
+                // one standing there is a bystander, and the jam has no end of its own
+                bool inGrace = Mem.MachineJamSeenAt != null && view.MatchTime - Mem.MachineJamSeenAt.Value <= Mem.Config.MachineFixS + TakenGraceS;
+                bool taken = inGrace && ActionQuery.SomeoneNear(view, machine.Position, TakenRadius) && Vec2.Distance(me, machine.Position) > TakenRadius;
                 int d = dist.Path(me, machine.Position);
                 if (!taken && d != MapDistances.Unreachable && (d <= FixMaxPathTiles || view.Me.Bags > 0))
                 {
