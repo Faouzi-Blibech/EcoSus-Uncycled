@@ -167,6 +167,13 @@ namespace Uncycled.Bots
 
         private void Decide(SeatView view, float dt, float now)
         {
+            if (Exec.Committed)
+            {
+                // working a task step: no decision until it ends (a choice made before the step began is dropped)
+                _pending = null;
+                return;
+            }
+
             if (_pending == null)
             {
                 _decisionIn -= dt;

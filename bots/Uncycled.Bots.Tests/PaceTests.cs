@@ -25,7 +25,7 @@ namespace Uncycled.Bots.Tests
 
         private static PacePolicy Policy(float roll, Action<PaceSettings>? tweak = null)
         {
-            var s = new PaceSettings { PauseChance = 0f, WrongZoneChance = 0f, GroupChance = 0f };
+            var s = new PaceSettings { PauseChance = 0f, WrongZoneChance = 0f, GroupChance = 0f, TaskFailChance = 0f };
             tweak?.Invoke(s);
             return new PacePolicy(s, new Fixed(roll));
         }

@@ -51,6 +51,10 @@ namespace Uncycled.Bots
         private float _pause;
         private Vec2? _afterDetour;
         private float _fakeS = FakeTaskS;
+        private bool _citizenStep;
+        private bool _prevFire;
+        private bool _prevSmog;
+        private int _prevPoison;
 
         private byte? _targetSeat;
         private int _targetPile = -1;
@@ -93,7 +97,17 @@ namespace Uncycled.Bots
         public float FollowCapS { get; set; } = DefaultFollowCapS;
 
         /// <summary>True while the current action has not finished.</summary>
+
         public bool Busy { get; private set; }
+        /// <summary>
+        /// True while a citizen works a task step it has opened (the session is open at the console).
+        /// It is not asked for decisions then: Begin is ignored, and only a phase change out of Playing,
+        /// a sabotage alarm that starts, or an own hit (poison rising) stops it.
+        /// </summary>
+        public bool Committed => Busy && _citizenStep && _action == BotAction.UseHere && _stage >= 1;
+
+        /// <summary>Task steps that failed by chance (pace task_fail_chance) and were worked again.</summary>
+        public int StepFailures { get; private set; }
 
         public BotAction Current => _action;
 
@@ -102,6 +116,12 @@ namespace Uncycled.Bots
 
         public void Begin(BotAction action, SeatView view, MapData map, float now)
         {
+            if (Committed && ActionQuery.Playing(view))
+            {
+                // a committed citizen works its step to the end; the host and the brains do not ask it
+                return;
+            }
+
             if (Busy && action == _action && ActionQuery.Playing(view))
             {
                 return;
@@ -137,6 +157,7 @@ namespace Uncycled.Bots
             _pause = 0f;
             _afterDetour = null;
             _fakeS = FakeTaskS;
+            _citizenStep = false;
             Busy = action != BotAction.Stay;
             if (!Busy || !ActionQuery.Playing(view))
             {
@@ -271,6 +292,7 @@ namespace Uncycled.Bots
                     _taskId = task.Id;
                     _taskTypeId = task.TypeId;
                     _consoleId = console.Id;
+                    _citizenStep = !polluter;
                     break;
                 }
 
@@ -314,6 +336,14 @@ namespace Uncycled.Bots
             {
                 send(new CleanCancelCommand(_pendingCancelPile));
                 _pendingCancelPile = -1;
+            }
+
+            if (Committed && StopTriggered(view))
+            {
+                // the step is lost: the session stays open at the server and is never finished
+                Busy = false;
+                _stage = 0;
+                return;
             }
 
             if (!Busy || _map == null)
@@ -368,7 +398,7 @@ namespace Uncycled.Bots
                     StepConsoleAction(view, dt, now, send);
                     break;
                 case BotAction.UseHere:
-                    StepUse(dt, send);
+                    StepUse(view, dt, send);
                     break;
 
                 case BotAction.HitNearest:
@@ -916,7 +946,7 @@ namespace Uncycled.Bots
             return FallbackTaskMinS;
         }
 
-        private void StepUse(float dt, Action<ICommand> send)
+        private void StepUse(SeatView view, float dt, Action<ICommand> send)
         {
             if (_stage == 0)
             {
@@ -929,6 +959,9 @@ namespace Uncycled.Bots
                 send(new UseCommand(_consoleId));
                 _timer = MinSecondsOf(_taskTypeId) * (Pace != null ? Pace.TaskTimeFactor(_taskId) : 1f) + TaskMarginS;
                 _stage = 1;
+                _prevFire = ActionQuery.FireActive(view);
+                _prevSmog = ActionQuery.SmogActive(view);
+                _prevPoison = view.Me.Poison ?? 0;
                 return;
             }
 
@@ -938,8 +971,32 @@ namespace Uncycled.Bots
                 return;
             }
 
+            if (_citizenStep && Pace != null && Pace.TaskFails())
+            {
+                // the step went wrong: no TaskStep, the same session is worked again for a fresh paced time
+                StepFailures++;
+                _timer = MinSecondsOf(_taskTypeId) * Pace.DrawFactor() + TaskMarginS;
+                return;
+            }
+
             send(new TaskStepCommand(_taskId));
             Busy = false;
+        }
+
+        /// <summary>
+        /// A committed step ends when an alarm starts (fire or smog turns active) or the bot is hit (own
+        /// poison rises). Only the own SeatView is read; a meeting is handled by Step (not Playing).
+        /// </summary>
+        private bool StopTriggered(SeatView view)
+        {
+            bool fire = ActionQuery.FireActive(view);
+            bool smog = ActionQuery.SmogActive(view);
+            int poison = view.Me.Poison ?? 0;
+            bool stop = (fire && !_prevFire) || (smog && !_prevSmog) || poison > _prevPoison;
+            _prevFire = fire;
+            _prevSmog = smog;
+            _prevPoison = poison;
+            return stop;
         }
 
         // ---------- polluter acts ----------

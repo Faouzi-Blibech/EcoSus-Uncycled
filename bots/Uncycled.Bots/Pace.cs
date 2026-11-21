@@ -23,6 +23,9 @@ namespace Uncycled.Bots
 
         /// <summary>Chance to prefer a task in a zone where another player is in sight, or to follow that player.</summary>
         public float GroupChance { get; set; } = 0.3f;
+
+        /// <summary>Chance that a finished task step fails (no TaskStep is sent, the step is worked again).</summary>
+        public float TaskFailChance { get; set; } = 0.1f;
     }
 
     /// <summary>
@@ -74,6 +77,9 @@ namespace Uncycled.Bots
             float hi = Math.Max(lo, Settings.PauseMaxS);
             return lo + _rng.NextFloat() * (hi - lo);
         }
+
+        /// <summary>True when a finished task step fails by chance (the bot works it again). One draw of the bot's own dice.</summary>
+        public bool TaskFails() => _rng.NextFloat() < Settings.TaskFailChance;
 
         public bool WrongZone() => _rng.NextFloat() < Settings.WrongZoneChance;
 

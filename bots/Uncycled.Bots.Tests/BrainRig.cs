@@ -32,10 +32,12 @@ namespace Uncycled.Bots.Tests
     internal sealed class BrainRig
     {
         private readonly TestMatch _match;
+        private readonly Action<BotsSettings>? _tweak;
 
-        public BrainRig(TestMatch match, ulong seed)
+        public BrainRig(TestMatch match, ulong seed, Action<BotsSettings>? tweak = null)
         {
             _match = match;
+            _tweak = tweak;
             Brains = new IBotBrain[match.Config.Seats];
             for (int seat = 0; seat < Brains.Length; seat++)
             {
@@ -54,7 +56,9 @@ namespace Uncycled.Bots.Tests
         {
             // the test peeks at the role only to pick the matching brain, as the host does
             Role role = _match.Engine.Find(seat)!.Role;
-            return BrainFactory.Scripted(role, new BotsSettings(), new XorShiftRandom(seed * 1000 + seat + 1));
+            var settings = new BotsSettings();
+            _tweak?.Invoke(settings);
+            return BrainFactory.Scripted(role, settings, new XorShiftRandom(seed * 1000 + seat + 1));
         }
 
         /// <summary>Every brain thinks once, then the engine ticks once.</summary>

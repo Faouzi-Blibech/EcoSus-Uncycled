@@ -66,6 +66,7 @@ namespace Uncycled.Bots
             s.Pace.PauseMaxS = Number(text, "pause_max_s", s.Pace.PauseMaxS);
             s.Pace.WrongZoneChance = Number(text, "wrong_zone_chance", s.Pace.WrongZoneChance);
             s.Pace.GroupChance = Number(text, "group_chance", s.Pace.GroupChance);
+            s.Pace.TaskFailChance = Number(text, "task_fail_chance", s.Pace.TaskFailChance);
             Match brain = Regex.Match(text, "\"brain\"\\s*:\\s*\"([^\"]*)\"");
             if (brain.Success && brain.Groups[1].Value.Length > 0)
             {

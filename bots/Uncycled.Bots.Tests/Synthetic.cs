@@ -43,6 +43,8 @@ namespace Uncycled.Bots.Tests
 
         public int EmergenciesLeft { get; set; } = 2;
 
+        public int Poison { get; set; }
+
         public List<byte> Partners { get; } = new List<byte>();
 
         public List<PlayerView> Players { get; } = new List<PlayerView>();
@@ -68,7 +70,7 @@ namespace Uncycled.Bots.Tests
         public SeatView View()
         {
             CooldownView? cd = Cooldowns ?? (Role == Role.Polluter ? new CooldownView(0f, 0f, 0f) : null);
-            var me = new MyView(Seat, Role, Partners, null, Status, Position, 4f, Role == Role.Citizen ? 0 : (int?)null, cd, Tasks);
+            var me = new MyView(Seat, Role, Partners, null, Status, Position, 4f, Role == Role.Citizen ? Poison : (int?)null, cd, Tasks);
             return new SeatView(Seat, Phase, 0f, MatchTime, 600f, DeadlineClock.MatchTime, MatchTime, 10f, EmergenciesLeft,
                 me, Players, Piles, Sabotage, Meeting, null);
         }

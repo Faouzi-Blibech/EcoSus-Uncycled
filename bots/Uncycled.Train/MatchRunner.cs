@@ -39,6 +39,7 @@ namespace Uncycled.Train
         private float[][] _obs = Array.Empty<float[]>();
         private bool[][] _masks = Array.Empty<bool[]>();
         private float[] _reward = Array.Empty<float>();
+        private float[] _owed = Array.Empty<float>();
         private bool[] _done = Array.Empty<bool>();
         private bool _prepared;
         private ulong _nextSeed;
@@ -65,6 +66,13 @@ namespace Uncycled.Train
         }
 
         public int AgentCount { get; }
+
+        /// <summary>
+        /// True while the agent works a task step (see ActionExecutor.Committed). Its frame is then a placeholder
+        /// that is no decision: only Stay is valid, no reward, and the action the trainer sends for it is ignored.
+        /// The trainer must not learn a policy sample from it.
+        /// </summary>
+        public bool AgentCommitted(int agent) => _agents[agent].Executor.Committed;
 
         public int FrameSize { get; }
 
@@ -137,8 +145,16 @@ namespace Uncycled.Train
             Prepare();
             Array.Clear(_reward, 0, _reward.Length);
             Array.Clear(_done, 0, _done.Length);
+            int asked = 0;
             for (int a = 0; a < AgentCount; a++)
             {
+                if (_agents[a].Executor.Committed)
+                {
+                    // working a task step: not a decision, the action the trainer sent for the placeholder frame is ignored
+                    continue;
+                }
+
+                asked++;
                 int action = actions[a];
                 if (OnlyStay(_masks[a]))
                 {
@@ -156,7 +172,7 @@ namespace Uncycled.Train
                 agent.Executor.Begin((BotAction)action, _engine.ViewFor(agent.Seat), _engine.Map, _engine.MatchTime);
             }
 
-            Decisions += AgentCount;
+            Decisions += asked;
             bool ended = false;
             for (int t = 0; t < _ticksPerDecision && !ended; t++)
             {
@@ -173,6 +189,19 @@ namespace Uncycled.Train
             if (ended)
             {
                 FinishMatch();
+            }
+
+            // Reward earned while an agent is committed waits and is paid with its next real frame
+            // (a finished match pays at once; a new match has no committed agents).
+            for (int a = 0; a < _agents.Length; a++)
+            {
+                _reward[a] += _owed[a];
+                _owed[a] = 0f;
+                if (!_done[a] && _agents[a].Executor.Committed)
+                {
+                    _owed[a] = _reward[a];
+                    _reward[a] = 0f;
+                }
             }
 
             _prepared = false;
@@ -315,6 +344,7 @@ namespace Uncycled.Train
                 }
 
                 _reward = new float[_agents.Length];
+                _owed = new float[_agents.Length];
                 _done = new bool[_agents.Length];
             }
 
@@ -495,6 +525,11 @@ namespace Uncycled.Train
                 Array.Copy(_obsBuf, _obs[a], _obsBuf.Length);
                 bool[] mask = ActionCatalogue.Mask(view, agent.Memory, _engine.Map);
                 Array.Copy(mask, _masks[a], mask.Length);
+                if (agent.Executor.Committed)
+                {
+                    Array.Clear(_masks[a], 0, _masks[a].Length);
+                    _masks[a][(int)BotAction.Stay] = true;
+                }
             }
 
             _prepared = true;

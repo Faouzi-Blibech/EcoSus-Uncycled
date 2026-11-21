@@ -51,7 +51,7 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
-        public void Executor_ChangingActionMidUseAbandonsTheStep()
+        public void Executor_ChangingActionMidUseIsIgnored_TheCommittedStepCompletes()
         {
             TestMatch m = TestMatch.Create();
             byte seat = m.FirstSeatOf(Role.Citizen);
@@ -64,6 +64,7 @@ namespace Uncycled.Bots.Tests
                 driver.Step();
             }
 
+            // a citizen that opened the session works the step to its end (the old contract: any other action abandoned it)
             driver.Begin(BotAction.Stay);
             for (int i = 0; i < 200; i++)
             {
@@ -71,8 +72,8 @@ namespace Uncycled.Bots.Tests
             }
 
             Assert.False(driver.Executor.Busy);
-            Assert.DoesNotContain(driver.Sent, kv => kv.Key is TaskStepCommand);
-            Assert.DoesNotContain(m.Events, e => e is TaskProgressEvent p && p.Seat == seat);
+            Assert.Single(driver.Sent, kv => kv.Key is TaskStepCommand);
+            Assert.Contains(m.Events, e => e is TaskProgressEvent p && p.Seat == seat);
         }
 
         [Fact]
