@@ -42,6 +42,7 @@ namespace Uncycled.Bots.Meeting
         private MeetingStage? _stage;
         private int _lines;
         private int _seen;
+        private int _seenGen;
         private float? _nextAt;
         private float? _replyAt;
         private float? _voteAt;
@@ -89,6 +90,7 @@ namespace Uncycled.Bots.Meeting
                 Reset();
                 _inMeeting = true;
                 _seen = log.Acts.Count;
+                _seenGen = log.Generation;
             }
 
             if (_stage != meeting.Stage)
@@ -119,9 +121,10 @@ namespace Uncycled.Bots.Meeting
                 _nextAt = now + Between(FirstMinS, FirstMaxS);
             }
 
-            if (_seen > log.Acts.Count)
+            if (_seenGen != log.Generation)
             {
-                _seen = log.Acts.Count; // the host cleared the log: read the new acts from the start
+                _seen = 0; // the host cleared the log (it may be longer again by now): read the new acts from the start
+                _seenGen = log.Generation;
             }
 
             for (; _seen < log.Acts.Count; _seen++)

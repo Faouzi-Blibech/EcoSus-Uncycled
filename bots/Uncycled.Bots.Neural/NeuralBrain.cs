@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Sim.Core;
 using Sim.Match;
 using Sim.Uncycled;
+using Uncycled.Bots.Meeting;
 
 namespace Uncycled.Bots.Neural
 {
@@ -12,7 +13,7 @@ namespace Uncycled.Bots.Neural
     /// choice of the next action for the network's. Any exception in a decision hands this seat to the
     /// fallback brain for the rest of the match (logged once), so a bad model never crashes the room.
     /// </summary>
-    public sealed class NeuralBrain : IBotBrain, IMeetingObserver, IAccuser
+    public sealed class NeuralBrain : IBotBrain, IMeetingObserver, IAccuser, ITalkingSeat
     {
         private readonly NeuralCore _core;
         private readonly IBotBrain _fallback;
@@ -29,7 +30,24 @@ namespace Uncycled.Bots.Neural
         /// <summary>True once a decision failed; the fallback plays from then on.</summary>
         public bool UsingFallback { get; private set; }
 
-        public byte? Accusation => UsingFallback ? (_fallback as IAccuser)?.Accusation : _core.Accusation;
+        /// <summary>The memory of whichever brain plays now (the network's, or the fallback's after a failure).</summary>
+        public BotMemory? Memory => UsingFallback ? (_fallback as ITalkingSeat)?.Memory : _core.Memory;
+
+        /// <summary>True when a MeetingTalker casts the vote: neither the network's brain nor the fallback votes in a meeting.</summary>
+        public bool ExternalVote
+        {
+            get => _core.ExternalVote;
+            set
+            {
+                _core.ExternalVote = value;
+                if (_fallback is ITalkingSeat fallback)
+                {
+                    fallback.ExternalVote = value;
+                }
+            }
+        }
+
+        public byte? Accusation =>UsingFallback ? (_fallback as IAccuser)?.Accusation : _core.Accusation;
 
         public void OnMeetingEnded(MeetingOutcome outcome)
         {

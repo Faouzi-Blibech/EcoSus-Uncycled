@@ -244,3 +244,4 @@ build/
 # Secrets
 .env
 .env.*
+!bots/.env.example

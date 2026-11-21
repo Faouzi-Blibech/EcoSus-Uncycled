@@ -224,6 +224,32 @@ namespace Uncycled.Bots.Tests
         }
 
         [Theory]
+        [InlineData(0.30, true)]
+        [InlineData(0.20, true)]
+        [InlineData(0.19, false)]
+        [InlineData(0.05, false)]
+        public async Task Clef_SpeaksWhenTheSpeakProbabilityReachesTheFloorEvenIfWaitWins(double speakProbability, bool speaks)
+        {
+            // the real model answers wait at 0.2-0.3 speak on ordinary table talk, so the argmax alone would keep every bot silent
+            string reply = "{\"success\":true,\"result\":{\"answers\":{"
+                + "\"speak\":{\"choice\":\"wait\",\"probabilities\":{\"speak\":" + speakProbability.ToString(System.Globalization.CultureInfo.InvariantCulture) + ",\"wait\":" + (1 - speakProbability).ToString(System.Globalization.CultureInfo.InvariantCulture) + "},\"confidence\":0.3},"
+                + "\"kind\":{\"choice\":\"question\",\"probabilities\":{\"question\":0.3},\"confidence\":0.1},"
+                + "\"seat\":{\"choice\":\"seat_2\",\"probabilities\":{\"seat_2\":0.3},\"confidence\":0.1},"
+                + "\"zone\":{\"choice\":\"none\",\"probabilities\":{\"none\":0.3},\"confidence\":0.1}}}}";
+            var handler = new FakeHandler((req, body, ct) => Task.FromResult(Json(reply)));
+            var rig = new Rig(handler);
+
+            MeetingDecision d = await rig.Decider.DecideAsync(State(), CancellationToken.None);
+
+            Assert.Equal(speaks, d.Speak);
+            if (speaks)
+            {
+                Assert.Equal("where", d.PhraseId);
+                Assert.Equal("clef", d.Source);
+            }
+        }
+
+        [Theory]
         [InlineData("speak_now", "accuse", "seat_3", "depot")] // not one of the two options
         [InlineData("speak", "accuze", "seat_3", "depot")] // unknown kind
         [InlineData("speak", "accuse", "seat 3", "depot")]

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Sim.Core;
 using Sim.Match;
 using Sim.Uncycled;
+using Uncycled.Bots.Meeting;
 
 namespace Uncycled.Bots
 {
@@ -33,7 +34,7 @@ namespace Uncycled.Bots
     /// from the current view with empty memory and a move sequence above the engine's last one.
     /// Subclasses only choose actions.
     /// </summary>
-    public abstract class ScriptedBrain : IBotBrain, IMeetingObserver, IAccuser
+    public abstract class ScriptedBrain : IBotBrain, IMeetingObserver, IAccuser, ITalkingSeat
     {
         private const float SkillScaleBase = 1.4f;
         private const float MinReactionScale = 0.2f;
@@ -69,6 +70,12 @@ namespace Uncycled.Bots
         /// <summary>Heat from a finished meeting goes into this brain's own memory.</summary>
         public void OnMeetingEnded(MeetingOutcome outcome) => _mem?.RecordMeeting(outcome);
 
+        /// <summary>The brain's memory (null until the first Think), for a MeetingTalker.</summary>
+        public BotMemory? Memory => _mem;
+
+        /// <summary>True when a MeetingTalker casts this seat's vote: the brain does not vote in a meeting itself.</summary>
+        public bool ExternalVote { get; set; }
+
         protected BotMemory Mem => _mem!;
 
         protected ActionExecutor Exec => _exec!;
@@ -90,7 +97,11 @@ namespace Uncycled.Bots
             {
                 Exec.Step(view, dt, now, send);
                 _pending = null;
-                ThinkMeeting(view, dt, send);
+                if (!ExternalVote)
+                {
+                    ThinkMeeting(view, dt, send);
+                }
+
                 return;
             }
 

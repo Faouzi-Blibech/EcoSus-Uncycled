@@ -109,9 +109,13 @@ namespace Uncycled.Bots.Meeting
             return false;
         }
 
+        /// <summary>Counts the clears: a reader that remembers how far it has read starts again from the first act when this changed.</summary>
+        public int Generation { get; private set; }
+
         public void Clear()
         {
             _acts.Clear();
+            Generation++;
         }
     }
 }

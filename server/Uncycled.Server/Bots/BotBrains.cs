@@ -1,6 +1,8 @@
 using Sim.Core;
+using Sim.Match;
 using Sim.Uncycled;
 using Uncycled.Bots;
+using Uncycled.Bots.Meeting;
 using Uncycled.Bots.Neural;
 using Uncycled.Server.Content;
 
@@ -23,6 +25,7 @@ public class BotBrains : IDisposable
     private readonly Func<Role, IRandom, IBotBrain>? _primary;
     private readonly double _slowMs;
     private readonly int _slowStrikes;
+    private readonly MeetingKit? _meeting;
     private readonly Dictionary<Role, OnnxPolicy> _policies = new Dictionary<Role, OnnxPolicy>();
 
     /// <param name="primary">Replaces the chosen brain (tests); no model is loaded then.</param>
@@ -33,7 +36,8 @@ public class BotBrains : IDisposable
         ILogger log,
         Func<Role, IRandom, IBotBrain>? primary = null,
         double slowMs = DefaultSlowMs,
-        int slowStrikes = DefaultSlowStrikes)
+        int slowStrikes = DefaultSlowStrikes,
+        MeetingKit? meeting = null)
     {
         _settings = settings;
         _tasks = tasks;
@@ -41,6 +45,7 @@ public class BotBrains : IDisposable
         _primary = primary;
         _slowMs = slowMs;
         _slowStrikes = slowStrikes;
+        _meeting = meeting;
         if (primary == null && string.Equals(settings.Brain, "neural", StringComparison.OrdinalIgnoreCase))
         {
             foreach (Role role in new[] { Role.Citizen, Role.Polluter })
@@ -93,14 +98,18 @@ public class BotBrains : IDisposable
 
         string modelsDir = Path.Combine(dir, "models");
         log.LogInformation("Bot brains: setting {Brain}, skill {Skill}, models in {Dir}", settings.Brain, settings.Skill, modelsDir);
-        return new BotBrains(settings, modelsDir, content.Tasks, log);
+        return new BotBrains(settings, modelsDir, content.Tasks, log, meeting: MeetingKit.FromEnvironment(settings, log));
     }
+
+    /// <summary>The shared state of one match in a room, or null when bots do not talk (no kit or no phrase catalogue).</summary>
+    public RoomMeeting? NewRoomMeeting(PhraseCatalogue? phrases, string matchId) =>
+        _meeting == null || phrases == null ? null : new RoomMeeting(new MeetingLog(phrases), matchId);
 
     /// <summary>True when this role plays a loaded network.</summary>
     internal bool HasModel(Role role) => _policies.ContainsKey(role);
 
     /// <summary>The guarded brain of one bot seat with the given hidden role.</summary>
-    public virtual IBotBrain Create(Role role, byte seat)
+    public virtual IBotBrain Create(Role role, byte seat, RoomMeeting? meeting = null)
     {
         string who = "seat " + seat + " (" + role + ")";
         IBotBrain primary;
@@ -114,11 +123,33 @@ public class BotBrains : IDisposable
             primary = Scripted(role);
         }
 
-        return new GuardedBrain(primary, () => Scripted(role), _log, who, _slowMs, _slowStrikes);
+        primary = Talking(primary, seat, meeting);
+        return new GuardedBrain(primary, () => Talking(Scripted(role), seat, meeting), _log, who, _slowMs, _slowStrikes);
     }
 
+    /// <summary>The brain with meeting talk added; the brain itself when there is no meeting kit or room state, or it keeps no memory for a talker.</summary>
+    private IBotBrain Talking(IBotBrain brain, byte seat, RoomMeeting? meeting)
+    {
+        if (_meeting == null || meeting == null || brain is not ITalkingSeat)
+        {
+            return brain;
+        }
+
+        var talker = new MeetingTalker(_meeting.Primary, _meeting.Fallback, meeting.Floor, new Random(Random.Shared.Next()))
+        {
+            LeadS = _meeting.LeadS,
+            Sink = _meeting.Log,
+            MatchId = meeting.MatchId,
+        };
+        var talking = new TalkingBrain(brain, talker, meeting.Log, message => _log.LogWarning("{Message}", message));
+        meeting.Feed.Add(seat, talking);
+        return talking;
+    }
+
+    /// <summary>Releases the models and the meeting kit (it flushes the decision log file). Called by the host at shutdown, never from a room tick.</summary>
     public void Dispose()
     {
+        _meeting?.Dispose();
         foreach (OnnxPolicy policy in _policies.Values)
         {
             policy.Dispose();

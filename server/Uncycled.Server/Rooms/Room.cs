@@ -42,6 +42,8 @@ public sealed class Room
     private long _tick;
     private int _hostSeat = -1;
     private double _backToLobbyAt = -1;
+    private RoomMeeting? _meeting;
+    private int _matchNo;
     private double _noHumansSince = -1;
     private int _tickSampleIndex;
     private int _botSampleIndex;
@@ -92,6 +94,9 @@ public sealed class Room
 
     /// <summary>The running match, for tests. Null in the lobby.</summary>
     internal MatchEngine? Engine => _engine;
+
+    /// <summary>The chat log of the current match meeting, for tests. Null in the lobby or when bots do not talk.</summary>
+    internal Uncycled.Bots.Meeting.MeetingLog? MeetingChat => _meeting?.Log;
 
     public double TickP95Ms()
     {
@@ -193,6 +198,7 @@ public sealed class Room
             _botSampleIndex = (_botSampleIndex + 1) % TickSamples;
 
             IReadOnlyList<GameEvent> events = _engine.Tick(dt);
+            FeedMeeting(events);
             RouteEvents(events, now);
             SendSnapshots(now);
             if (_backToLobbyAt >= 0 && now >= _backToLobbyAt)
@@ -568,6 +574,7 @@ public sealed class Room
             return;
         }
 
+        _meeting = _brains.NewRoomMeeting(_content.Phrases, Code + "-" + (++_matchNo));
         foreach (Seat s in added)
         {
             s.Brain = MakeBrain(s);
@@ -588,7 +595,7 @@ public sealed class Room
 
         try
         {
-            return _brains.Create(p.Role, seat.Id);
+            return _brains.Create(p.Role, seat.Id, _meeting);
         }
         catch (Exception ex)
         {
@@ -648,6 +655,24 @@ public sealed class Room
         }
     }
 
+    /// <summary>Gives the tick's events to the room's meeting feed: the chat log the talkers and memories read, and the meeting outcome for heat.</summary>
+    private void FeedMeeting(IReadOnlyList<GameEvent> events)
+    {
+        if (_meeting == null || _engine == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _meeting.Feed.Handle(events, _engine.MatchTime);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Room {Code}: the meeting feed failed on this tick", Code);
+        }
+    }
+
     private void SendSnapshots(double now)
     {
         if (_engine == null)
@@ -680,6 +705,7 @@ public sealed class Room
     private void ReturnToLobby()
     {
         _engine = null;
+        _meeting = null;
         Array.Clear(_botMs, 0, _botMs.Length);
         _backToLobbyAt = -1;
         Array.Clear(_moves, 0, _moves.Length);

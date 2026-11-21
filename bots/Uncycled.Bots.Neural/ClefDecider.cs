@@ -28,6 +28,13 @@ namespace Uncycled.Bots.Neural
 
         public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(3);
 
+        /// <summary>
+        /// A "wait" answer still counts as speak when the model's own speak probability is at least this. Measured on the real
+        /// model (2026-11-21): it answers wait at 0.2-0.3 speak on ordinary table talk, so its argmax alone kept every bot silent.
+        /// The talker's pacing (a try every 6-15 s, 3 lines at most) turns this into about one line per bot per meeting.
+        /// </summary>
+        public const double SpeakProbabilityFloor = 0.2;
+
         private readonly HttpClient _http;
         private readonly string _url;
         private readonly string _token;
@@ -151,6 +158,19 @@ namespace Uncycled.Bots.Neural
             return null;
         }
 
+        /// <summary>The model's probability for "speak" (0 when the answer carries none).</summary>
+        private static double SpeakProbability(JsonElement answers)
+        {
+            if (answers.TryGetProperty(ClefRequest.QSpeak, out JsonElement a) && a.ValueKind == JsonValueKind.Object
+                && a.TryGetProperty("probabilities", out JsonElement p) && p.ValueKind == JsonValueKind.Object
+                && p.TryGetProperty("speak", out JsonElement v) && v.ValueKind == JsonValueKind.Number)
+            {
+                return v.GetDouble();
+            }
+
+            return 0.0;
+        }
+
         private static MeetingDecision? Parse(string json, MeetingState s)
         {
             using (JsonDocument doc = JsonDocument.Parse(json))
@@ -220,7 +240,7 @@ namespace Uncycled.Bots.Neural
                     zone = zoneKey;
                 }
 
-                if (speak != "speak" || kind == "quiet")
+                if (!(speak == "speak" || SpeakProbability(answers) >= SpeakProbabilityFloor) || kind == "quiet")
                 {
                     return MeetingDecision.Quiet(SourceName);
                 }

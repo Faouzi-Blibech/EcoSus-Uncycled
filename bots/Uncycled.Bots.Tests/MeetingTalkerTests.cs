@@ -875,6 +875,37 @@ namespace Uncycled.Bots.Tests
             Assert.Equal("not_me", ((ChatPhraseCommand)reply.Command).PhraseId);
         }
 
+        [Fact]
+        public void Talker_AnswersAnAccusationInALogThatWasClearedAndRefilledBetweenTwoSteps()
+        {
+            var rig = new Rig();
+            byte bot = rig.OtherThan(rig.Reporter);
+            byte accuser = rig.OtherThan(rig.Reporter, bot);
+            for (int i = 0; i < 2; i++)
+            {
+                rig.Log.Add(new ChatEvent(accuser, "hmm", new ChatArg[0]), 0f); // the talker has seen these 2 acts at its first Step
+            }
+
+            int tick = 0;
+            MeetingTalker talker = NewTalker(new Replier(null), new Replier(null));
+            rig.Run(new Dictionary<byte, MeetingTalker> { { bot, talker } }, (e, now) =>
+            {
+                if (++tick == 2)
+                {
+                    // the next meeting's log: cleared and already longer than what the talker had seen, the accusation first
+                    rig.Log.Clear();
+                    rig.Log.Add(new ChatEvent(accuser, "sus", new[] { ChatArg.ForSeat(bot) }), now);
+                    rig.Log.Add(new ChatEvent(accuser, "hmm", new ChatArg[0]), now);
+                    rig.Log.Add(new ChatEvent(accuser, "hmm", new ChatArg[0]), now);
+                }
+
+                return true;
+            });
+
+            Sent reply = Assert.Single(rig.Chat, c => c.Seat == bot);
+            Assert.Equal("not_me", ((ChatPhraseCommand)reply.Command).PhraseId);
+        }
+
         // ---------- decision log ----------
 
         [Fact]
