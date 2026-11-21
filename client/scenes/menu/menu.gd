@@ -71,6 +71,7 @@ func _ready() -> void:
 	UIKit.background(self, BG_FALLBACK)
 	if ResourceLoader.exists(FONT_PATH):
 		_font = load(FONT_PATH) as Font
+		_add_arabic_fallback(_font)
 
 	var bg: TextureRect = TextureRect.new()
 	bg.texture = Assets.texture(ART_DIR + "background.jpg")
@@ -133,6 +134,18 @@ func _ready() -> void:
 
 
 # --- Building blocks ---------------------------------------------------------------------------
+
+## The handwritten font has no Arabic letters: fall back to the same font Settings adds. Only in
+## Arabic, since the fallback's taller line height would push the Latin captions down.
+func _add_arabic_fallback(font: Font) -> void:
+	if font == null or Settings.language != "ar" or not ResourceLoader.exists(Settings.ARABIC_FONT_PATH):
+		return
+	var arabic: Font = load(Settings.ARABIC_FONT_PATH) as Font
+	if arabic == null or font.fallbacks.has(arabic):
+		return
+	var list: Array[Font] = font.fallbacks.duplicate()
+	list.append(arabic)
+	font.fallbacks = list
 
 func _make_label(text: String, font_size: int, color: Color, art_font: bool) -> Label:
 	var l: Label = UIKit.make_label(text, font_size, color)
