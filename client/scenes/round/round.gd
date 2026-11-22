@@ -42,14 +42,9 @@ const MACHINE_FIX_FALLBACK_S: float = 4.0
 ## Used while Session.tuning has no virus.heal_range; equals the server default.
 const HEAL_RANGE_FALLBACK_TILES: float = 1.5
 const GasOverlayScript: GDScript = preload("res://world/vision/gas_overlay.gd")
-const DashGhostScript: GDScript = preload("res://world/player/dash_ghost.gd")
-## The dash slide on screen (the server already moved the seat; this is only the look).
-const DASH_ANIM_S: float = 0.15
 ## Give up waiting for dash_ok after this (a lost reply must not freeze the player).
 const DASH_WAIT_MAX_S: float = 0.8
-## Afterimages left along a dash.
-const DASH_GHOSTS: int = 5
-## A remote seat moving more than this between two frames is dashing: it leaves afterimages too.
+## A remote seat moving more than this between two frames is dashing: it plays the dash look too.
 const REMOTE_DASH_STEP_PX: float = 16.0
 
 var _map: MapRoot = null
@@ -350,35 +345,24 @@ func _dash_busy() -> bool:
 	return _dash_wait >= 0.0 or (_dash_tween != null and _dash_tween.is_valid() and _dash_tween.is_running())
 
 
-## The server moved me to `to_px`: slide there quickly and leave afterimages along the way.
+## The server moved me to `to_px`: the avatar squishes into a dot, the player slides there, the
+## avatar pops back out (Avatar.play_dash). Walking waits for the squish and the slide only.
 func _start_dash(to_px: Vector2) -> void:
 	_dash_wait = -1.0
 	_dash_to = to_px
-	var from: Vector2 = _player.global_position
-	_leave_ghosts(from, to_px, Session.seat_color(Session.seat_id), _player.avatar)
+	_player.avatar.play_dash(Vector2.ZERO, to_px - _player.global_position, true)
 	if not is_inside_tree():
 		_finish_dash()
 		return
 	_dash_tween = create_tween()
-	_dash_tween.tween_property(_player, "global_position", to_px, DASH_ANIM_S).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_dash_tween.tween_interval(Avatar.DASH_OUT_S)
+	_dash_tween.tween_property(_player, "global_position", to_px, Avatar.DASH_TRAVEL_S).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_dash_tween.tween_callback(_finish_dash)
 
 
 func _finish_dash() -> void:
 	_player.teleport_to(_dash_to)
 	_dash_wait = -1.0
-
-
-## Fading copies of the body along a dash line (own and remote dashes).
-func _leave_ghosts(from: Vector2, to: Vector2, color: Color, pose: Avatar = null) -> void:
-	for i in DASH_GHOSTS:
-		var g: Node2D = DashGhostScript.new()
-		g.position = from.lerp(to, float(i) / float(DASH_GHOSTS))
-		g.set("color", color)
-		if pose != null:
-			pose.dress_ghost(g)
-		g.set("delay", 0.03 * float(i))
-		_avatars_holder.add_child(g)
 
 
 ## The lobby skin a seat wears ("" for the default character).
@@ -401,10 +385,12 @@ func _update_remote(remote: Dictionary) -> void:
 			_avatars[seat] = a
 		a.set_display_name(Session.seat_name(int(seat)))
 		var to: Vector2 = info["pos"]
-		if a.visible and a.position.distance_to(to) > REMOTE_DASH_STEP_PX:
-			_leave_ghosts(a.position, to, Session.color_of(int(info["color"])), a)
+		var from: Vector2 = a.position
+		var dashed: bool = a.visible and from.distance_to(to) > REMOTE_DASH_STEP_PX
 		a.visible = true
 		a.position = to
+		if dashed:
+			a.play_dash(from - to, to - from, false)
 		a.set_out(bool(info["out"]))
 
 
