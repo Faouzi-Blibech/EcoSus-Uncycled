@@ -465,7 +465,7 @@ namespace Uncycled.Bots.Tests
             Assert.True(moves > 0, "the neural bot never moved");
         }
 
-        [Fact(Skip = "tiny.onnx is a v1 model (154 -> 30) and the host now refuses v1 networks: restore with the v2 fixture (regenerated after the user says go to the 20k-step smoke train) and the NeuralBrain v2 merge (bots/nn-neural)")]
+        [Fact]
         public void Eval_OnnxBrainPlaysAndIsDeterministic()
         {
             string content = Uncycled.Server.Content.ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));
