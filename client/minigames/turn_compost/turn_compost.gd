@@ -35,6 +35,7 @@ func _build_turn() -> void:
 	_handle = Panel.new()
 	_handle.size = HANDLE_SIZE
 	_handle.position = _centre + Vector2(RADIUS, 0.0) - HANDLE_SIZE * 0.5
+	dress(_handle, "compost_handle")
 	_handle.gui_input.connect(_on_handle_input)
 	add_child(_handle)
 

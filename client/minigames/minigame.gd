@@ -14,6 +14,8 @@ var fake: bool = false
 var clock: Callable = Callable()
 
 const WAIT_LABEL_TOP: float = -40.0
+## Piece art: assets/minigames/<name>.png (see assets/minigames/README.md for the list).
+const PIECE_ART: String = "res://assets/minigames/%s.png"
 
 var _wait_label: Label = null
 var _min_seconds: float = 0.0
@@ -94,3 +96,34 @@ func _now() -> float:
 	if clock.is_valid():
 		return float(clock.call())
 	return Time.get_ticks_msec() / 1000.0
+
+
+## Shows the piece's picture on `p` (a Panel or Button) when assets/minigames/<art>.png exists: the
+## picture fills the box at its own proportions, the box's card and name are hidden. Without the
+## art the piece keeps its paper card and its name. Returns true when the art was found.
+static func dress(p: Control, art: String) -> bool:
+	var path: String = PIECE_ART % art
+	if not ResourceLoader.exists(path):
+		return false
+	var pic: TextureRect = p.get_node_or_null("Art") as TextureRect
+	if pic == null:
+		pic = TextureRect.new()
+		pic.name = "Art"
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(pic)
+		pic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pic.texture = load(path) as Texture2D
+	p.set_meta("art", art)
+	for c in p.get_children():
+		if c is Label:
+			(c as Label).visible = false
+	var none: StyleBoxEmpty = StyleBoxEmpty.new()
+	if p is Button:
+		(p as Button).text = ""
+		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+			p.add_theme_stylebox_override(state, none)
+	else:
+		p.add_theme_stylebox_override("panel", none)
+	return true

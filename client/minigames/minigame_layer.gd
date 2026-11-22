@@ -9,7 +9,13 @@ var send_step: Callable = Net.send_task_step
 var send_spot: Callable = Net.send_spot_done
 ## Returns seconds for the open game's min_s gate; tests replace it (invalid = real time).
 var clock: Callable = Callable()
+const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const TOAST_S: float = 2.0
+const SPOT_ART: String = "res://assets/spots/%s_dirty.png"
+const BACKDROP_ALPHA: float = 0.35
+## The backdrop starts under the hint line.
+const BACKDROP_TOP: float = 44.0
 const TOAST_TOP: float = 12.0
 
 var _current: Minigame = null
@@ -28,7 +34,21 @@ func _ready() -> void:
 	Net.you_are_out.connect(_on_you_are_out)
 	Net.game_over.connect(_on_game_over)
 	(get_node("CloseButton") as Button).pressed.connect(close_all)
+	_style_chrome()
 	_show_chrome(false)
+
+
+## The games play on the paper page (the home screen's background), closed with the kit's round X.
+func _style_chrome() -> void:
+	var dim: Control = get_node("Dim") as Control
+	PaperKit.background(dim)
+	var close: Button = get_node("CloseButton") as Button
+	close.text = ""
+	close.tooltip_text = tr("MG_CLOSE")
+	close.icon = PaperKit.dense("icon_close.png")
+	close.expand_icon = true
+	close.flat = true
+	close.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 
 func set_player_pos_provider(c: Callable) -> void:
@@ -81,6 +101,8 @@ func _close_too_far() -> void:
 		_toast.name = "TooFarToast"
 		_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_toast.theme = UIKit.theme()
+		_toast.add_theme_color_override("font_color", PaperKit.ERROR_INK)
 		add_child(_toast)
 		_toast.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 		_toast.offset_top = TOAST_TOP
@@ -115,6 +137,8 @@ func _open(task: Dictionary, step_index: int, is_fake: bool, min_seconds: float 
 		return
 	var m: Minigame = (load(path) as PackedScene).instantiate() as Minigame
 	m.clock = clock
+	m.theme = UIKit.theme()
+	_set_backdrop(str(task.get("type", "")))
 	var wait: float = min_seconds if min_seconds >= 0.0 else Session.min_s_for(str(task.get("type", "")))
 	m.begin(task, step_index, is_fake, wait)
 	m.step_done.connect(_on_step_done)
@@ -123,6 +147,29 @@ func _open(task: Dictionary, step_index: int, is_fake: bool, min_seconds: float 
 	add_child(m)
 	move_child(get_node("CloseButton"), -1)
 	_show_chrome(true)
+
+
+## The spot's own art (assets/spots/<type>_dirty.png), faded behind the game, so each game shows
+## the machine it is played on. Types without spot art get the plain page.
+func _set_backdrop(task_type: String) -> void:
+	var dim: Control = get_node("Dim") as Control
+	var pic: TextureRect = dim.get_node_or_null("Spot") as TextureRect
+	if pic == null:
+		pic = TextureRect.new()
+		pic.name = "Spot"
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pic.modulate = Color(1.0, 1.0, 1.0, BACKDROP_ALPHA)
+		dim.add_child(pic)
+		pic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		pic.offset_top = BACKDROP_TOP
+	# A variant such as "crush_cans_depot" uses its base type's art.
+	var base: String = task_type
+	while not ResourceLoader.exists(SPOT_ART % base) and base.contains("_"):
+		base = base.substr(0, base.rfind("_"))
+	var path: String = SPOT_ART % base
+	pic.texture = load(path) as Texture2D if ResourceLoader.exists(path) else null
 
 
 func _show_chrome(on: bool) -> void:

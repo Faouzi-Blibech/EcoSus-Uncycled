@@ -69,6 +69,7 @@ func _build_bins() -> void:
 		p.position = Vector2(gap + i * (BIN_SIZE.x + gap), BINS_Y)
 		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_label_in(p, str(b.get("name_key", "")))
+		dress(p, "bin_" + str(b.get("id", "")))
 		add_child(p)
 		_bin_nodes[str(b.get("id", ""))] = p
 
@@ -92,6 +93,7 @@ func _build_items() -> void:
 		p.set_meta("bin", str(it.get("bin", "")))
 		p.set_meta("home", p.position)
 		_label_in(p, str(it.get("name_key", "")))
+		dress(p, "item_" + str(it.get("id", "")))
 		p.gui_input.connect(_on_item_input.bind(p))
 		add_child(p)
 
