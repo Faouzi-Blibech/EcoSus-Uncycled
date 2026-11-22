@@ -27,6 +27,9 @@ var server_url: String = DEFAULT_SERVER_URL
 var scan_url: String = SCAN_URL
 ## Phone buzz on meetings, infection and gas (see haptics.gd); no settings screen toggle yet.
 var haptics_enabled: bool = true
+## Sound effects and music (see sfx.gd); toggled in the Settings panel.
+var sound_enabled: bool = true
+var music_enabled: bool = true
 
 
 func _ready() -> void:
@@ -130,6 +133,8 @@ func load_settings() -> void:
 	var scan: String = normalize_scan_url(str(cfg.get_value("settings", "scan_url", "")))
 	scan_url = scan if not scan.is_empty() else default_scan_url()
 	haptics_enabled = bool(cfg.get_value("settings", "haptics_enabled", haptics_enabled))
+	sound_enabled = bool(cfg.get_value("settings", "sound_enabled", sound_enabled))
+	music_enabled = bool(cfg.get_value("settings", "music_enabled", music_enabled))
 
 
 func save() -> void:
@@ -137,6 +142,8 @@ func save() -> void:
 	cfg.set_value("settings", "player_name", player_name)
 	cfg.set_value("settings", "language", language)
 	cfg.set_value("settings", "haptics_enabled", haptics_enabled)
+	cfg.set_value("settings", "sound_enabled", sound_enabled)
+	cfg.set_value("settings", "music_enabled", music_enabled)
 	# The default is not a saved choice: on the web it follows the page the next time too.
 	if server_url != default_server_url():
 		cfg.set_value("settings", "server_url", server_url)

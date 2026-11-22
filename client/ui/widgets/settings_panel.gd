@@ -13,6 +13,8 @@ const COLUMN_WIDTH_PX: float = 270.0
 ## Reddit's orange, so the button reads as the subreddit link.
 
 var _name_edit: LineEdit
+var _sound_box: CheckBox
+var _music_box: CheckBox
 var _lang: LanguagePicker
 var _url_edit: LineEdit
 var _scan_edit: LineEdit
@@ -61,6 +63,19 @@ func _ready() -> void:
 	left.add_child(UIKit.make_label(tr("SETTINGS_LANGUAGE")))
 	_lang = LanguagePicker.new(true)
 	left.add_child(_lang)
+
+	# Sound effects and music on/off (kit checkboxes), side by side.
+	var sound_row: HBoxContainer = HBoxContainer.new()
+	sound_row.add_theme_constant_override("separation", 12)
+	left.add_child(sound_row)
+	_sound_box = CheckBox.new()
+	_sound_box.text = tr("SETTINGS_SOUND")
+	_sound_box.button_pressed = Settings.sound_enabled
+	sound_row.add_child(_sound_box)
+	_music_box = CheckBox.new()
+	_music_box.text = tr("SETTINGS_MUSIC")
+	_music_box.button_pressed = Settings.music_enabled
+	sound_row.add_child(_music_box)
 
 	right.add_child(UIKit.make_label(tr("SETTINGS_SERVER")))
 	_url_edit = UIKit.make_line_edit(Settings.default_server_url(), Settings.server_url)
@@ -118,11 +133,14 @@ func _on_save() -> void:
 		_error.text = tr("SETTINGS_BAD_SCAN_URL")
 		return
 	Settings.player_name = _name_edit.text.strip_edges()
+	Settings.sound_enabled = _sound_box.button_pressed
+	Settings.music_enabled = _music_box.button_pressed
 	Settings.language = _lang.selected()
 	Settings.server_url = url
 	Settings.scan_url = scan if not follow else Settings.default_scan_url()
 	Settings.apply_language()
 	Settings.save()
+	Sfx.refresh_music()
 	Profile.refresh()
 	closed.emit(true)
 

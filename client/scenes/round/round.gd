@@ -285,7 +285,7 @@ func _place_player(pos_px: Vector2) -> void:
 	_camera.snap()
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if _leaving or _player == null:
 		return
 	var dir: Vector2 = Vector2.ZERO
@@ -296,6 +296,7 @@ func _physics_process(_delta: float) -> void:
 	# Frozen while the server answers the dash and while the slide plays.
 	if _dash_busy():
 		return
+	Sfx.step_tick(delta, dir != Vector2.ZERO)
 	_player.move_with(dir, Session.speed_px_per_s)
 
 
