@@ -7,17 +7,14 @@ const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const CharacterSprite := preload("res://ui/widgets/character_sprite.gd")
-## The ejected player's character tumbles across this strip above the reveal line.
+## The ejected player's character stands in this strip above the reveal line, walking in place.
 const EJECT_STAGE: Vector2 = Vector2(420.0, 130.0)
 const EJECT_BODY: Vector2 = Vector2(96.0, 120.0)
-## Tumbles in to the middle in EJECT_IN_S, then keeps spinning slowly (one turn per EJECT_SPIN_S).
-const EJECT_IN_S: float = 1.4
 ## Vote results: the voted player's face, then a chip (face and name) per voter.
 const VOTED_FACE_PX: float = 34.0
 const VOTER_FACE_PX: float = 22.0
 ## Inside a vote row's pill: room for the rounded ends, a little above and below.
 const VOTE_PILL_PAD: Vector2 = Vector2(22.0, 10.0)
-const EJECT_SPIN_S: float = 3.0
 const VoteRules := preload("res://scenes/meeting/vote_rules.gd")
 const Phrases := preload("res://content/phrases.gd")
 const PhrasePicker := preload("res://scenes/meeting/phrase_picker.gd")
@@ -585,8 +582,7 @@ func _face(seat: int, px: float) -> Control:
 	return holder
 
 
-## The ejected seat's own character (skin and seat colour): it tumbles in from the side to the
-## middle of the strip, then floats there turning slowly for the rest of the ejection.
+## The ejected seat's own character (skin and seat colour), centred and playing its walk cycle.
 func _ejected_body(seat: int) -> Control:
 	var stage: Control = Control.new()
 	stage.custom_minimum_size = EJECT_STAGE
@@ -594,16 +590,8 @@ func _ejected_body(seat: int) -> Control:
 	var body: TextureRect = CharacterSprite.new()
 	body.call("setup", str(Session.seat_info(seat).get("skin", "")), Session.seat_color(seat))
 	body.size = EJECT_BODY
-	body.pivot_offset = EJECT_BODY * 0.5
-	body.position = Vector2(-EJECT_BODY.x, (EJECT_STAGE.y - EJECT_BODY.y) * 0.5)
+	body.position = (EJECT_STAGE - EJECT_BODY) * 0.5
 	stage.add_child(body)
-	var tw: Tween = stage.create_tween().set_parallel(true)
-	tw.tween_property(body, "position:x", (EJECT_STAGE.x - EJECT_BODY.x) * 0.5, EJECT_IN_S).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(body, "rotation", TAU, EJECT_IN_S).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_callback(func() -> void:
-		var spin: Tween = body.create_tween().set_loops()
-		spin.tween_property(body, "rotation", TAU * 2.0, EJECT_SPIN_S).from(TAU)
-	)
 	return stage
 
 
