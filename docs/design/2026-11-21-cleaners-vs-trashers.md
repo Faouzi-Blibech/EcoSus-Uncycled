@@ -40,7 +40,7 @@ Nothing built gets thrown away; old systems take new jobs.
 | Already built | Job in v2 |
 |---|---|
 | 6 mini-games + task consoles (`client/minigames`, `content/tasks.json`) | Cleaning a spot = playing that console's mini-game |
-| Polluter fake tasks (client side) | Trasher fake clean: opens the mini-game locally, sends nothing |
+| Polluter fake tasks (client side) | None: a Trasher has no clean, not even a fake one (playtest 22 Nov) |
 | Dump action + dump cooldown + `cue` to witnesses | Re-pollute a clean spot |
 | Poison (delayed out, body pile, report) | Virus (countdown, then out, body pile, report) |
 | Fire sabotage (fix by holding a console) | Machine jam (fix by holding the machine) |
@@ -53,8 +53,9 @@ map), `me.poison`, the meeting `task_bar`.
 
 ## 4. Rooms and roles
 
-**Locked (decided Sat 21 Nov, evening): every game has 8 seats and 2 Trashers.** Bots fill the free
-seats at start. A room is `full` at 8 humans.
+**Changed (playtest 22 Nov): 4 to 8 players, at least 4.** The host sets the bot count in the lobby (one
+human alone gets 3 bots); bots fill up to that size at start. Trashers: 1 for 4-5 players, 2 for 6-8. A
+room is `full` at 8 humans. (Was: every game has 8 seats and 2 Trashers, decided Sat 21 Nov.)
 
 - The server still supports 6/8/10 (`rooms.sizes`, `set_size`, built in PR #10), but no client sends
   `set_size` and the lobby has no size picker, so every room stays at its default of 8 with 2 Trashers.
@@ -106,8 +107,8 @@ The client leaves fading afterimages along the dash, also for the dashes of othe
 
 ## 6. Trashers
 
-- **Fake clean.** A Trasher can open any spot's mini-game; the client plays it locally and sends nothing. The
-  spot stays dirty: that is a clue for Cleaners.
+- **No fake clean** (removed after the 22 Nov playtest: it was abused as an alibi). A Trasher cannot open
+  a spot's mini-game.
 - **Re-pollute.** `repollute` on a clean spot in range: instant, the spot turns dirty, meter
   `- spots.repollute_meter_sub` (5), cooldown `trasher.repollute_cooldown_s` (20 s). Seats with vision and line
   of sight get a `cue` of kind `repollute`.
@@ -183,7 +184,7 @@ Goal: show, with measured numbers, how the organisers' networks (Ooredoo, Tunisi
 "bags":    { "cap": 1, "backpack_cap": 3 },
 "trasher": { "repollute_cooldown_s": 20, "unlock_after": 3, "virus_cooldown_s": 30,
              "gas_cooldown_s": 90, "gas_warning_s": 3, "start_cooldown_s": 10 },
-"virus":   { "start_s": 60, "fatal_s": 10, "grow_s": 90, "heal_range": 1.5 },
+"virus":   { "start_s": 20, "fatal_s": 10, "grow_s": 90, "heal_range": 1.5 },
 "machine": { "fix_s": 4 },
 "match":   { "deadline_s": 420, "return_to_lobby_s": 15 },
 "meter":   { "passive_per_s": 0 },

@@ -10,7 +10,7 @@ CHAR_OWN_COLOURS,This character keeps its own colours.,Ce personnage garde ses p
 SPECTATOR_LEAVE,Leave game,Quitter la partie,مغادرة اللعبة,Lämna spelet
 GAS_LEAVE_NOW,TOXIC GAS! LEAVE THE ROOM NOW! %d,GAZ TOXIQUE ! QUITTE LA SALLE ! %d,غاز سام! غادر الغرفة الآن! %d,GIFTGAS! LÄMNA RUMMET NU! %d
 GAS_INCOMING,Toxic gas incoming in a room: %d s,Gaz toxique bientôt dans une salle : %d s,غاز سام قادم إلى إحدى الغرف: %d ث,Giftgas på väg till ett rum: %d s
-GUIDE_MAIN_CLEANER,Reach 100% cleanliness before the [color=#ff4d4d]Trashers[/color] get you!,Atteins 100 % de propreté avant que les [color=#ff4d4d]Trashers[/color] t'attrapent !,اوصل إلى نظافة 100٪ قبل أن يمسك بك [color=#ff4d4d]المُلوِّثون[/color]!,Nå 100 % renhet innan [color=#ff4d4d]Skräparna[/color] tar dig!
+GUIDE_MAIN_CLEANER,Reach 100% cleanliness before the [color=#c8553f]Trashers[/color] get you!,Atteins 100 % de propreté avant que les [color=#c8553f]Trashers[/color] t'attrapent !,اوصل إلى نظافة 100٪ قبل أن يمسك بك [color=#c8553f]المُلوِّثون[/color]!,Nå 100 % renhet innan [color=#c8553f]Skräparna[/color] tar dig!
 GUIDE_MAIN_TRASHER,Stop the Cleaners before the campus is 100% clean.,Arrête les Cleaners avant que le campus soit propre à 100 %.,أوقف المنظّفين قبل أن يصبح الحرم نظيفًا بنسبة 100٪.,Stoppa Städarna innan campus är 100 % rent.
 GUIDE_CLEAN,Next: clean a dirty spot (it fills a bag).,Ensuite : nettoie un endroit sale (ça remplit un sac).,التالي: نظّف مكانًا متسخًا (يملأ كيسًا).,Nästa: städa en smutsig plats (den fyller en säck).
 GUIDE_DELIVER,Next: take your bags to the Recycling Machine. Follow the gold arrow.,Ensuite : apporte tes sacs à la machine de recyclage. Suis la flèche dorée.,التالي: خذ أكياسك إلى آلة إعادة التدوير. اتبع السهم الذهبي.,Nästa: ta dina säckar till återvinningsmaskinen. Följ den gyllene pilen.
@@ -385,6 +385,7 @@ LOBBY_COPY,Copy the code,Copier le code,انسخ الرمز,Kopiera koden
 LOBBY_COPIED,Code copied.,Code copié.,تم نسخ الرمز.,Koden kopierad.
 LOBBY_CHARACTER,Character,Personnage,الشخصية,Figur
 LOBBY_START_SHORT,Start,Lancer,ابدأ,Starta
+LOBBY_BOTS,Bots: %d,Bots : %d,روبوتات: %d,Bottar: %d
 CHAR_TITLE,Choose your character,Choisis ton personnage,اختر شخصيتك,Välj din figur
 CHAR_UNLOCK_HINT,Keep a daily scan streak to unlock more characters.,Garde ta série de scans quotidiens pour débloquer d'autres personnages.,حافظ على سلسلة المسح اليومية لفتح شخصيات أخرى.,Håll en daglig skanningsserie för att låsa upp fler figurer.
 CHAR_SPROUT,Sprouty,Sprouty,Sprouty,Sprouty

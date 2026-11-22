@@ -1,5 +1,5 @@
 extends RefCounted
-## One client creates a room and starts it; the other seven seats are bots. The client stands
+## One client creates a room and starts it; the other seats (room size - 1) are bots. The client stands
 ## still and only listens until game_over. PASS when game_over arrives and at least MIN_MOVERS
 ## different bot seats were seen changing position, so the bots really act. Evidence: seats seen
 ## moving, meetings and the task bar published in each meeting_started, the winner and the timeline.
@@ -41,8 +41,10 @@ static func _play(c: ProbeClient, url: String) -> Dictionary:
 	for s in started.get("seats", []):
 		if not bool(s.get("human", false)):
 			bot_seats.append(int(s["seat"]))
-	if bot_seats.size() != 7:
-		return _fail("expected 7 bot seats, match_started lists %d" % bot_seats.size())
+	# Bots fill up to the room size (4 by default since the 22 Nov playtest, so 3 bots here).
+	var want_bots: int = int(welcome.get("size", 0)) - 1
+	if bot_seats.size() != want_bots:
+		return _fail("expected %d bot seats, match_started lists %d" % [want_bots, bot_seats.size()])
 	var first_pos: Dictionary = {}
 	var movers: Dictionary = {}
 	var snapshots: int = 0

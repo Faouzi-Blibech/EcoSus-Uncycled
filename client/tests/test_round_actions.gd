@@ -128,11 +128,10 @@ func test_emergency_console_is_near_with_its_kind() -> bool:
 	return true
 
 
-func test_polluter_use_opens_a_fake_and_sends_nothing() -> bool:
+func test_polluter_use_at_a_dirty_spot_opens_nothing_and_sends_nothing() -> bool:
 	var r: RoundScene = _round("polluter", CONSOLE, 0.0)
 	r.perform_action("use")
-	assert_true(r._minigames.is_open(), "the fake is open")
-	assert_eq(r._minigames._console_id, CONSOLE, "fake knows its console")
+	assert_true(not r._minigames.is_open(), "no fake clean")
 	assert_eq(_sent.size(), 0, "no use is sent")
 	_restore()
 	return true
@@ -163,7 +162,7 @@ func test_clean_spot_offers_no_use_to_anyone() -> bool:
 	assert_eq(_sent.size(), 0, "a Cleaner sends nothing at a clean spot")
 	Session.role = "polluter"
 	r.perform_action("use")
-	assert_true(not r._minigames.is_open(), "a Trasher fakes only on dirty spots")
+	assert_true(not r._minigames.is_open(), "a Trasher opens nothing")
 	_restore()
 	return true
 
@@ -241,8 +240,8 @@ func test_trasher_actions_do_nothing_while_a_game_is_open() -> bool:
 	Session.ability = "virus"
 	Session.cooldowns = {}
 	Session.piles = [{"id": 9, "pos": r._player.position + Vector2(10.0, 0.0), "kind": "body", "state": "fresh"}]
-	r.perform_action("use")
-	assert_true(r._minigames.is_open(), "fake open")
+	r._minigames.open_fake("sort_waste", CONSOLE)
+	assert_true(r._minigames.is_open(), "a game open")
 	for action in ["report", "repollute", "ability"]:
 		r.perform_action(action)
 	assert_eq(_sent.size(), 0, "action keys are dead under the fake")
@@ -282,8 +281,8 @@ func test_walking_input_is_ignored_while_a_game_is_open() -> bool:
 	track(r._joystick)
 	r._joystick.value = Vector2(1.0, 0.0)
 	assert_near(r._read_direction().x, 1.0, 0.001, "the stick walks when no game is open")
-	r.perform_action("use")
-	assert_true(r._minigames.is_open(), "fake open")
+	r._minigames.open_fake("sort_waste", CONSOLE)
+	assert_true(r._minigames.is_open(), "a game open")
 	assert_eq(r._read_direction(), Vector2.ZERO, "no walking under an open game")
 	_restore()
 	return true

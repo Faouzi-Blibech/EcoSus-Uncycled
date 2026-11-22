@@ -91,28 +91,28 @@ namespace Uncycled.Server.Tests
         {
             RoomRig rig = NewRig();
             List<Client> cs = JoinMany(rig, 2);
-            Assert.Equal(8, rig.Room.Size);
+            Assert.Equal(4, rig.Room.Size);
 
-            Send(rig, cs[1], "{\"t\":\"set_size\",\"size\":10}");
-            Assert.Equal(8, rig.Room.Size);
+            Send(rig, cs[1], "{\"t\":\"set_size\",\"size\":6}");
+            Assert.Equal(4, rig.Room.Size);
             Assert.Equal("not_allowed", RejectReason(cs[1], "set_size"));
 
-            Send(rig, cs[0], "{\"t\":\"set_size\",\"size\":10}");
-            Assert.Equal(10, rig.Room.Size);
-            JsonElement? lobby = cs[1].Last("lobby", e => e.GetProperty("size").GetInt32() == 10);
+            Send(rig, cs[0], "{\"t\":\"set_size\",\"size\":6}");
+            Assert.Equal(6, rig.Room.Size);
+            JsonElement? lobby = cs[1].Last("lobby", e => e.GetProperty("size").GetInt32() == 6);
             Assert.NotNull(lobby);
-            Assert.Equal(new[] { 6, 8, 10 }, Sizes(lobby!.Value));
+            Assert.Equal(new[] { 4, 5, 6, 7, 8 }, Sizes(lobby!.Value));
         }
 
         [Fact]
         public void SetSize_BelowHumans_Rejected()
         {
             RoomRig rig = NewRig();
-            List<Client> cs = JoinMany(rig, 7);
+            List<Client> cs = JoinMany(rig, 6);
 
-            Send(rig, cs[0], "{\"t\":\"set_size\",\"size\":6}");
+            Send(rig, cs[0], "{\"t\":\"set_size\",\"size\":5}");
 
-            Assert.Equal(8, rig.Room.Size);
+            Assert.Equal(6, rig.Room.Size);
             Assert.Equal("target_invalid", RejectReason(cs[0], "set_size"));
         }
 
@@ -122,9 +122,9 @@ namespace Uncycled.Server.Tests
             RoomRig rig = NewRig();
             List<Client> cs = JoinMany(rig, 1);
 
-            Send(rig, cs[0], "{\"t\":\"set_size\",\"size\":7}");
+            Send(rig, cs[0], "{\"t\":\"set_size\",\"size\":9}");
 
-            Assert.Equal(8, rig.Room.Size);
+            Assert.Equal(4, rig.Room.Size);
             Assert.Equal("target_invalid", RejectReason(cs[0], "set_size"));
         }
 
@@ -137,35 +137,53 @@ namespace Uncycled.Server.Tests
             JsonElement? w = cs[0].Last("welcome");
 
             Assert.NotNull(w);
-            Assert.Equal(8, w!.Value.GetProperty("size").GetInt32());
-            Assert.Equal(new[] { 6, 8, 10 }, Sizes(w.Value));
+            Assert.Equal(4, w!.Value.GetProperty("size").GetInt32());
+            Assert.Equal(new[] { 4, 5, 6, 7, 8 }, Sizes(w.Value));
         }
 
+        /// <summary>Playtest 2026-11-22: the size is a minimum, not a cap. Humans past it raise it; only
+        /// the largest size turns players away.</summary>
         [Fact]
-        public void Join_FullAtSize()
+        public void Join_PastTheSize_RaisesIt_FullOnlyAtTheLargest()
         {
             RoomRig rig = NewRig();
-            List<Client> cs = JoinMany(rig, 1);
-            Send(rig, cs[0], "{\"t\":\"set_size\",\"size\":6}");
-            for (int i = 1; i < 6; i++)
+            List<Client> cs = JoinMany(rig, 5);
+            Assert.Equal(5, rig.Room.HumanCount);
+            Assert.Equal(5, rig.Room.Size);
+            Assert.NotNull(cs[0].Last("lobby", e => e.GetProperty("size").GetInt32() == 5));
+
+            for (int i = 5; i < 8; i++)
             {
                 Join(rig, cs);
             }
 
-            Assert.Equal(6, rig.Room.HumanCount);
-
-            var seventh = new Client();
-            rig.Room.Post(new JoinInput(seventh.Conn, "Late", null, false));
+            Assert.Equal(8, rig.Room.Size);
+            var ninth = new Client();
+            rig.Room.Post(new JoinInput(ninth.Conn, "Late", null, false));
             rig.Step();
 
-            Assert.Equal("full", seventh.Last("join_failed")?.GetProperty("reason").GetString());
-            Assert.Equal(6, rig.Room.HumanCount);
+            Assert.Equal("full", ninth.Last("join_failed")?.GetProperty("reason").GetString());
+            Assert.Equal(8, rig.Room.HumanCount);
         }
 
         [Theory]
-        [InlineData(6, 1)]
+        [InlineData(4, 3, 4)]
+        [InlineData(4, 4, 4)]
+        [InlineData(4, 5, 5)]
+        [InlineData(6, 2, 6)]
+        [InlineData(4, 8, 8)]
+        public void SizeForHumans_KeepsTheSizeWhileTheyFit(int current, int humans, int expected) =>
+            Assert.Equal(expected, Room.SizeForHumans(new[] { 4, 5, 6, 7, 8 }, current, humans));
+
+        [Fact]
+        public void SizeForHumans_PicksTheSmallestListedSizeThatHoldsThem() =>
+            Assert.Equal(8, Room.SizeForHumans(new[] { 4, 8, 10 }, 4, 5));
+
+        [Theory]
+        [InlineData(4, 1)]
+        [InlineData(5, 1)]
+        [InlineData(6, 2)]
         [InlineData(8, 2)]
-        [InlineData(10, 2)]
         public void Start_FillsBotsToSize(int size, int trashers)
         {
             RoomRig rig = NewRig();
@@ -175,6 +193,7 @@ namespace Uncycled.Server.Tests
             Send(rig, cs[0], "{\"t\":\"start\"}");
 
             Assert.Equal(size, rig.Room.Seats.Count(s => s.Control != SeatControl.Empty));
+            Assert.Equal(size - 1, rig.Room.BotCount);
             int active = 0;
             int polluters = 0;
             foreach (Seat s in rig.Room.Seats)
@@ -208,7 +227,7 @@ namespace Uncycled.Server.Tests
                 Send(rig, cs[0], "{\"t\":\"start\"}");
 
                 Assert.Equal(polluter, rig.Engine.Find(0)!.IsPolluter);
-                Assert.Equal(2, rig.Room.Seats.Count(s => rig.Engine.Find(s.Id)?.IsPolluter == true));
+                Assert.Equal(1, rig.Room.Seats.Count(s => rig.Engine.Find(s.Id)?.IsPolluter == true));
             }
         }
 

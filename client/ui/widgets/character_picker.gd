@@ -1,6 +1,6 @@
 extends Control
 ## "Choose your character" overlay. The sprout is the default and takes the seat colour; the others
-## are unlocked by the scan streak (the unlocked list comes from the scan service, see Profile).
+## are bought with scan points in the shop (the unlocked list comes from the scan service, see Profile).
 ## Emits colour_picked when a free colour is tapped, skin_picked with the set_skin id ("" for the
 ## default) when an unlocked character is tapped, and closed when dismissed. The owner calls
 ## refresh() on every lobby or profile change.

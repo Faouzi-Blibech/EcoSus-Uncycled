@@ -186,7 +186,7 @@ namespace Uncycled.Server.Tests
         {
             Room room = NewRoom();
             var host = new Client();
-            room.Post(new JoinInput(host.Conn, "Bot 5", null, true)); // seat 0; the bot of seat 4 would be "Bot 5"
+            room.Post(new JoinInput(host.Conn, "Bot 2", null, true)); // seat 0; the bot of seat 1 would be "Bot 2"
             host.Welcome();
 
             using JsonDocument start = JsonDocument.Parse("{\"t\":\"start\"}");
@@ -204,9 +204,9 @@ namespace Uncycled.Server.Tests
                 names.Add(s.GetProperty("name").GetString()!);
             }
 
-            Assert.Equal(8, names.Count);
+            Assert.Equal(room.Size, names.Count);
             Assert.Equal(names.Count, new HashSet<string>(names, StringComparer.OrdinalIgnoreCase).Count);
-            Assert.Contains("Bot 5", names);
+            Assert.Contains("Bot 2", names);
         }
     }
 }

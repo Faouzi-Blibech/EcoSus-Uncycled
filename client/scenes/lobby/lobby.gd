@@ -2,7 +2,8 @@ extends Control
 ## Lobby (Figma "Game Created"): the seat list on a paper sheet (avatar, name, a tick per taken
 ## seat, a crown over the host), the player count, the room code (tap to copy), your own character
 ## walking in place (tap it or the leaf to choose character and colour), and Start for the host.
-## Bots fill the free seats when the host starts.
+## Bots fill the free seats up to the room size when the host starts. The host sets the bot count with
+## - / + (set_size over the server's sizes, never below the humans); everyone sees the count.
 
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
@@ -50,8 +51,16 @@ const LEAF_POS: Vector2 = Vector2(590.0, 254.0)
 const START_RECT: Rect2 = Rect2(500.0, 308.0, 132.0, 44.0)
 const WAIT_RECT: Rect2 = Rect2(330.0, 308.0, 300.0, 44.0)
 const WAIT_FONT_SIZE: int = 16
+## Bot count under your character: "Bots: n" between - and + (host only).
+const BOTS_MINUS_RECT: Rect2 = Rect2(340.0, 258.0, 48.0, 44.0)
+const BOTS_LABEL_RECT: Rect2 = Rect2(390.0, 258.0, 96.0, 44.0)
+const BOTS_PLUS_RECT: Rect2 = Rect2(488.0, 258.0, 48.0, 44.0)
+const BOTS_FONT_SIZE: int = 18
 
 var _stage: Control
+var _bots_label: Label
+var _bots_minus: Button
+var _bots_plus: Button
 var _rows: Control
 var _count: Label
 var _me: CharacterSprite
@@ -121,6 +130,20 @@ func _ready() -> void:
 	PaperKit.place(_wait_label, WAIT_RECT)
 	_stage.add_child(_wait_label)
 
+	_bots_label = PaperKit.label("", BOTS_FONT_SIZE)
+	_bots_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_bots_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	PaperKit.place(_bots_label, BOTS_LABEL_RECT)
+	_stage.add_child(_bots_label)
+	_bots_minus = PaperKit.button("-", "cream")
+	PaperKit.place(_bots_minus, BOTS_MINUS_RECT)
+	_bots_minus.pressed.connect(_on_bots.bind(-1))
+	_stage.add_child(_bots_minus)
+	_bots_plus = PaperKit.button("+", "cream")
+	PaperKit.place(_bots_plus, BOTS_PLUS_RECT)
+	_bots_plus.pressed.connect(_on_bots.bind(1))
+	_stage.add_child(_bots_plus)
+
 	_toast = Toast.new()
 	_toast.anchor_left = 0.5
 	_toast.anchor_right = 0.5
@@ -156,8 +179,32 @@ func _refresh() -> void:
 	var host: bool = Session.is_host()
 	_start_btn.visible = host
 	_wait_label.visible = not host
+	_bots_label.text = tr("LOBBY_BOTS") % maxi(0, seat_count - seats.size())
+	_bots_minus.visible = host
+	_bots_plus.visible = host
+	_bots_minus.disabled = next_size(Session.room_sizes, Session.room_size, seats.size(), -1) == Session.room_size
+	_bots_plus.disabled = next_size(Session.room_sizes, Session.room_size, seats.size(), 1) == Session.room_size
 	if _picker != null:
 		_picker.refresh(_my_colour(), taken_colors(Session.seats, Session.seat_id), _character_of(me), Profile.skins)
+
+
+## The room size one bot more (step 1) or less (step -1): the nearest of the server's sizes that way,
+## never below the humans in the room. The current size when there is none.
+static func next_size(sizes: Array, current: int, humans: int, step: int) -> int:
+	var best: int = current
+	for v in sizes:
+		var s: int = int(v)
+		if s < humans or s == current or (s > current) != (step > 0):
+			continue
+		if best == current or absi(s - current) < absi(best - current):
+			best = s
+	return best
+
+
+func _on_bots(step: int) -> void:
+	var size: int = next_size(Session.room_sizes, Session.room_size, _seat_dicts().size(), step)
+	if size != Session.room_size:
+		Net.send("set_size", {"size": size})
 
 
 func _seat_dicts() -> Array:

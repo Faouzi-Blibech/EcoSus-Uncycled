@@ -160,3 +160,23 @@ func test_no_colour_swatches_for_a_character_with_its_own_colours() -> bool:
 	_restore()
 	_restore_profile(before)
 	return true
+
+
+## Playtest 2026-11-22: the host sets the bot count with - / +, which walks the server's sizes and
+## never drops below the humans in the room.
+func test_next_size_for_the_bot_buttons() -> bool:
+	var lobby_script: GDScript = load("res://scenes/lobby/lobby.gd")
+	var sizes: Array = [4, 5, 6, 7, 8]
+	var table: Array = [
+		[4, 1, 1, 5, "one bot more"],
+		[4, 1, -1, 4, "4 is the minimum"],
+		[6, 1, -1, 5, "one bot less"],
+		[8, 1, 1, 8, "8 is the maximum"],
+		[5, 5, -1, 5, "never below the humans"],
+		[5, 5, 1, 6, "more humans can still get bots"],
+	]
+	for row in table:
+		assert_eq(lobby_script.next_size(sizes, row[0], row[1], row[2]), row[3], row[4])
+	assert_eq(lobby_script.next_size([4, 8, 10], 4, 1, 1), 8, "skips to the next listed size")
+	assert_eq(lobby_script.next_size([], 4, 1, 1), 4, "no sizes known yet: no change")
+	return true

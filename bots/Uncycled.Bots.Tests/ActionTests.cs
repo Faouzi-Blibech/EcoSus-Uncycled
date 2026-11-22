@@ -77,7 +77,7 @@ namespace Uncycled.Bots.Tests
         public void Mask_OnlyStayAndNothingElseInMeeting()
         {
             TestMatch m = TestMatch.Create();
-            m.TickFor(16f);
+            m.TickFor(m.Config.EmergencyMinSinceMeetingS + 1f); // the button takes calls this long after the start or a meeting
             byte caller = 3;
             var driver = new BotDriver(m, caller);
             driver.Begin(BotAction.GoEmergency);

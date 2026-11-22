@@ -5,8 +5,13 @@ extends Control
 ## player pointing at the Recycling Machine. The camera keeps the player centred, so the arrow
 ## circles the middle of the screen. The round calls update_state() every frame.
 
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
+
 const CARD_POS: Vector2 = Vector2(8.0, 112.0)
-const CARD_WIDTH: float = 200.0
+## The HUD's player card width (Hud.CARD_WIDTH_PX), so the left column lines up.
+const CARD_WIDTH: float = 150.0
+const TEXT_SIZE: int = 9
+const TITLE_SIZE: int = 10
 const ARROW_RADIUS_PX: float = 56.0
 const ARROW_LEN_PX: float = 26.0
 const ARROW_HALF_WIDTH_PX: float = 10.0
@@ -27,16 +32,9 @@ var _t: float = 0.0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	_card = PanelContainer.new()
-	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.1, 0.09, 0.62)
-	style.set_corner_radius_all(8)
-	style.content_margin_left = 8.0
-	style.content_margin_right = 8.0
-	style.content_margin_top = 5.0
-	style.content_margin_bottom = 5.0
-	_card.add_theme_stylebox_override("panel", style)
+	# The HUD's storybook look: cream paper card, ink text, Caroni font. This node sits beside the
+	# HUD's themed root, not under it, so it sets the font itself.
+	_card = Hud._paper_panel()
 	_card.position = CARD_POS
 	_card.custom_minimum_size = Vector2(CARD_WIDTH, 0.0)
 	add_child(_card)
@@ -45,10 +43,12 @@ func _ready() -> void:
 	_text.fit_content = true
 	_text.scroll_active = false
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_text.custom_minimum_size = Vector2(CARD_WIDTH - 16.0, 0.0)
-	_text.add_theme_font_size_override("normal_font_size", 11)
-	_text.add_theme_font_size_override("bold_font_size", 12)
-	_text.add_theme_color_override("default_color", Color(0.95, 0.95, 0.9))
+	_text.custom_minimum_size = Vector2(CARD_WIDTH - 14.0, 0.0)
+	_text.add_theme_font_override("normal_font", PaperKit.font())
+	_text.add_theme_font_override("bold_font", PaperKit.font())
+	_text.add_theme_font_size_override("normal_font_size", TEXT_SIZE)
+	_text.add_theme_font_size_override("bold_font_size", TITLE_SIZE)
+	_text.add_theme_color_override("default_color", Hud.INK)
 	_card.add_child(_text)
 
 

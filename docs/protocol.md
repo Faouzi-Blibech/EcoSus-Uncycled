@@ -41,7 +41,7 @@ Changelog:
 | S->C | `welcome` | `room`, `seat`, `token`, `host_seat`, `size`, `sizes`, `tuning`, `tasks` (the `tasks` array of `content/tasks.json`: `[{type, category, steps, min_s, consoles}]`), `map_id`, `map_version`, `phase`, `seats`, `state?`, `ghost_chat?` | `seats: [{seat, name, color, skin, human, out}]` lists every seat, also in the lobby and on rejoin (`out` is false in the lobby); `state` only when rejoining mid-match, see 2.1 |
 | S->C | `join_failed` | `reason` (`no_room`, `full`, `in_match`, `bad_name`) | `full` = the humans in the room reach `size` |
 | C->S | `set_color` | `color` | lobby only |
-| C->S | `set_size` | `size` | host, lobby; must be in `rooms.sizes` (`sizes`, default 8) and not below the humans in the room, else `action_rejected` `target_invalid`. Trashers per size: 6 -> 1, 8 -> 2, 10 -> 2 |
+| C->S | `set_size` | `size` | host, lobby; must be in `rooms.sizes` (`sizes`: 4 to 8, default 4) and not below the humans in the room, else `action_rejected` `target_invalid`. Trashers per size: 4-5 -> 1, 6-8 -> 2. Humans may join up to the largest size; a join past `size` raises it (lobby shows the new `size`). The client shows `size` minus humans as the bot count |
 | C->S | `set_skin` | `skin` | lobby; id from `content/skins.json`, else `action_rejected` `target_invalid` |
 | S->C | `lobby` | `seats: [{seat, name, color, skin, human, ready}]`, `host_seat`, `size`, `sizes` | sent on every lobby change; `host_seat` moves when the host leaves or drops, so a client takes it from every `lobby` message |
 | C->S | `start` | - | host only, phase Lobby. Bots fill the free seats up to `size` |

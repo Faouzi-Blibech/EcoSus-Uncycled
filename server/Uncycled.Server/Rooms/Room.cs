@@ -74,8 +74,22 @@ public sealed class Room
 
     public string Code { get; }
 
-    /// <summary>Seats in play for the next match: the host picks it in the lobby (rooms.sizes). The room holds the largest size.</summary>
+    /// <summary>Seats in play for the next match: the host picks it in the lobby (rooms.sizes), bots fill the
+    /// seats humans leave free. The room holds the largest size; more humans than Size raise it.</summary>
     public int Size { get; private set; }
+
+    /// <summary>The size once `humans` are in the lobby: the current one while they fit, else the smallest
+    /// listed size that holds them (the largest when none does).</summary>
+    internal static int SizeForHumans(int[] sizes, int current, int humans)
+    {
+        if (humans <= current)
+        {
+            return current;
+        }
+
+        int[] fitting = sizes.Where(s => s >= humans).ToArray();
+        return fitting.Length > 0 ? fitting.Min() : sizes.Max();
+    }
 
     /// <summary>Testing only: "polluter" or "citizen" gives the host that role at match start. Off (null) unless the env var UNCYCLED_DEV_HOST_ROLE is set.</summary>
     internal string? DevHostRole { get; set; } = Environment.GetEnvironmentVariable("UNCYCLED_DEV_HOST_ROLE");
@@ -297,7 +311,8 @@ public sealed class Room
                 return;
             }
 
-            if (HumanCount < Size)
+            // Humans may join up to the largest size; the size grows to fit them (see SizeForHumans).
+            if (HumanCount < _seats.Length)
             {
                 foreach (Seat s in _seats)
                 {
@@ -340,6 +355,10 @@ public sealed class Room
         seat.Conn = conn;
         conn.Seat = seat.Id;
         conn.Room = this;
+        if (_engine == null)
+        {
+            Size = SizeForHumans(_content.Config.RoomSizes, Size, HumanCount);
+        }
         _noHumansSince = -1;
         if (j.IsCreate || _hostSeat < 0)
         {

@@ -905,18 +905,14 @@ func _sync_repair(delta: float) -> void:
 		_repair_confirmed = false
 
 
-## A task console opens the game (a polluter gets a fake that sends nothing); the emergency
-## console calls the meeting.
+## A task console opens the game for a Cleaner (a Trasher has no clean); the emergency console
+## calls the meeting.
 func _use_nearest_console() -> void:
 	var near: Dictionary = Net.as_dict(interaction_context().get("near_console"))
 	var id: String = str(near.get("id", ""))
 	if str(near.get("kind", "")) == "emergency":
 		senders["call_meeting"].call()
-	elif Session.role == "polluter":
-		var type: String = _task_type_at_console(id)
-		if not type.is_empty():
-			_minigames.open_fake(type, id)
-	else:
+	elif Session.role != "polluter":
 		senders["use"].call(id)
 
 
