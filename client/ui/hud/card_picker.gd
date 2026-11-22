@@ -11,6 +11,8 @@ const CANCEL_MIN_HEIGHT: float = 48.0
 
 ## Emitted once with the chosen item name.
 signal picked(item: String)
+## The player closed the picker with its cancel/close button (no pick).
+signal dismissed()
 
 ## Translation key of the title.
 var title_key: String = ""
@@ -22,6 +24,8 @@ var icon_format: String = ""
 var label_prefix: String = ""
 ## When true, a Cancel button closes the picker without emitting picked.
 var cancelable: bool = false
+## Translation key of that button.
+var cancel_key: String = "COMMON_CANCEL"
 
 var _built: bool = false
 var _row: HBoxContainer
@@ -101,9 +105,9 @@ func _ensure_built() -> void:
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(_row)
 	if cancelable:
-		var cancel: Button = UIKit.make_button(tr("COMMON_CANCEL"), CARD_SIZE.x)
+		var cancel: Button = UIKit.make_button(tr(cancel_key), CARD_SIZE.x)
 		cancel.custom_minimum_size.y = maxf(cancel.custom_minimum_size.y, CANCEL_MIN_HEIGHT)
-		cancel.pressed.connect(close)
+		cancel.pressed.connect(_on_cancel)
 		box.add_child(cancel)
 
 
@@ -131,6 +135,11 @@ func _on_card_pressed(item: String) -> void:
 		return
 	close()
 	picked.emit(item)
+
+
+func _on_cancel() -> void:
+	close()
+	dismissed.emit()
 
 
 func _on_meeting_started(_data: Dictionary) -> void:

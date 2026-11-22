@@ -20,6 +20,7 @@
 			],
 			"doors": {
 				"right": [
+					6,
 					28,
 					29
 				]
@@ -295,9 +296,17 @@
 				16
 			],
 			"doors": {
+				"top": [
+					6,
+					7
+				],
 				"bottom": [
 					7,
 					8
+				],
+				"right": [
+					8,
+					9
 				]
 			},
 			"walls": [
@@ -857,6 +866,12 @@
 					4,
 					1,
 					2
+				],
+				[
+					2,
+					15,
+					6,
+					1
 				]
 			],
 			"occluders": [
@@ -1535,9 +1550,9 @@
 				],
 				[
 					21,
-					15,
+					16,
 					3,
-					4
+					3
 				],
 				[
 					24,
@@ -2057,6 +2072,24 @@
 			43,
 			1,
 			3
+		],
+		[
+			17,
+			0,
+			28,
+			2
+		],
+		[
+			17,
+			2,
+			2,
+			18
+		],
+		[
+			53,
+			10,
+			2,
+			10
 		]
 	],
 	"markers": [
@@ -2336,7 +2369,7 @@
 				63,
 				23,
 				31,
-				24
+				23
 			],
 			"name_key": "zone_art"
 		},
@@ -2369,9 +2402,141 @@
 				17,
 				18,
 				107,
-				4
+				5
 			],
 			"name_key": "zone_hallway"
+		},
+		{
+			"id": "hall_north",
+			"kind": "zone",
+			"rect": [
+				17,
+				0,
+				28,
+				2
+			],
+			"name_key": "zone_hall_north"
+		},
+		{
+			"id": "hall_west",
+			"kind": "zone",
+			"rect": [
+				17,
+				2,
+				2,
+				16
+			],
+			"name_key": "zone_hall_west"
+		},
+		{
+			"id": "hall_west_low",
+			"kind": "zone",
+			"rect": [
+				17,
+				23,
+				2,
+				7
+			],
+			"name_key": "zone_hall_west_low"
+		},
+		{
+			"id": "hall_amphi",
+			"kind": "zone",
+			"rect": [
+				53,
+				10,
+				2,
+				8
+			],
+			"name_key": "zone_hall_amphi"
+		},
+		{
+			"id": "hall_library",
+			"kind": "zone",
+			"rect": [
+				78,
+				5,
+				2,
+				6
+			],
+			"name_key": "zone_hall_library"
+		},
+		{
+			"id": "hall_garden",
+			"kind": "zone",
+			"rect": [
+				36,
+				28,
+				3,
+				10
+			],
+			"name_key": "zone_hall_garden"
+		},
+		{
+			"id": "hall_lounge",
+			"kind": "zone",
+			"rect": [
+				26,
+				39,
+				3,
+				7
+			],
+			"name_key": "zone_hall_lounge"
+		},
+		{
+			"id": "hall_art",
+			"kind": "zone",
+			"rect": [
+				60,
+				34,
+				2,
+				12
+			],
+			"name_key": "zone_hall_art"
+		},
+		{
+			"id": "hall_enactus",
+			"kind": "zone",
+			"rect": [
+				105,
+				38,
+				3,
+				8
+			],
+			"name_key": "zone_hall_enactus"
+		},
+		{
+			"id": "hall_garden_gate",
+			"kind": "zone",
+			"rect": [
+				49,
+				44,
+				1,
+				2
+			],
+			"name_key": "zone_hall_garden_gate"
+		},
+		{
+			"id": "hall_parking",
+			"kind": "zone",
+			"rect": [
+				123,
+				43,
+				1,
+				3
+			],
+			"name_key": "zone_hall_parking"
+		},
+		{
+			"id": "hall_machine",
+			"kind": "zone",
+			"rect": [
+				20,
+				46,
+				105,
+				2
+			],
+			"name_key": "zone_hall_machine"
 		},
 		{
 			"id": "dark_amphi",

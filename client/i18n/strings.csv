@@ -61,6 +61,8 @@ HUD_ROLE,Role: %s,Rôle : %s,الدور: %s
 HUD_PARTNER,Partner: %s,Complice : %s,الشريك: %s
 HUD_METER,Cleanliness: %.0f%%,Propreté : %.0f%%,النظافة: %.0f%%
 HUD_PHASE,Phase: %s,Phase : %s,المرحلة: %s
+HUD_PICK_UPGRADE,Pick upgrade,Choisir un bonus,اختر ترقية
+HUD_PICK_ABILITY,Pick ability,Choisir un pouvoir,اختر قدرة
 HUD_PING,Weak connection,Connexion faible,اتصال ضعيف
 PHASE_LOBBY,Lobby,Salon,الردهة
 PHASE_INTRO,Get ready,Prépare-toi,استعد
@@ -123,6 +125,22 @@ ZONE_AMPHI,Amphitheatre,Amphithéâtre,المدرج
 ZONE_HALLWAY,Hallway,Couloir,الممر
 ZONE_LOUNGE,Lounge,Salon,الاستراحة
 ZONE_PARKING,Parking,Parking,موقف السيارات
+ZONE_CAFETERIA,Cafeteria,Cafétéria,الكافيتيريا
+ZONE_LIBRARY,Library,Bibliothèque,المكتبة
+ZONE_ART,Art Factory,Art Factory,مصنع الفنون
+ZONE_ENACTUS,Enactus room,Salle Enactus,قاعة إيناكتس
+ZONE_HALL_NORTH,North corridor,Couloir nord,الممر الشمالي
+ZONE_HALL_WEST,West corridor,Couloir ouest,الممر الغربي
+ZONE_HALL_WEST_LOW,Office corridor,Couloir du bureau,ممر المكتب
+ZONE_HALL_AMPHI,Amphi passage,Passage de l'amphi,ممر المدرج
+ZONE_HALL_LIBRARY,Library corridor,Couloir de la bibliothèque,ممر المكتبة
+ZONE_HALL_GARDEN,Garden path,Allée du jardin,ممشى الحديقة
+ZONE_HALL_LOUNGE,Lounge corridor,Couloir du salon,ممر الاستراحة
+ZONE_HALL_ART,Art corridor,Couloir de l'Art Factory,ممر الفنون
+ZONE_HALL_ENACTUS,Enactus corridor,Couloir Enactus,ممر إيناكتس
+ZONE_HALL_GARDEN_GATE,Garden gate,Portail du jardin,بوابة الحديقة
+ZONE_HALL_PARKING,Parking lane,Allée du parking,ممر الموقف
+ZONE_HALL_MACHINE,Machine hall,Couloir de la machine,ممر الآلة
 WASTE_PLASTIC,plastic,plastique,بلاستيك
 WASTE_GLASS,glass,verre,زجاج
 WASTE_PAPER,paper,papier,ورق
@@ -302,6 +320,10 @@ GAS_ROOM_MARKET,Market,Marché,السوق
 GAS_ROOM_GARDEN,Garden,Jardin,الحديقة
 GAS_ROOM_DEPOT,Depot,Dépôt,المستودع
 GAS_ROOM_DARK,Dark room,Salle sombre,الغرفة المظلمة
+GAS_ROOM_CLUB,Club room,Salle du club,قاعة النادي
+GAS_ROOM_AMPHI,Amphitheatre,Amphithéâtre,المدرج
+GAS_ROOM_LOUNGE,Lounge,Salon,الاستراحة
+GAS_ROOM_OFFICE,Office,Bureau,المكتب
 VIRUS_PLANTED,Virus planted. Wait for a Cleaner.,Virus caché. Attends un nettoyeur.,تم زرع الفيروس. انتظر منظّفًا.
 REPOLLUTE_OK,Spot re-polluted.,Endroit repollué.,تمت إعادة تلويث الموقع.
 SABOTAGE_MACHINE,Machine,Machine,الآلة
