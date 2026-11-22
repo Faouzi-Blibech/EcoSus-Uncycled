@@ -33,6 +33,14 @@
       ]
     },
     {
+      "id": "saw_near",
+      "kind": "accuse",
+      "slots": [
+        "seat",
+        "zone"
+      ]
+    },
+    {
       "id": "i_was",
       "kind": "alibi",
       "slots": [
@@ -78,6 +86,20 @@
       "kind": "react",
       "slots": [
         "seat"
+      ]
+    },
+    {
+      "id": "saw_jam",
+      "kind": "react",
+      "slots": [
+        "zone"
+      ]
+    },
+    {
+      "id": "saw_gas",
+      "kind": "react",
+      "slots": [
+        "zone"
       ]
     },
     {

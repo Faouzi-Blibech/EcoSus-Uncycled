@@ -79,7 +79,7 @@ func _repo_json(rel: String) -> Dictionary:
 func test_catalogue_is_the_shared_content_file() -> bool:
 	var file: Array = _repo_json("content/phrases.json").get("phrases", [])
 	var mine: Array[Dictionary] = Phrases.all()
-	assert_eq(mine.size(), 15, "fifteen phrases")
+	assert_eq(mine.size(), 18, "eighteen phrases")
 	assert_eq(file.size(), mine.size(), "same count as content/phrases.json")
 	for i in mini(file.size(), mine.size()):
 		var f: Dictionary = file[i]

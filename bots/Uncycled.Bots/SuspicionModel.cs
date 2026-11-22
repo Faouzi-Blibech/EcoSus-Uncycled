@@ -16,6 +16,9 @@ namespace Uncycled.Bots
         public const float DirectWeight = 100f;
         public const float NearPileWeight = 30f;
 
+        /// <summary>Seen close to the jammed machine or inside the warned gas room when the alarm went up: the accusation level, not a vote alone.</summary>
+        public const float NearAlarmWeight = NearPileWeight;
+
         /// <summary>A player seen leaving a dirty spot dirty after a clean time: one cue, below the vote (40) and the accusation (30) thresholds, so it needs a second one.</summary>
         public const float FakeCleanWeight = 25f;
         public const float VoteThreshold = 40f;
@@ -53,6 +56,19 @@ namespace Uncycled.Bots
                 if (r.Actor != me && direct.Add(r.Actor))
                 {
                     Add(r.Actor, FakeCleanWeight);
+                }
+            }
+
+            // seats this bot saw close to the machine when it jammed, or inside the room when the gas warning went up: a weaker cue than a witnessed act
+            var nearAlarm = new HashSet<byte>();
+            foreach (AlarmSighting a in mem.RecentAlarms(view))
+            {
+                foreach (byte seat in a.Near)
+                {
+                    if (seat != me && !mem.IsKnownOut(seat) && nearAlarm.Add(seat))
+                    {
+                        Add(seat, NearAlarmWeight);
+                    }
                 }
             }
 
@@ -106,6 +122,7 @@ namespace Uncycled.Bots
         {
             _chat.Clear();
             var claims = new Dictionary<(byte, byte), string?>(); // (accuser, accused) -> the claimed zone of an eyewitness line, null for a vague one
+            var nearOnly = new HashSet<(byte, byte)>(); // claims that only say "seen close by" (saw_near): worth NearAlarmWeight, not a vote
             var contradicted = new HashSet<byte>();
             foreach (ChatAct a in log.Acts)
             {
@@ -118,9 +135,18 @@ namespace Uncycled.Bots
                 {
                     var key = (a.Speaker, a.Seat.Value);
                     bool witness = IsEyewitness(a);
-                    if (!claims.TryGetValue(key, out string? zone) || (witness && zone == null))
+                    bool near = a.PhraseId == EvidenceItem.SawNear && a.Zone != null;
+                    if (!claims.TryGetValue(key, out string? zone) || ((witness || near) && zone == null) || (witness && nearOnly.Contains(key)))
                     {
-                        claims[key] = witness ? a.Zone : null;
+                        claims[key] = witness || near ? a.Zone : null;
+                        if (near && !witness)
+                        {
+                            nearOnly.Add(key);
+                        }
+                        else
+                        {
+                            nearOnly.Remove(key);
+                        }
                     }
                 }
                 else if (a.Kind == "alibi" && a.Zone != null && !contradicted.Contains(a.Speaker) && Contradicts(mem, a.Speaker, a.Zone))
@@ -138,7 +164,7 @@ namespace Uncycled.Bots
                 {
                     AddChat(accused, HearsayWeight);
                 }
-                else if (ContradictsClaim(mem, accused, claim.Value))
+                else if (nearOnly.Contains(claim.Key) ? Contradicts(mem, accused, claim.Value) : ContradictsClaim(mem, accused, claim.Value))
                 {
                     continue; // this bot saw him elsewhere then: the line does not hold
                 }
@@ -148,7 +174,7 @@ namespace Uncycled.Bots
                 }
                 else
                 {
-                    AddChat(accused, EyewitnessWeight);
+                    AddChat(accused, nearOnly.Contains(claim.Key) ? NearAlarmWeight : EyewitnessWeight);
                 }
             }
         }

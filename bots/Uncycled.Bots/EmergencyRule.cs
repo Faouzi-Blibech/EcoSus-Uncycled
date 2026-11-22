@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Sim.Core;
 using Sim.Match;
 using Sim.Uncycled;
@@ -59,12 +60,13 @@ namespace Uncycled.Bots
                 _seen = count;
             }
 
-            int acts = 0;
+            // each act seen since the last call: what it was (repollute, jam, gas) and where
+            var acts = new List<(string Trigger, string? Zone)>();
             for (int i = _seen; i < count; i++)
             {
                 if (mem.Witnessed[i].Act == ActKind.Repollute)
                 {
-                    acts++;
+                    acts.Add((TriggerRepollute, mem.Witnessed[i].ZoneId));
                 }
             }
 
@@ -72,12 +74,12 @@ namespace Uncycled.Bots
             // the two public alarms count only for a seat that sees what they hit: the machine in its sight, the gas room in sight or around it
             if (jam && !_prevJam && SeesMachine(view, map))
             {
-                acts++;
+                acts.Add((TriggerJam, MachineZone(map)));
             }
 
             if (gas && !_prevGas && SeesGasRoom(view, map))
             {
-                acts++;
+                acts.Add((TriggerGas, GasZone(map, view.Gas!.Room)));
             }
 
             _prevJam = jam;
@@ -88,37 +90,71 @@ namespace Uncycled.Bots
                 return;
             }
 
-            for (int i = 0; i < acts; i++)
+            foreach ((string trigger, string? zone) in acts)
             {
                 if (Allowed(view, mem, map) && _rng.NextFloat() < _settings.EmergencyOnWitnessChance)
                 {
                     Wanted = true;
+                    mem.EmergencyTrigger = trigger;
+                    mem.EmergencyZone = zone;
                 }
             }
         }
 
+        /// <summary>What made a seat call an emergency meeting (BotMemory.EmergencyTrigger).</summary>
+        public const string TriggerRepollute = "repollute";
+        public const string TriggerJam = "jam";
+        public const string TriggerGas = "gas";
+
         private static bool InSight(SeatView view, MapData map, Vec2 point) =>
             Vec2.Distance(view.Me.Position, point) <= view.Me.Vision + SightEps && map.Sight.HasLineOfSight(view.Me.Position, point);
 
-        private static bool SeesMachine(SeatView view, MapData map)
+        internal static bool SeesMachine(SeatView view, MapData map)
         {
             ConsoleDef? machine = ActionQuery.MachineConsole(map);
             return machine != null && InSight(view, map, machine.Position);
         }
 
-        /// <summary>The seat stands in the warned room, or sees its centre or the point of it nearest to the seat.</summary>
-        private static bool SeesGasRoom(SeatView view, MapData map)
+        /// <summary>Id of the map zone the machine stands in ("" when none).</summary>
+        internal static string MachineZone(MapData map)
         {
-            ZoneDef? room = null;
-            foreach (ZoneDef z in map.GasRooms)
+            ConsoleDef? machine = ActionQuery.MachineConsole(map);
+            return machine == null ? "" : map.ZoneAt(machine.Position);
+        }
+
+        /// <summary>The map zone (a zone id a chat line may name) of a gas room: the zone of the same name without the "gas_" prefix, else the zone at the room's centre.</summary>
+        internal static string GasZone(MapData map, string roomId)
+        {
+            string name = roomId.StartsWith("gas_", System.StringComparison.Ordinal) ? roomId.Substring(4) : roomId;
+            foreach (ZoneDef z in map.Zones)
             {
-                if (z.Id == view.Gas!.Room)
+                if (z.Id == name)
                 {
-                    room = z;
-                    break;
+                    return z.Id;
                 }
             }
 
+            ZoneDef? gasRoom = GasRoomOf(map, roomId);
+            return gasRoom == null ? "" : map.ZoneAt(new Vec2(gasRoom.X + gasRoom.Width / 2f, gasRoom.Y + gasRoom.Height / 2f));
+        }
+
+        internal static ZoneDef? GasRoomOf(MapData map, string roomId)
+        {
+            foreach (ZoneDef z in map.GasRooms)
+            {
+                if (z.Id == roomId)
+                {
+                    return z;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>The seat stands in the warned room, or sees its centre or the point of it nearest to the seat.</summary>
+        internal static bool SeesGasRoom(SeatView view, MapData map)
+        {
+            ZoneDef? room = GasRoomOf(map, view.Gas!.Room);
             if (room == null)
             {
                 return false;

@@ -51,6 +51,13 @@ namespace Uncycled.Bots.Meeting
                 }
             }
 
+            // the caller says what made it call: the machine jam or the gas warning it saw (first, before it accuses anyone)
+            MeetingDecision? explain = Explain(s);
+            if (explain != null)
+            {
+                return explain;
+            }
+
             float threshold = s.Role == Role.Polluter ? SuspicionModel.HearsayWeight : AccuseThreshold;
             byte? target = TopSuspect(s, threshold);
             if (target != null && !SaidAccuseOf(s, target.Value))
@@ -61,10 +68,29 @@ namespace Uncycled.Bots.Meeting
             return MeetingDecision.Quiet(SourceName);
         }
 
+        /// <summary>The caller's first line: the alarm it saw (saw_jam / saw_gas with the zone), not yet said by it; null when none.</summary>
+        private static MeetingDecision? Explain(MeetingState s)
+        {
+            if (s.CalledBy != s.Self)
+            {
+                return null;
+            }
+
+            foreach (EvidenceItem e in s.Evidence)
+            {
+                if ((e.Kind == EvidenceItem.SawJam || e.Kind == EvidenceItem.SawGas) && !s.SaidOwn(e.Kind))
+                {
+                    return MeetingDecision.Say(SourceName, e.Kind, null, e.Zone);
+                }
+            }
+
+            return null;
+        }
+
         private static MeetingDecision Accuse(MeetingState s, byte target)
         {
-            // the strongest own evidence about the seat: a witnessed dump, a hit, then a sighting near a pile
-            foreach (string kind in new[] { EvidenceItem.SawDump, EvidenceItem.SawHit, EvidenceItem.NearPile })
+            // the strongest own evidence about the seat: a witnessed dump, a hit, a sighting near a pile, then near the jam or the gas
+            foreach (string kind in new[] { EvidenceItem.SawDump, EvidenceItem.SawHit, EvidenceItem.NearPile, EvidenceItem.SawNear })
             {
                 foreach (EvidenceItem e in s.Evidence)
                 {
