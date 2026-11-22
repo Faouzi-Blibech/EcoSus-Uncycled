@@ -9,6 +9,10 @@ const RotateOverlay := preload("res://ui/widgets/rotate_overlay.gd")
 const SERVER_PORT: int = 5000
 const SERVER_PATH: String = "/ws"
 const DEFAULT_SERVER_URL: String = "ws://localhost:%d%s" % [SERVER_PORT, SERVER_PATH]
+## The photo service (ecoverify/, scan links and profiles). It runs on its own host, so it is not
+## derived from the page; set the hosted address here when it is online. 127.0.0.1, not localhost:
+## Godot tries IPv6 (::1) for localhost, and a service listening on IPv4 only refuses it.
+const SCAN_URL: String = "http://127.0.0.1:8000"
 const SETTINGS_PATH: String = "user://settings.cfg"
 const LANGUAGES: Array[String] = ["en", "fr", "ar"]
 ## Godot's default font has no Arabic letters; this one is added behind it (see _add_font_fallbacks).
@@ -17,6 +21,7 @@ const ARABIC_FONT_PATH: String = "res://assets/fonts/NotoSansArabic.ttf"
 var player_name: String = ""
 var language: String = "en"
 var server_url: String = DEFAULT_SERVER_URL
+var scan_url: String = SCAN_URL
 
 
 func _ready() -> void:

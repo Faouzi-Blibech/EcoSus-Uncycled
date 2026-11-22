@@ -24,6 +24,8 @@ const POPUP_BG: Color = Color(0.13, 0.19, 0.15)
 const POPUP_BORDER: Color = Color(0.97, 0.94, 0.85)
 const POPUP_BORDER_PX: int = 2
 const POPUP_RADIUS_PX: int = 10
+## The scan QR code's side in the popup (logical px; 8 px modules stay readable for a phone camera).
+const SCAN_QR_PX: float = 140.0
 
 var _status: Label
 var _panel: SettingsPanel = null
@@ -32,6 +34,10 @@ var _panel: SettingsPanel = null
 var _popup: Control = null
 var _popup_error: Label = null
 var _name_edit: LineEdit = null
+## Scan popup parts (null when it is closed).
+var _scan_stats: Label = null
+var _scan_status: Label = null
+var _scan_qr: TextureRect = null
 ## Run after the profile popup saves a name (Create or Join pressed with no name).
 var _after_name: Callable = Callable()
 
@@ -44,6 +50,10 @@ func _ready() -> void:
 	theme = UIKit.theme()
 	UIKit.fill(self)
 	PaperKit.background(self)
+	Profile.changed.connect(_show_scan_stats)
+	Profile.qr_ready.connect(_on_scan_qr)
+	Profile.scan_failed.connect(_on_scan_failed)
+	Profile.scan_done.connect(_on_scan_done)
 	var stage: Control = PaperKit.stage(self)
 
 	var logo: TextureRect = PaperKit.picture(Assets.texture(ART_DIR + "logo.png"), LOGO_RECT)
@@ -162,6 +172,9 @@ func _close_popup() -> void:
 	_popup = null
 	_popup_error = null
 	_name_edit = null
+	_scan_stats = null
+	_scan_status = null
+	_scan_qr = null
 
 
 func _open_profile_popup() -> void:
@@ -173,6 +186,8 @@ func _open_profile_popup() -> void:
 	var skins: Label = UIKit.make_label(tr("MENU_PROFILE_SKINS"))
 	skins.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(skins)
+	if Profile.loaded:
+		box.add_child(UIKit.make_label(scan_stats_text(Profile.points, Profile.streak)))
 	var row: HBoxContainer = _finish_popup(box, "COMMON_CANCEL")
 	var save_btn: Button = UIKit.make_button(tr("COMMON_SAVE"))
 	save_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -182,12 +197,80 @@ func _open_profile_popup() -> void:
 	_name_edit.grab_focus()
 
 
+## Scan: points and streak from the photo service, a button that starts a scan (the web build
+## leaves for the scan page in the same tab, Android opens the browser, desktop shows a QR code).
 func _open_scan_popup() -> void:
 	var box: VBoxContainer = _open_popup(tr("MENU_SCAN"))
 	var text: Label = UIKit.make_label(tr("MENU_SCAN_TEXT"))
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(text)
-	_finish_popup(box, "COMMON_CLOSE")
+	_scan_stats = UIKit.make_label("")
+	box.add_child(_scan_stats)
+	_scan_qr = TextureRect.new()
+	_scan_qr.custom_minimum_size = Vector2(SCAN_QR_PX, SCAN_QR_PX)
+	_scan_qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_scan_qr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_scan_qr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_scan_qr.visible = false
+	box.add_child(_scan_qr)
+	_scan_status = UIKit.make_label("", UIKit.FONT_SIZE, Color(0.7, 0.85, 0.75))
+	_scan_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_scan_status.visible = false
+	box.add_child(_scan_status)
+	var row: HBoxContainer = _finish_popup(box, "COMMON_CLOSE")
+	var scan_btn: Button = UIKit.make_button(tr("MENU_SCAN_START"))
+	scan_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scan_btn.pressed.connect(_on_scan_pressed)
+	row.add_child(scan_btn)
+	row.move_child(scan_btn, 0)
+	_show_scan_stats()
+	Profile.refresh()
+
+
+static func scan_stats_text(points: int, streak: int) -> String:
+	return tr_static("MENU_SCAN_STATS") % [points, streak]
+
+
+static func tr_static(key: String) -> String:
+	return str(TranslationServer.translate(StringName(key)))
+
+
+func _show_scan_stats() -> void:
+	if _scan_stats != null:
+		_scan_stats.text = scan_stats_text(Profile.points, Profile.streak) if Profile.loaded else ""
+
+
+func _on_scan_pressed() -> void:
+	_set_scan_status(tr("MENU_SCAN_WAIT"))
+	if _popup_error != null:
+		_popup_error.text = ""
+	Profile.start_scan()
+
+
+func _on_scan_qr(texture: Texture2D) -> void:
+	if _scan_qr != null:
+		_scan_qr.texture = texture
+		_scan_qr.visible = true
+		_set_scan_status(tr("MENU_SCAN_QR"))
+
+
+func _on_scan_failed() -> void:
+	if _scan_status != null:
+		_set_scan_status("")
+		_popup_error.text = tr("MENU_SCAN_OFFLINE")
+
+
+func _on_scan_done() -> void:
+	if _scan_status != null:
+		_scan_qr.visible = false
+		_set_scan_status(tr("MENU_SCAN_DONE"))
+
+
+## The status line only takes room when it says something.
+func _set_scan_status(text: String) -> void:
+	if _scan_status != null:
+		_scan_status.text = text
+		_scan_status.visible = not text.is_empty()
 
 
 ## Opens the profile popup with a hint; then runs next once a name is saved.
