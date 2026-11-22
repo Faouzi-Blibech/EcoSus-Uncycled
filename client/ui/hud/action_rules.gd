@@ -16,7 +16,7 @@ extends RefCounted
 ## "sabotage": {...}, "fix": {visible, kind ("fire", "smog", "machine" or "")}, "clean": bool,
 ## "dash": {visible, ready, cooldown}, "use_look": {kind, count}}.
 ## use_look says what USE will do at the console in reach, so the button can show it: "clean" (a spot,
-## also for a Trasher's fake clean), "recycle" (the machine; count = bags carried), "meeting" (the
+## Cleaners only), "recycle" (the machine; count = bags carried), "meeting" (the
 ## emergency table) or "use" (anything else).
 ## The server still validates every action; these rules only decide what the player is offered.
 
@@ -38,11 +38,12 @@ static func button_states(ctx: Dictionary) -> Dictionary:
 	var near: Dictionary = ctx.get("near_console", {}) as Dictionary
 	match str(near.get("kind", "")):
 		"task":
-			# A task console is a cleaning spot. A Cleaner cleans it while dirty with a free bag slot; a
-			# Trasher fakes the clean on the same dirty spots (faking on a clean one would give them away).
-			var dirty: bool = str(ctx.get("near_spot_state", "")) == "dirty"
-			states["use"] = dirty and (polluter or not bool(ctx.get("bags_full", false)))
-			states["use_look"] = {"kind": "clean", "count": 0}
+			# A task console is a cleaning spot. A Cleaner cleans it while dirty with a free bag slot. A
+			# Trasher has no clean at all (playtest 2026-11-22: the fake clean was abused as an alibi).
+			if not polluter:
+				var dirty: bool = str(ctx.get("near_spot_state", "")) == "dirty"
+				states["use"] = dirty and not bool(ctx.get("bags_full", false))
+				states["use_look"] = {"kind": "clean", "count": 0}
 		"emergency":
 			# The server takes a call only emergency_min_since_meeting_s after the start or the last
 			# meeting: the button shows with a ring until then instead of being refused.

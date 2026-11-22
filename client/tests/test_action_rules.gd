@@ -35,13 +35,14 @@ func test_cleaner_spot_use_table() -> bool:
 	assert_eq(_states({"near_console": SPOT, "near_spot_state": "dirty", "bags_full": true})["use"], false, "bags full")
 	assert_eq(_states({"near_console": SPOT, "near_spot_state": "clean"})["use"], false, "already clean")
 	assert_eq(_states({"near_console": SPOT})["use"], false, "state unknown before the first snapshot")
-	assert_eq(_states({"role": "polluter", "near_console": SPOT, "near_spot_state": "clean"})["use"], false, "a Trasher fakes only dirty spots")
+	assert_eq(_states({"role": "polluter", "near_console": SPOT, "near_spot_state": "clean"})["use"], false, "a Trasher has no clean")
 	return true
 
 
+## Regression (playtest 2026-11-22): the Trasher's fake clean was removed; USE stays off at a dirty spot.
 func test_polluter_at_task_console() -> bool:
-	var s: Dictionary = _states({"role": "polluter", "near_console": SPOT, "near_spot_state": "dirty", "bags_full": true})
-	assert_eq(s["use"], true, "use for the fake")
+	var s: Dictionary = _states({"role": "polluter", "near_console": SPOT, "near_spot_state": "dirty"})
+	assert_eq(s["use"], false, "no clean for a Trasher, not even a fake one")
 	assert_eq(s["repollute"]["visible"], true, "re-pollute shown to a Trasher")
 	assert_eq(s["repollute"]["ready"], false, "but not at a dirty spot")
 	assert_eq(s["ability"]["visible"], false, "no ability before the unlock")
@@ -266,7 +267,7 @@ func test_use_look_per_console() -> bool:
 	var table: Array = [
 		[{}, {"kind": "use", "count": 0}, "nothing in reach"],
 		[{"near_console": SPOT, "near_spot_state": "dirty"}, {"kind": "clean", "count": 0}, "dirty spot"],
-		[{"role": "polluter", "near_console": SPOT, "near_spot_state": "dirty"}, {"kind": "clean", "count": 0}, "a Trasher's fake clean looks the same"],
+		[{"role": "polluter", "near_console": SPOT, "near_spot_state": "dirty"}, {"kind": "use", "count": 0}, "a Trasher has no clean"],
 		[{"near_console": MACHINE, "bags": 2}, {"kind": "recycle", "count": 2}, "machine with 2 bags"],
 		[{"near_console": MACHINE, "bags": 0}, {"kind": "recycle", "count": 0}, "machine, no bags (USE hidden)"],
 		[{"near_console": MACHINE, "bags": 1, "machine_jammed": true}, {"kind": "use", "count": 0}, "jammed: FIX instead"],

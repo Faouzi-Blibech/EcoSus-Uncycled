@@ -78,3 +78,19 @@ func test_dash_look_interrupted_restores_the_body() -> bool:
 	a.visible = false
 	_assert_at_rest(a, scale, pos, "hidden mid-dash")
 	return true
+
+
+## Regression (playtest 2026-11-22): the robot and the rabbit moonwalked. Their walk frames face
+## right, so walking left must mirror them and walking right must not.
+func test_right_facing_skins_face_the_way_they_walk() -> bool:
+	for skin in ["robot", "eagle", "rabbit"]:
+		var a: Avatar = _avatar()
+		a.setup(1, "Tester", Color.RED, skin)
+		a._process(STEP_S)
+		a.position += Vector2(-10.0, 0.0)
+		a._process(STEP_S)
+		assert_true(a._body.flip_h, skin + ": walking left is mirrored")
+		a.position += Vector2(10.0, 0.0)
+		a._process(STEP_S)
+		assert_true(not a._body.flip_h, skin + ": walking right is drawn as is")
+	return true
