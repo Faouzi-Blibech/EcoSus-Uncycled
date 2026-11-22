@@ -5,6 +5,8 @@ extends Sprite2D
 
 const ART_PATH: String = "res://assets/spots/%s_%s.png"
 const DIRTY_TINT: Color = Color(0.75, 0.6, 0.45)
+## Painted spot art is scaled uniformly so its longer side is this many tiles.
+const SIZE_TILES: float = 1.5
 
 var spot_id: String = ""
 var art_type: String = ""
@@ -24,4 +26,7 @@ func show_state(new_state: String) -> void:
 		return
 	state = s
 	texture = Assets.texture(ART_PATH % [art_type, s])
+	var longest: float = maxf(float(texture.get_width()), float(texture.get_height()))
+	var k: float = minf(1.0, Net.tiles_to_px(SIZE_TILES) / longest)
+	scale = Vector2(k, k)
 	modulate = Color.WHITE if s == "clean" else DIRTY_TINT

@@ -60,6 +60,7 @@ ROLE_POLLUTER,Trasher,Pollueur,ملوِّث
 HUD_ROLE,Role: %s,Rôle : %s,الدور: %s
 HUD_PARTNER,Partner: %s,Complice : %s,الشريك: %s
 HUD_METER,Cleanliness: %.0f%%,Propreté : %.0f%%,النظافة: %.0f%%
+HUD_POLLUTION,Pollution: %.0f%%,Pollution : %.0f%%,التلوث: %.0f%%
 HUD_PHASE,Phase: %s,Phase : %s,المرحلة: %s
 HUD_PING,Weak connection,Connexion faible,اتصال ضعيف
 PHASE_LOBBY,Lobby,Salon,الردهة

@@ -164,8 +164,9 @@ func _ready() -> void:
 	add_child(_fx_holder)
 
 	_player = LocalPlayerScene.instantiate() as LocalPlayer
-	_player.avatar.setup(Session.seat_id, _own_name(), Session.seat_color(Session.seat_id), maxi(Session.seat_id, 0))
+	_player.avatar.setup(Session.seat_id, _own_name(), Session.seat_color(Session.seat_id), maxi(Session.seat_id, 0), _skin_of(Session.seat_id))
 	_depth.add_child(_player)
+	_build_machine()
 	_camera = CameraScript.new() as FollowCamera
 	_player.add_child(_camera)
 	var used: Rect2i = _map.floor_layer().get_used_rect()
@@ -352,7 +353,7 @@ func _start_dash(to_px: Vector2) -> void:
 	_dash_wait = -1.0
 	_dash_to = to_px
 	var from: Vector2 = _player.global_position
-	_leave_ghosts(from, to_px, Session.seat_color(Session.seat_id))
+	_leave_ghosts(from, to_px, Session.seat_color(Session.seat_id), _player.avatar)
 	if not is_inside_tree():
 		_finish_dash()
 		return
@@ -367,13 +368,20 @@ func _finish_dash() -> void:
 
 
 ## Fading copies of the body along a dash line (own and remote dashes).
-func _leave_ghosts(from: Vector2, to: Vector2, color: Color) -> void:
+func _leave_ghosts(from: Vector2, to: Vector2, color: Color, pose: Avatar = null) -> void:
 	for i in DASH_GHOSTS:
 		var g: Node2D = DashGhostScript.new()
 		g.position = from.lerp(to, float(i) / float(DASH_GHOSTS))
 		g.set("color", color)
+		if pose != null:
+			pose.dress_ghost(g)
 		g.set("delay", 0.03 * float(i))
 		_avatars_holder.add_child(g)
+
+
+## The lobby skin a seat wears ("" for the default character).
+func _skin_of(seat: int) -> String:
+	return str(Session.seat_info(seat).get("skin", ""))
 
 
 ## Shows the seats in `remote` (seat -> {pos, color, out}) and hides the others.
@@ -386,13 +394,13 @@ func _update_remote(remote: Dictionary) -> void:
 		var a: Avatar = _avatars.get(seat) as Avatar
 		if a == null:
 			a = AvatarScene.instantiate() as Avatar
-			a.setup(int(seat), Session.seat_name(int(seat)), Session.color_of(int(info["color"])), int(seat))
+			a.setup(int(seat), Session.seat_name(int(seat)), Session.color_of(int(info["color"])), int(seat), _skin_of(int(seat)))
 			_avatars_holder.add_child(a)
 			_avatars[seat] = a
 		a.set_display_name(Session.seat_name(int(seat)))
 		var to: Vector2 = info["pos"]
 		if a.visible and a.position.distance_to(to) > REMOTE_DASH_STEP_PX:
-			_leave_ghosts(a.position, to, Session.color_of(int(info["color"])))
+			_leave_ghosts(a.position, to, Session.color_of(int(info["color"])), a)
 		a.visible = true
 		a.position = to
 		a.set_out(bool(info["out"]))
@@ -400,6 +408,16 @@ func _update_remote(remote: Dictionary) -> void:
 
 ## Mirrors Session.piles ([{id, pos (px), kind, state}]): adds, updates and removes. Runs once per
 ## snapshot, not per frame; Pile.setup ignores unchanged data.
+## The Recycling Machine on its marker, y-sorted with the players so they pass in front and behind.
+func _build_machine() -> void:
+	var m: MapMarker = _map.marker(MACHINE_ID)
+	if m == null:
+		return
+	var v: MachineView = MachineView.new()
+	v.place(m.global_position)
+	_depth.add_child(v)
+
+
 ## One SpotView per task console of the map, drawn under the piles and players.
 func _build_spots() -> void:
 	var holder: Node2D = Node2D.new()
