@@ -31,6 +31,9 @@ namespace Uncycled.Bots
         /// <summary>Which meeting decisions the model makes: "none" (default: rules only, the model is off even with keys), "vote" (rules talk, the model votes) or "all" (the model talks and votes).</summary>
         public string MeetingClefFor { get; set; } = "none";
 
+        /// <summary>Chance (0..1) that a Cleaner that sees a Trasher act (re-pollute, machine jam, gas warning) walks to the emergency table and calls a meeting; one roll per act (bots.json emergency_on_witness_chance).</summary>
+        public float EmergencyOnWitnessChance { get; set; } = 0.7f;
+
         /// <summary>Human pace (bots.json "pace" block).</summary>
         public PaceSettings Pace { get; } = new PaceSettings();
 
@@ -60,6 +63,7 @@ namespace Uncycled.Bots
             s.ReactionMaxS = Number(text, "reaction_max_s", s.ReactionMaxS);
             s.Skill = Number(text, "skill", s.Skill);
             s.FollowCapS = Number(text, "follow_cap_s", s.FollowCapS);
+            s.EmergencyOnWitnessChance = Number(text, "emergency_on_witness_chance", s.EmergencyOnWitnessChance);
             s.MeetingDailyCallCap = (int)Number(text, "daily_call_cap", s.MeetingDailyCallCap);
             s.MeetingTimeoutS = Number(text, "timeout_s", s.MeetingTimeoutS);
             Match clefFor = Regex.Match(text, "\"clef_for\"\\s*:\\s*\"([^\"]*)\"");

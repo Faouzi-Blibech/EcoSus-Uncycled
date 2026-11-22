@@ -5,6 +5,7 @@
   "reaction_max_s": 1.2,
   "skill": 0.6,
   "follow_cap_s": 4,
+  "emergency_on_witness_chance": 0.7,
   "meeting": { "clef_for": "none", "daily_call_cap": 5000, "timeout_s": 3 },
   "pace": {
     "task_time_factor_min": 1.5,

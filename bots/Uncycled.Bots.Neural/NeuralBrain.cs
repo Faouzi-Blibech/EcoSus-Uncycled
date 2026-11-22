@@ -85,6 +85,7 @@ namespace Uncycled.Bots.Neural
             private readonly float[] _obs = new float[ObservationBuilderV2.Size];
             private readonly PolicyDriver _driver = new PolicyDriver();
             private readonly ReportRule _report;
+            private readonly EmergencyRule _emergency;
             private int _index;
             private bool _forced;
 
@@ -93,6 +94,7 @@ namespace Uncycled.Bots.Neural
             {
                 _policy = policy;
                 _report = new ReportRule(settings, rng);
+                _emergency = new EmergencyRule(settings, rng);
                 // skill 1 = always the network's best action, lower skill = more sampling
                 _temperature = Math.Min(1f, Math.Max(0f, 1f - settings.Skill));
             }
@@ -117,6 +119,13 @@ namespace Uncycled.Bots.Neural
                     return Choice.Now(BotAction.ReportNearest);
                 }
 
+                // a Cleaner that saw a Trasher act and passed its roll walks to the emergency table and calls the meeting
+                if (_emergency.Active(view, Mem, Mem.Map, Exec))
+                {
+                    _forced = true;
+                    return Exec.Busy && Exec.Current == BotAction.CallMeeting ? Choice.Keep : Choice.Now(BotAction.CallMeeting);
+                }
+
                 _forced = false;
                 // the scripted FullMask is not the network's: it picks among the v2 policy list, valid ones only
                 ObservationBuilderV2.Build(view, Mem, Mem.Map, Engine!.Config, view.MatchTime, _obs);
@@ -131,6 +140,19 @@ namespace Uncycled.Bots.Neural
                 // when the action begins. Urgent: the network may change its mind while an action runs.
                 _index = index;
                 return Choice.Now(PolicyActionsV2.Resolve(index, view, Mem, Mem.Map).Action);
+            }
+
+            internal override void Watch(SeatView view) => _emergency.Watch(view, Mem, Mem.Map);
+
+            internal override bool StillValid(BotAction action, SeatView view, bool[] fullMask) =>
+                fullMask[(int)action] || (action == BotAction.CallMeeting && _emergency.Wanted && _emergency.Allowed(view, Mem, Mem.Map));
+
+            internal override void Started(BotAction action, SeatView view)
+            {
+                if (action == BotAction.CallMeeting && _emergency.Wanted)
+                {
+                    _emergency.NoteStart(Exec);
+                }
             }
 
             internal override void Prepare(BotAction action, SeatView view)

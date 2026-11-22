@@ -327,9 +327,11 @@ namespace Uncycled.Bots.Tests
             }
 
             // the random learner may have turned the smog on (vision 1): wait for a clear moment to stage the act
+            // it must not call an emergency meeting by chance meanwhile: the match has two calls and the staged act needs one
+            int callMeeting = Array.IndexOf(PolicyActionsV2.Names.ToArray(), "CallMeeting");
             for (int d = 0; d < 4000 && (r.Engine.ActiveTime < ready || r.Engine.Smog.Active || r.Engine.ViewFor(witness).Me.Vision < 3f); d++)
             {
-                r.AdvanceRandom(rng);
+                r.AdvanceRandom(rng, callMeeting);
             }
 
             Assert.True(r.Engine.ViewFor(witness).Me.Vision >= 3f, "no clear moment to stage the act");
@@ -381,9 +383,11 @@ namespace Uncycled.Bots.Tests
                 }
             }
 
+            // it must not call an emergency meeting by chance meanwhile: the match has two calls and the staged act needs one
+            int callMeeting = Array.IndexOf(PolicyActionsV2.Names.ToArray(), "CallMeeting");
             for (int d = 0; d < 4000 && (r.Engine.ActiveTime < ready || r.Engine.Smog.Active || r.Engine.ViewFor(witness).Me.Vision < 3f); d++)
             {
-                r.AdvanceRandom(rng);
+                r.AdvanceRandom(rng, callMeeting);
                 onStep();
             }
 

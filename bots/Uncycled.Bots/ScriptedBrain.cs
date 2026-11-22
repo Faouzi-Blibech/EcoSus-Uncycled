@@ -88,6 +88,7 @@ namespace Uncycled.Bots
             Mem.GasWarnedRoom = engine.ExtrasFor(seat).GasRoom; // the public gas warning every seat gets, as a human sees it
             Mem.Observe(view, now, engine.Witnesses.SeenBy(seat));
             Mem.UpgradeOffer = engine.OpenUpgradeOffer(seat); // the popup a human sees: the offer the seat holds
+            Watch(view);
 
             if (view.Me.Status != PlayerStatus.Active || view.Phase == MatchPhase.Ended)
             {
@@ -123,6 +124,14 @@ namespace Uncycled.Bots
 
         /// <summary>Pick the next action. The mask holds what is valid right now.</summary>
         internal abstract Choice Choose(SeatView view, bool[] mask);
+
+        /// <summary>Called every Think after the memory observed the view, before any decision: lets a brain watch what happens (the emergency rule).</summary>
+        internal virtual void Watch(SeatView view)
+        {
+        }
+
+        /// <summary>True when a chosen action may still begin once its reaction delay is over; by default what the mask says.</summary>
+        internal virtual bool StillValid(BotAction action, SeatView view, bool[] fullMask) => fullMask[(int)action];
 
         /// <summary>Called just before a chosen action begins: set the executor's hints (spot, upgrade, ability, room).</summary>
         internal virtual void Prepare(BotAction action, SeatView view)
@@ -219,7 +228,7 @@ namespace Uncycled.Bots
 
             BotAction action = _pending.Value;
             _pending = null;
-            if (ActionCatalogue.FullMask(view, Mem, Mem.Map)[(int)action])
+            if (StillValid(action, view, ActionCatalogue.FullMask(view, Mem, Mem.Map)))
             {
                 Prepare(action, view);
                 Exec.Begin(action, view, Mem.Map, now);
