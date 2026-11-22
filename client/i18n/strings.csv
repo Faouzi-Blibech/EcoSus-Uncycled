@@ -1,366 +1,368 @@
-keys,en,fr,ar
-SETTINGS_SCAN,Scan service address,Adresse du service de scan,عنوان خدمة المسح
-SETTINGS_BAD_SCAN_URL,The scan address must look like http://192.168.1.20:8000 or https://…,L'adresse de scan doit ressembler à http://192.168.1.20:8000 ou https://…,يجب أن يشبه عنوان المسح http://192.168.1.20:8000 أو https://…
-CHAR_LOCKED,That character is still locked. Keep your scan streak going!,Ce personnage est encore verrouillé. Continue ta série de scans !,هذه الشخصية ما زالت مقفلة. واصل سلسلة المسح!
-BOOT_TITLE,Uncycled,Uncycled,Uncycled
-BOOT_CONNECTING,Connecting to the server...,Connexion au serveur...,جارٍ الاتصال بالخادم...
-BOOT_OFFLINE,"Cannot reach the game server. Check the address in Settings.\n%s","Impossible de joindre le serveur de jeu. Vérifie l'adresse dans les Paramètres.\n%s",تعذّر الوصول إلى خادم اللعبة. تحقّق من العنوان في الإعدادات.\n%s
-BOOT_RETRY,Retry,Réessayer,إعادة المحاولة
-BOOT_UPDATE_NEEDED,This version is out of date. Reload the page or install the latest version.,Cette version est périmée. Recharge la page ou installe la dernière version.,هذا الإصدار قديم. أعد تحميل الصفحة أو ثبّت أحدث إصدار.
-BOOT_ERROR,Something went wrong (%s). Please try again.,Un problème est survenu (%s). Réessaie.,حدث خطأ (%s). حاول مرة أخرى.
-COMMON_SETTINGS,Settings,Paramètres,الإعدادات
-COMMON_SAVE,Save,Enregistrer,حفظ
-COMMON_CANCEL,Cancel,Annuler,إلغاء
-COMMON_CLOSE,Close,Fermer,إغلاق
-SETTINGS_TITLE,Settings,Paramètres,الإعدادات
-SETTINGS_NAME,Player name,Nom du joueur,اسم اللاعب
-SETTINGS_LANGUAGE,Language,Langue,اللغة
-SETTINGS_SERVER,Server address,Adresse du serveur,عنوان الخادم
-SETTINGS_BAD_URL,"The address must start with ws:// or wss://","L'adresse doit commencer par ws:// ou wss://",يجب أن يبدأ العنوان بـ ws:// أو wss://
-LANG_EN,English,English,English
-LANG_FR,Français,Français,Français
-MENU_NAME_PLACEHOLDER,Your name,Ton nom,اسمك
-MENU_CREATE_GAME,Create Game,Créer,إنشاء لعبة
-MENU_JOIN_GAME,Join Game,Rejoindre,انضمام إلى لعبة
-MENU_JOIN_TITLE,Enter the room code,Entre le code de la salle,أدخل رمز الغرفة
-MENU_PROFILE,Profile,Profil,الملف الشخصي
-MENU_PROFILE_SKINS,Skins unlock with your daily scan streak.,Les skins se débloquent avec ta série de scans quotidiens.,تُفتح الأزياء مع سلسلة المسح اليومية.
-MENU_SCAN,Scan & earn,Scanne et gagne,امسح واربح
-"MENU_SCAN_TEXT","Photograph a real recyclable item to earn points, keep your daily streak and unlock skins.","Photographie un vrai objet recyclable pour gagner des points, garder ta série quotidienne et débloquer des skins.","صوّر غرضًا حقيقيًا قابلًا لإعادة التدوير لتربح نقاطًا وتحافظ على سلسلتك اليومية وتفتح أزياء جديدة."
-MENU_SCAN_STATS,"Points %d, streak %d","Points %d, série %d","النقاط %d، السلسلة %d"
-MENU_SCAN_START,Scan an item,Scanner un objet,امسح غرضًا
-MENU_SCAN_WAIT,Getting a scan link...,Création du lien de scan...,جارٍ تجهيز رابط المسح...
-MENU_SCAN_OPENED,"Take the photo, then come back.","Prends la photo, puis reviens.",التقط الصورة ثم عد.
-MENU_SCAN_DONE,Scan saved!,Scan enregistré !,تم حفظ المسح!
-MENU_SCAN_OFFLINE,The scan service is not reachable right now.,Le service de scan est injoignable pour le moment.,خدمة المسح غير متاحة حاليًا.
-MENU_CODE_PLACEHOLDER,Code,Code,الرمز
-MENU_JOIN,Join,Rejoindre,انضمام
-MENU_NAME_REQUIRED,Please enter a name.,Entre un nom d'abord.,أدخل اسمًا أولًا.
-MENU_BAD_CODE,The room code has 4 letters.,Le code de la salle a 4 lettres.,رمز الغرفة مكوّن من 4 أحرف.
-MENU_WORKING,Please wait...,Un instant...,لحظة من فضلك...
-MENU_NO_ANSWER,"The server did not answer, try again.","Le serveur n'a pas répondu, réessaie.",لم يردّ الخادم، حاول مرة أخرى.
-MENU_SESSION_EXPIRED,Your last game has ended. Create or join a room.,Ta dernière partie est terminée. Crée ou rejoins une salle.,انتهت لعبتك الأخيرة. أنشئ غرفة أو انضم إلى غرفة.
-JOIN_FAILED_NO_ROOM,This room does not exist.,Cette salle n'existe pas.,هذه الغرفة غير موجودة.
-JOIN_FAILED_FULL,This room is full.,Cette salle est pleine.,هذه الغرفة ممتلئة.
-JOIN_FAILED_IN_MATCH,A match is in progress. Join when it ends.,Une partie est en cours. Rejoins quand elle sera finie.,هناك مباراة جارية. انضم عند انتهائها.
-JOIN_FAILED_BAD_NAME,This name is not allowed.,Ce nom n'est pas autorisé.,هذا الاسم غير مسموح.
-JOIN_FAILED_UNKNOWN,Could not join the room.,Impossible de rejoindre la salle.,تعذّر الانضمام إلى الغرفة.
-LOBBY_CODE,Room code,Code de la salle,رمز الغرفة
-LOBBY_YOU,(you),(toi),(أنت)
-LOBBY_HUMAN,Player,Joueur,لاعب
-LOBBY_BOT,Bot,Bot,روبوت
-LOBBY_READY,Ready,Prêt,جاهز
-LOBBY_COLOR,Colour,Couleur,اللون
-LOBBY_START,Start (bots fill empty seats),Lancer (des bots remplissent les places vides),ابدأ (تملأ الروبوتات المقاعد الفارغة)
-LOBBY_LEAVE,Leave,Quitter,مغادرة
-LOBBY_WAITING_HOST,Waiting for the host to start the match.,En attente du lancement par l'hôte.,في انتظار أن يبدأ المضيف المباراة.
-RECONNECT_TITLE,Connection lost,Connexion perdue,انقطع الاتصال
-RECONNECT_WAITING,Reconnecting...,Reconnexion...,جارٍ إعادة الاتصال...
-RECONNECT_TRYING,Reconnecting...,Reconnexion...,جارٍ إعادة الاتصال...
-ROLE_CITIZEN,Cleaner,Nettoyeur,منظّف
-ROLE_POLLUTER,Trasher,Pollueur,ملوِّث
-HUD_ROLE,Role: %s,Rôle : %s,الدور: %s
-HUD_PARTNER,Partner: %s,Complice : %s,الشريك: %s
-HUD_METER,Cleanliness: %.0f%%,Propreté : %.0f%%,النظافة: %.0f%%
-HUD_POLLUTION,Pollution: %.0f%%,Pollution : %.0f%%,التلوث: %.0f%%
-HUD_PHASE,Phase: %s,Phase : %s,المرحلة: %s
-HUD_PICK_UPGRADE,Pick upgrade,Choisir un bonus,اختر ترقية
-HUD_PICK_ABILITY,Pick ability,Choisir un pouvoir,اختر قدرة
-HUD_PING,Weak connection,Connexion faible,اتصال ضعيف
-PHASE_LOBBY,Lobby,Salon,الردهة
-PHASE_INTRO,Get ready,Prépare-toi,استعد
-PHASE_PLAYING,Find the polluters!,Trouve les pollueurs !,اعثر على الملوِّثين!
-PHASE_MEETING,Meeting,Réunion,اجتماع
-PHASE_EJECTION,Ejection,Éjection,الطرد
-PHASE_ENDED,Game over,Partie terminée,انتهت اللعبة
-PLACEHOLDER_HINT,Please wait...,Un instant...,لحظة من فضلك...
-MG_CLOSE,Close,Fermer,إغلاق
-MG_SORT_HINT,Drag each item into the right bin.,Glisse chaque objet dans le bon bac.,اسحب كل عنصر إلى الحاوية الصحيحة.
-MG_COMPOST_TURN_HINT,Turn the handle around the pile %d times.,Tourne la manivelle %d fois autour du tas.,أدر المقبض حول الكومة %d مرات.
-MG_COMPOST_HOLD_HINT,Hold the gauge and release in the green zone.,Maintiens la jauge et relâche dans la zone verte.,اضغط مطوّلًا على المؤشر وأفلته في المنطقة الخضراء.
-BIN_PLASTIC_METAL,Plastic and metal packaging,Emballages plastique et métal,عبوات البلاستيك والمعادن
-BIN_PAPER,Paper,Papier,ورق
-BIN_GLASS,Glass,Verre,زجاج
-BIN_ORGANIC,Organic,Organique,عضوي
-ITEM_WATER_BOTTLE,Water bottle,Bouteille d'eau,زجاجة ماء
-ITEM_TIN_CAN,Tin can,Boîte de conserve,علبة معدنية
-ITEM_YOGURT_POT,Yogurt pot,Pot de yaourt,علبة زبادي
-ITEM_NEWSPAPER,Newspaper,Journal,جريدة
-ITEM_CARDBOARD_BOX,Cardboard box,Boîte en carton,صندوق كرتون
-ITEM_MAGAZINE,Magazine,Magazine,مجلة
-ITEM_JAM_JAR,Jam jar,Pot de confiture,برطمان مربى
-ITEM_WINE_BOTTLE,Wine bottle,Bouteille de vin,زجاجة نبيذ
-ITEM_PERFUME_FLASK,Perfume flask,Flacon de parfum,قارورة عطر
-ITEM_APPLE_CORE,Apple core,Trognon de pomme,قلب تفاحة
-ITEM_BANANA_PEEL,Banana peel,Peau de banane,قشرة موز
-ITEM_EGGSHELL,Eggshell,Coquille d'oeuf,قشرة بيض
-MEETING_CAUSE_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط
-MEETING_SPLASH_REPORT,Fallen player reported!,Joueur à terre signalé !,تم الإبلاغ عن لاعب سقط!
-MEETING_SPLASH_FOUND,%s found %s,%s a trouvé %s,%s وجد %s
-MEETING_CAUSE_EMERGENCY,%s called an emergency meeting,%s a lancé une réunion d'urgence,%s دعا إلى اجتماع طارئ
-MEETING_CLUES,Clues,Indices,أدلة
-MEETING_NO_CLUES,No clues.,Aucun indice.,لا توجد أدلة.
-MEETING_CLUE_PLAIN,%s (%s),%s (%s),%s (%s)
-MEETING_CHAT,Chat,Discussion,الدردشة
-MEETING_DISCUSSION,Discussion,Discussion,نقاش
-MEETING_VOTING,Vote,Vote,تصويت
-MEETING_CONFIRM,Vote,Voter,صوّت
-MEETING_SKIP,Skip vote,Passer le vote,تخطّي التصويت
-MEETING_VOTED,Voted,A voté,صوّت
-MEETING_YOU_VOTED,Your vote is in.,Ton vote est enregistré.,تم تسجيل صوتك.
-MEETING_OUT_NOTE,You are out and cannot vote.,Tu es éliminé et ne peux pas voter.,تم إقصاؤك ولا يمكنك التصويت.
-MEETING_SEAT_OUT,Out,Éliminé,مقصى
-MEETING_RESULTS,Results,Résultats,النتائج
-MEETING_VOTES_FOR,%s: %d,%s : %d,%s: %d
-MEETING_VOTES_SKIP,Skipped votes: %d,Abstentions : %d,أصوات التخطّي: %d
-MEETING_TIE,Tie. Nobody is ejected.,Égalité. Personne n'est éjecté.,تعادل. لا أحد يُطرد.
-MEETING_EJECTED,%s is ejected.,%s est éjecté.,تم طرد %s.
-MEETING_NO_EJECTION,Nobody is ejected.,Personne n'est éjecté.,لا أحد يُطرد.
-EJECTION_WAS_POLLUTER,%s was a polluter.,%s était un pollueur.,%s كان ملوِّثًا.
-EJECTION_WAS_NOT_POLLUTER,%s was not a polluter.,%s n'était pas un pollueur.,%s لم يكن ملوِّثًا.
-EJECTION_PENDING,Ejection in progress...,Éjection en cours...,الطرد جارٍ...
-ZONE_MARKET,Market,Marché,السوق
-ZONE_GARDEN,Garden,Jardin,الحديقة
-ZONE_DEPOT,Depot,Dépôt,المستودع
-ZONE_OFFICE,Office,Bureau,المكتب
-ZONE_CLUB,Club room,Salle du club,قاعة النادي
-ZONE_AMPHI,Amphitheatre,Amphithéâtre,المدرج
-ZONE_HALLWAY,Hallway,Couloir,الممر
-ZONE_LOUNGE,Lounge,Salon,الاستراحة
-ZONE_PARKING,Parking,Parking,موقف السيارات
-ZONE_CAFETERIA,Cafeteria,Cafétéria,الكافيتيريا
-ZONE_RECYCLING,Recycling Room,Salle de recyclage,غرفة إعادة التدوير
-ZONE_LIBRARY,Library,Bibliothèque,المكتبة
-ZONE_ART,Art Factory,Art Factory,مصنع الفنون
-ZONE_ENACTUS,Enactus room,Salle Enactus,قاعة إيناكتس
-ZONE_HALL_NORTH,North corridor,Couloir nord,الممر الشمالي
-ZONE_HALL_WEST,West corridor,Couloir ouest,الممر الغربي
-ZONE_HALL_WEST_LOW,Office corridor,Couloir du bureau,ممر المكتب
-ZONE_HALL_AMPHI,Amphi passage,Passage de l'amphi,ممر المدرج
-ZONE_HALL_LIBRARY,Library corridor,Couloir de la bibliothèque,ممر المكتبة
-ZONE_HALL_GARDEN,Garden path,Allée du jardin,ممشى الحديقة
-ZONE_HALL_LOUNGE,Lounge corridor,Couloir du salon,ممر الاستراحة
-ZONE_HALL_ART,Art corridor,Couloir de l'Art Factory,ممر الفنون
-ZONE_HALL_ENACTUS,Enactus corridor,Couloir Enactus,ممر إيناكتس
-ZONE_HALL_GARDEN_GATE,Garden gate,Portail du jardin,بوابة الحديقة
-ZONE_HALL_PARKING,Parking lane,Allée du parking,ممر الموقف
-ZONE_HALL_MACHINE,South corridor,Couloir sud,الممر الجنوبي
-WASTE_PLASTIC,plastic,plastique,بلاستيك
-WASTE_GLASS,glass,verre,زجاج
-WASTE_PAPER,paper,papier,ورق
-WASTE_METAL,metal,métal,معدن
-WASTE_ORGANIC,organic,organique,عضوي
-WASTE_ELECTRONIC,electronic,électronique,إلكتروني
-MEETING_RESULTS_PENDING,Counting the votes...,Dépouillement des votes...,جارٍ فرز الأصوات...
-MEETING_SEAT_TAG,%s (%s),%s (%s),%s (%s)
-MEETING_SEAT_VOTED_TAG,%s [%s],%s [%s],%s [%s]
-MEETING_CHAT_LINE,%s: %s,%s : %s,%s: %s
-RESULT_WINNER_CITIZENS,Cleaners win,Les nettoyeurs gagnent,فاز المنظّفون
-RESULT_WINNER_POLLUTERS,Trashers win,Les pollueurs gagnent,فاز الملوِّثون
-RESULT_POLLUTERS_VOTED_OUT,The Trashers were voted out.,Les pollueurs ont été éliminés par le vote.,تم إقصاء الملوِّثين بالتصويت.
-RESULT_TASKS_DONE,Every task is done.,Toutes les tâches sont faites.,أُنجزت كل المهام.
-RESULT_POLLUTION_FULL,The pollution meter is full.,La jauge de pollution est pleine.,امتلأ مقياس التلوث.
-RESULT_DEADLINE,Time ran out.,Le temps est écoulé.,انتهى الوقت.
-RESULT_PARITY,There are now as many Trashers as Cleaners.,Il y a maintenant autant de pollueurs que de nettoyeurs.,أصبح عدد الملوِّثين مساويًا لعدد المنظّفين.
-RESULT_REASON_UNKNOWN,The match is over.,La partie est terminée.,انتهت المباراة.
-RESULT_ROLES,Roles,Rôles,الأدوار
-RESULT_ROLE_LINE,%s: %s,%s : %s,%s: %s
-RESULT_TIMELINE,Timeline,Chronologie,التسلسل الزمني
-RESULT_NO_TIMELINE,Nothing happened.,Rien ne s'est passé.,لم يحدث شيء.
-RESULT_TL_LINE,%s  %s,%s  %s,%s  %s
-RESULT_TL_AT,%s (%s),%s (%s),%s (%s)
-RESULT_TL_DUMP,%s dumped waste,%s a jeté des déchets,%s رمى نفايات
-RESULT_TL_HIT,%s poisoned %s,%s a empoisonné %s,%s سمّم %s
-RESULT_TL_POISONED_OUT,%s was knocked out by toxic gas,%s a été éliminé par le gaz toxique,%s تم إقصاؤه بالغاز السام
-RESULT_TL_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط
-RESULT_TL_MEETING,%s called a meeting,%s a lancé une réunion,%s دعا إلى اجتماع
-RESULT_TL_EJECTION,%s was ejected,%s a été éjecté,تم طرد %s
-RESULT_FACT_LABEL,Did you know?,Le savais-tu ?,هل تعلم؟
-FACT_01,Glass can be recycled again and again without losing quality.,Le verre se recycle à l'infini sans perdre en qualité.,يمكن إعادة تدوير الزجاج مرارًا وتكرارًا دون أن تقل جودته.
-RESULT_COUNTDOWN,Back to the lobby in %d s,Retour au salon dans %d s,العودة إلى الردهة بعد %d ث
-RESULT_ROLE_UNKNOWN,Unknown,Inconnu,غير معروف
-MG_METER_HINT,Key in the number shown on the sensor.,Saisis le nombre affiché par le capteur.,أدخل الرقم الذي يعرضه المستشعر.
-MG_METER_READING,Sensor: %s,Capteur : %s,المستشعر: %s
-MG_METER_WRONG,Wrong value. Try again.,Valeur incorrecte. Réessaie.,قيمة خاطئة. حاول مرة أخرى.
-MG_METER_CLEAR,Clear,Effacer,مسح
-MG_CANS_HINT,Tap each can to crush it flat (%d cans).,Touche chaque canette pour l'écraser (%d canettes).,المس كل علبة لتسطيحها (%d علب).
-MG_CANS_CAN,Can,Canette,علبة
-MG_CANS_FLAT,Flat,Écrasée,مسطّحة
-MG_RINSE_HINT,Hold the tap and release in the green zone to rinse the bottles.,Maintiens le robinet et relâche dans la zone verte pour rincer les bouteilles.,اضغط مطوّلًا على الصنبور وأفلته في المنطقة الخضراء لشطف الزجاجات.
-MG_RINSE_RETRY,Missed the green zone. Hold and try again.,Zone verte manquée. Maintiens et réessaie.,أخطأت المنطقة الخضراء. اضغط وحاول مرة أخرى.
-MG_GLASS_LIFT_HINT,Drag the crate up to lift it.,Tire la caisse vers le haut pour la soulever.,اسحب الصندوق إلى الأعلى لرفعه.
-MG_GLASS_DROP_HINT,"Drop the %d bottles into the bank, one by one.","Dépose les %d bouteilles dans le conteneur, une par une.",ضع %d زجاجات في الحاوية، واحدة تلو الأخرى.
-MG_GLASS_CRATE,Crate,Caisse,صندوق
-MG_GLASS_BANK,Bottle bank,Conteneur à verre,حاوية الزجاج
-MG_GLASS_BOTTLE,Bottle,Bouteille,زجاجة
-HUD_TASKS,Tasks,Tâches,المهام
-HUD_TASK_STEPS,%d/%d,%d/%d,%d/%d
-HUD_TASK_ZONE,(%s),(%s),(%s)
-HUD_TASK_DONE,done,fait,تمت
-HUD_TIMER,%d:%02d,%d:%02d,%d:%02d
-ACT_USE,Use,Agir,استخدم
-ACT_REPORT,Report,Signaler,أبلغ
-ACT_RECYCLE,Recycle (%d),Recycler (%d),أعد التدوير (%d)
-ACT_MEETING,Meeting,Réunion,اجتماع
-TASK_SORT_WASTE,Sort waste,Trier les déchets,فرز النفايات
-TASK_SORT_WASTE_DEPOT,Sort waste,Trier les déchets,فرز النفايات
-TASK_TURN_COMPOST,Turn the compost,Retourner le compost,تقليب السماد العضوي
-TASK_CHECK_METER,Check the meter,Relever le compteur,قراءة العدّاد
-TASK_CRUSH_CANS,Crush cans,Écraser les canettes,سحق العلب
-TASK_CRUSH_CANS_GARDEN,Crush cans,Écraser les canettes,سحق العلب
-TASK_RINSE_BOTTLES,Rinse bottles,Rincer les bouteilles,شطف الزجاجات
-TASK_RINSE_BOTTLES_MARKET,Rinse bottles,Rincer les bouteilles,شطف الزجاجات
-TASK_DELIVER_GLASS,Deliver glass,Livrer le verre,تسليم الزجاج
-REJECT_ON_COOLDOWN,"Not ready yet, wait a moment.","Pas encore prêt, patiente un instant.",لم يحن الوقت بعد، انتظر قليلًا.
-REJECT_OUT_OF_RANGE,Move closer.,Rapproche-toi.,اقترب أكثر.
-REJECT_WALL_BETWEEN,A wall is in the way.,Un mur bloque le passage.,هناك جدار في الطريق.
-REJECT_WRONG_PHASE,Not possible right now.,Impossible pour le moment.,غير ممكن الآن.
-REJECT_NOT_ALLOWED,You cannot do that.,Tu ne peux pas faire ça.,لا يمكنك فعل ذلك.
-REJECT_TARGET_INVALID,Nobody to target here.,Personne à viser ici.,لا يوجد أحد لاستهدافه هنا.
-REJECT_TARGET_IMMUNE,That player is protected for now.,Ce joueur est protégé pour le moment.,هذا اللاعب محمي حاليًا.
-REJECT_ALREADY_REPORTED,Already reported.,Déjà signalé.,تم الإبلاغ مسبقًا.
-REJECT_ALREADY_CLEANING,Someone is already cleaning it.,Quelqu'un le nettoie déjà.,هناك من ينظّفه بالفعل.
-REJECT_FIRE_ACTIVE,A fire is burning. Put it out first.,Un feu brûle. Éteins-le d'abord.,هناك حريق مشتعل. أطفئه أولًا.
-REJECT_NO_EMERGENCIES_LEFT,No emergency meetings left.,Plus de réunion d'urgence.,لا توجد اجتماعات طارئة متبقية.
-REJECT_RATE_LIMITED,Slow down.,Doucement.,على مهلك.
-REJECT_TOO_LONG,That line is too long.,Ce message est trop long.,هذه الرسالة طويلة جدًا.
-REJECT_TEXT_LIMIT,No more typed lines this meeting.,Plus de messages écrits dans cette réunion.,لا مزيد من الرسائل المكتوبة في هذا الاجتماع.
-REJECT_PHRASE_LIMIT,No more phrases this meeting.,Plus de phrases dans cette réunion.,لا مزيد من العبارات في هذا الاجتماع.
-REJECT_UNKNOWN,Action refused.,Action refusée.,تم رفض الإجراء.
-REVEAL_GOAL_CITIZEN,"Clean the spots, bring the bags to the machine and find the Trashers.","Nettoie les zones, apporte les sacs à la machine et démasque les pollueurs.",نظّف الأماكن، أوصل الأكياس إلى الآلة واكشف الملوِّثين.
-REVEAL_GOAL_POLLUTER,"Pretend to clean, re-pollute clean spots and jam the machine without being seen.","Fais semblant de nettoyer, repollue les zones propres et bloque la machine sans te faire voir.",تظاهر بالتنظيف، لوّث الأماكن النظيفة من جديد وعطّل الآلة دون أن يراك أحد.
-SPECTATOR_TITLE,You are out,Tu es éliminé,تم إقصاؤك
-SPECTATOR_HINT,You can still watch the meetings and the results.,Tu peux encore suivre les réunions et les résultats.,لا يزال بإمكانك متابعة الاجتماعات والنتائج.
-SPECTATOR_CAUSE_POISON,You were poisoned.,Tu as été empoisonné.,لقد تسمّمت.
-SPECTATOR_CAUSE_VOTE,You were voted out.,Tu as été éjecté par un vote.,تم طردك بالتصويت.
-LOBBY_COLOR_TAKEN,That colour is taken.,Cette couleur est prise.,هذا اللون محجوز.
-LOBBY_START_FAILED,Could not start the match. Try again.,Impossible de lancer la partie. Réessaie.,تعذّر بدء المباراة. حاول مرة أخرى.
-RECONNECT_BACK,Back to menu,Retour au menu,العودة إلى القائمة
-ROTATE_HINT,Turn your phone sideways to play.,Tourne ton téléphone à l'horizontale pour jouer.,أدر هاتفك أفقيًا للعب.
-MG_CHECKING,Checking... %d s,Vérification... %d s,جارٍ التحقق... %d ث
-MG_COMPOST_WATER_HINT,Water the heap: hold the tap and release in the green zone.,Arrose le tas : maintiens le robinet et relâche dans la zone verte.,اسقِ الكومة: اضغط مطوّلًا على الصنبور وأفلته في المنطقة الخضراء.
-MG_TOO_FAR,Too far from the console.,Trop loin de la console.,أنت بعيد جدًا عن الجهاز.
-MEETING_CLUE_WASTE_LINE,Waste: %s,Déchet : %s,النفايات: %s
-MEETING_CLUE_VICTIM_LINE,Found poisoned: %s,Retrouvé empoisonné : %s,وُجد مسمّمًا: %s
-EJECTION_LEFT_ONE,%d polluter remains.,Il reste %d pollueur.,بقي %d ملوِّث.
-EJECTION_LEFT_MANY,%d polluters remain.,Il reste %d pollueurs.,بقي %d ملوِّثين.
-SPECTATOR_PHASE_PLAYING,The round goes on.,La partie continue.,الجولة مستمرة.
-ACT_SABOTAGE,Sabotage,Saboter,تخريب
-ACT_FIX,Fix,Réparer,أصلح
-ACT_FIX_HOLD,Hold,Maintenir,اضغط مطوّلًا
-SABOTAGE_FIRE,Fire,Feu,حريق
-SABOTAGE_SMOG,Smog,Smog,ضباب دخاني
-SABOTAGE_BANNER_FIRE,FIRE! Out of control in %s,FEU ! Hors de contrôle dans %s,حريق! خارج عن السيطرة في %s
-SABOTAGE_BANNER_FIRE_HELD,Hold every fire console together (%d/%d),Maintiens toutes les consoles de feu ensemble (%d/%d),اضغطوا معًا على كل أجهزة الحريق (%d/%d)
-SABOTAGE_BANNER_SMOG,SMOG! Visibility is low. Fix the filter panel.,SMOG ! Visibilité réduite. Répare le panneau de filtre.,ضباب دخاني! الرؤية ضعيفة. أصلح لوحة المرشّح.
-SABOTAGE_REPAIRING,Repairing...,Réparation...,جارٍ الإصلاح...
-SABOTAGE_FIXED,Sabotage fixed.,Sabotage réparé.,تم إصلاح التخريب.
-SABOTAGE_EXPIRED,Too late: the sabotage was not fixed.,Trop tard : le sabotage n'a pas été réparé.,فات الأوان: لم يتم إصلاح التخريب.
-ACT_CLEAN,Clean,Nettoyer,نظّف
-CHAT_SUS,I suspect %s.,Je soupçonne %s.,أشتبه في %s.
-CHAT_SAW_DUMP,I saw %s re-pollute a clean spot in %s.,J'ai vu %s repolluer un endroit propre en zone %s.,رأيت %s يعيد تلويث موقع نظيف في منطقة %s.
-CHAT_SAW_HIT,I saw %s gas or infect someone in %s.,J'ai vu %s gazer ou infecter quelqu'un en zone %s.,رأيت %s يصيب أحدًا بالغاز أو بالفيروس في منطقة %s.
-CHAT_NEAR_PILE,I saw %s in %s around the time of the death.,J'ai vu %s en zone %s au moment de la mort.,رأيت %s في منطقة %s وقت الوفاة.
-CHAT_I_WAS,I was in %s.,J'étais en zone %s.,كنت في منطقة %s.
-CHAT_WITH,I was with %s in %s.,J'étais avec %s en zone %s.,كنت مع %s في منطقة %s.
-CHAT_WHERE,Where was %s?,Où était %s ?,أين كان %s؟
-CHAT_AGREE,I agree with %s.,Je suis d'accord avec %s.,أتفق مع %s.
-CHAT_DOUBT,I doubt %s.,Je doute de %s.,أشك في %s.
-CHAT_NOT_ME,It wasn't me.,Ce n'était pas moi.,لم أكن أنا.
-CHAT_LYING,I think %s is lying.,Je pense que %s ment.,أعتقد أن %s يكذب.
-CHAT_SKIP_NO_PROOF,No proof. I will skip.,Pas de preuve. Je passe.,لا يوجد دليل. سأتخطّى.
-CHAT_VOTE,I will vote for %s.,Je vais voter pour %s.,سأصوّت لـ %s.
-CHAT_HMM,Hmm...,Hmm...,همم...
-CHAT_IDK,I don't know.,Je ne sais pas.,لا أعرف.
-CHAT_KIND_ACCUSE,Accuse,Accuser,اتهام
-CHAT_KIND_ALIBI,Alibi,Alibi,حجة غياب
-CHAT_KIND_QUESTION,Ask,Demander,سؤال
-CHAT_KIND_REACT,React,Réagir,ردّ فعل
-CHAT_KIND_VOTE,Vote,Vote,تصويت
-CHAT_KIND_FILLER,Other,Autre,أخرى
-CHAT_SAY,Say something,Parler,تحدّث
-CHAT_PHRASES_LEFT,Phrases left: %d,Phrases restantes : %d,العبارات المتبقية: %d
-CHAT_TEXT_LEFT,Typed lines left: %d,Messages écrits restants : %d,الرسائل المكتوبة المتبقية: %d
-CHAT_SEND,Send,Envoyer,إرسال
-CHAT_BACK,Back,Retour,رجوع
-CHAT_PICK_KIND,What do you want to say?,Que veux-tu dire ?,ماذا تريد أن تقول؟
-CHAT_PICK_PHRASE,Pick a line.,Choisis une phrase.,اختر عبارة.
-CHAT_PICK_SEAT,Pick a player.,Choisis un joueur.,اختر لاعبًا.
-CHAT_PICK_ZONE,Pick a place.,Choisis un lieu.,اختر مكانًا.
-CHAT_CLOSED,You cannot chat now.,Tu ne peux pas parler maintenant.,لا يمكنك الدردشة الآن.
-CHAT_NONE_LEFT,No lines left.,Plus de messages.,لا توجد رسائل متبقية.
-CHAT_REJECTED,That line was not accepted.,Ce message n'a pas été accepté.,لم تُقبل هذه الرسالة.
-CHAT_TYPE_HINT,Type a message,Écris un message,اكتب رسالة
-CHAT_DONE,Done,Fermer,إغلاق
-CHAT_HAS_VOTED,%s has voted,%s a voté,%s صوّت
-MEETING_GHOST_LINE,%s (ghost): %s,%s (fantôme) : %s,%s (شبح): %s
-CHAT_GHOST_HINT,Ghost chat: only out players see it.,Discussion des fantômes : seuls les joueurs éliminés la voient.,دردشة الأشباح: لا يراها إلا اللاعبون المقصَون.
-GHOST_CHAT_TITLE,Ghost chat,Discussion des fantômes,دردشة الأشباح
-HUD_BAGS,Bags: %d/%d,Sacs : %d/%d,الأكياس: %d/%d
-HUD_SPOT_CLEANED,Spot cleaned. Take the bag to the Recycling Machine.,Endroit nettoyé. Porte le sac à la machine de recyclage.,تم تنظيف الموقع. احمل الكيس إلى آلة إعادة التدوير.
-REJECT_BAGS_FULL,Your bags are full. Recycle them first.,Tes sacs sont pleins. Recycle-les d'abord.,أكياسك ممتلئة. أعد تدويرها أولًا.
-REJECT_SPOT_CLEAN,This spot is already clean.,Cet endroit est déjà propre.,هذا الموقع نظيف بالفعل.
-REJECT_SPOT_DIRTY,This spot is still dirty.,Cet endroit est encore sale.,هذا الموقع لا يزال متسخًا.
-UPGRADE_TITLE,Pick an upgrade,Choisis une amélioration,اختر ترقية
-UPGRADE_BACKPACK,Backpack (3 bags),Sac à dos (3 sacs),حقيبة ظهر (3 أكياس)
-UPGRADE_TOOL,Cleaning Tool (faster),Outil de nettoyage (plus rapide),أداة التنظيف (أسرع)
-UPGRADE_HEAL,Healing Kit,Kit de soin,حقيبة العلاج
-UPGRADE_MASK,Gas Mask,Masque à gaz,قناع الغاز
-UPGRADE_OK,You got: %s,Obtenu : %s,حصلت على: %s
-HUD_ITEMS,Items: %s,Objets : %s,العناصر: %s
-HUD_DELIVERED,Recycled %d bag(s)! Cleanliness %.0f%%,%d sac(s) recyclé(s) ! Propreté %.0f%%,تمت إعادة تدوير %d كيس! النظافة %.0f%%
-SABOTAGE_BANNER_MACHINE,The Recycling Machine is jammed! Hold FIX at the machine.,La machine de recyclage est bloquée ! Maintiens RÉPARER à la machine.,آلة إعادة التدوير معطّلة! اضغط مطوّلًا على إصلاح عند الآلة.
-REJECT_NO_BAGS,You carry no bags.,Tu ne portes aucun sac.,لا تحمل أي أكياس.
-REJECT_MACHINE_JAMMED,The machine is jammed. Fix it first.,La machine est bloquée. Répare-la d'abord.,الآلة معطّلة. أصلحها أولًا.
-REJECT_NO_ITEM,That item is not available.,Cet objet n'est pas disponible.,هذا العنصر غير متوفر.
-ACT_DASH,Dash,Élan,اندفاع
-ACT_REPOLLUTE,Re-pollute,Repolluer,إعادة التلويث
-ACT_VIRUS,Virus,Virus,فيروس
-ACT_GAS,Gas,Gaz,غاز
-ABILITY_TITLE,Pick your ability,Choisis ton pouvoir,اختر قدرتك
-ABILITY_VIRUS,Virus,Virus,فيروس
-ABILITY_GAS,Toxic Gas,Gaz toxique,غاز سام
-ABILITY_OK,Unlocked: %s,Débloqué : %s,تم فتح: %s
-GAS_ROOM_TITLE,Which room do you gas?,Quelle salle gazer ?,أي غرفة تريد تسميمها بالغاز؟
-GAS_ROOM_MARKET,Market,Marché,السوق
-GAS_ROOM_GARDEN,Garden,Jardin,الحديقة
-GAS_ROOM_DEPOT,Depot,Dépôt,المستودع
-GAS_ROOM_DARK,Dark room,Salle sombre,الغرفة المظلمة
-GAS_ROOM_CLUB,Club room,Salle du club,قاعة النادي
-GAS_ROOM_AMPHI,Amphitheatre,Amphithéâtre,المدرج
-GAS_ROOM_LOUNGE,Lounge,Salon,الاستراحة
-GAS_ROOM_OFFICE,Office,Bureau,المكتب
-VIRUS_PLANTED,Virus planted. Wait for a Cleaner.,Virus caché. Attends un nettoyeur.,تم زرع الفيروس. انتظر منظّفًا.
-REPOLLUTE_OK,Spot re-polluted.,Endroit repollué.,تمت إعادة تلويث الموقع.
-SABOTAGE_MACHINE,Machine,Machine,الآلة
-REJECT_NOT_UNLOCKED,Not unlocked yet.,Pas encore débloqué.,لم يُفتح بعد.
-LANG_AR,العربية,العربية,العربية
-RESULT_METER_FULL,The map is 100% clean!,La carte est propre à 100 % !,الخريطة نظيفة بنسبة 100%!
-RESULT_TL_INFECTED,%s was taken out by the virus,%s a été éliminé par le virus,%s أخرجه الفيروس من اللعبة
-SPECTATOR_CAUSE_VIRUS,The virus got you.,Le virus t'a eu.,لقد أصابك الفيروس.
-SPECTATOR_CAUSE_GAS,You breathed the toxic gas.,Tu as respiré le gaz toxique.,لقد استنشقت الغاز السام.
-HUD_INFECTED,Infected! %d s left. Heal or alert the others.,Infecté ! Encore %d s. Soigne-toi ou alerte les autres.,أنت مصاب! بقي %d ث. عالِج نفسك أو نبّه الآخرين.
-ACT_HEAL,Heal,Soigner,عالِج
-ACT_ALERT,Alert,Alerter,نبّه
-HUD_HEALED,You were healed.,Tu as été soigné.,تم علاجك.
-HUD_MASK_USED,Your gas mask saved you!,Ton masque à gaz t'a sauvé !,قناع الغاز أنقذك!
-GAS_WARNING,Toxic gas: %s in %d s!,Gaz toxique : %s dans %d s !,غاز سام: %s بعد %d ث!
-COMMON_BACK,Back,Retour,رجوع
-COMMON_CONFIRM,Confirm,Confirmer,تأكيد
-CREATE_MAP,Map :,Carte :,الخريطة:
-CREATE_BUTTON,Create,Créer,إنشاء
-MAP_TBS,TBS,TBS,TBS
-MAP_INSAT,INSAT,INSAT,INSAT
-MAP_SIDI_BOU_SAID,Sidi Bou Said,Sidi Bou Saïd,سيدي بوسعيد
-MAP_SOON,Coming soon,Bientôt,قريبًا
-MAP_LOCKED,This map is coming soon.,Cette carte arrive bientôt.,هذه الخريطة قادمة قريبًا.
-LOBBY_COPY,Copy the code,Copier le code,انسخ الرمز
-LOBBY_COPIED,Code copied.,Code copié.,تم نسخ الرمز.
-LOBBY_CHARACTER,Character,Personnage,الشخصية
-LOBBY_START_SHORT,Start,Lancer,ابدأ
-CHAR_TITLE,Choose your character,Choisis ton personnage,اختر شخصيتك
-CHAR_UNLOCK_HINT,Keep a daily scan streak to unlock more characters.,Garde ta série de scans quotidiens pour débloquer d'autres personnages.,حافظ على سلسلة المسح اليومية لفتح شخصيات أخرى.
-CHAR_SPROUT,Sprouty,Sprouty,Sprouty
-CHAR_ROBOT,Abdo,Abdo,Abdo
-CHAR_EAGLE,Enactor,Enactor,Enactor
-CHAR_RABBIT,Timi,Timi,Timi
+keys,en,fr,ar,sv
+SETTINGS_SCAN,Scan service address,Adresse du service de scan,عنوان خدمة المسح,Adress till skanningstjänsten
+SETTINGS_BAD_SCAN_URL,The scan address must look like http://192.168.1.20:8000 or https://…,L'adresse de scan doit ressembler à http://192.168.1.20:8000 ou https://…,يجب أن يشبه عنوان المسح http://192.168.1.20:8000 أو https://…,Skanningsadressen ska se ut som http://192.168.1.20:8000 eller https://…
+CHAR_LOCKED,That character is still locked. Keep your scan streak going!,Ce personnage est encore verrouillé. Continue ta série de scans !,هذه الشخصية ما زالت مقفلة. واصل سلسلة المسح!,Den figuren är fortfarande låst. Håll igång din skanningsserie!
+BOOT_TITLE,Uncycled,Uncycled,Uncycled,Uncycled
+BOOT_CONNECTING,Connecting to the server...,Connexion au serveur...,جارٍ الاتصال بالخادم...,Ansluter till servern...
+BOOT_OFFLINE,"Cannot reach the game server. Check the address in Settings.\n%s","Impossible de joindre le serveur de jeu. Vérifie l'adresse dans les Paramètres.\n%s",تعذّر الوصول إلى خادم اللعبة. تحقّق من العنوان في الإعدادات.\n%s,Kan inte nå spelservern. Kontrollera adressen i Inställningar.\n%s
+BOOT_RETRY,Retry,Réessayer,إعادة المحاولة,Försök igen
+BOOT_UPDATE_NEEDED,This version is out of date. Reload the page or install the latest version.,Cette version est périmée. Recharge la page ou installe la dernière version.,هذا الإصدار قديم. أعد تحميل الصفحة أو ثبّت أحدث إصدار.,Den här versionen är för gammal. Ladda om sidan eller installera den senaste versionen.
+BOOT_ERROR,Something went wrong (%s). Please try again.,Un problème est survenu (%s). Réessaie.,حدث خطأ (%s). حاول مرة أخرى.,Något gick fel (%s). Försök igen.
+COMMON_SETTINGS,Settings,Paramètres,الإعدادات,Inställningar
+COMMON_SAVE,Save,Enregistrer,حفظ,Spara
+COMMON_CANCEL,Cancel,Annuler,إلغاء,Avbryt
+COMMON_CLOSE,Close,Fermer,إغلاق,Stäng
+SETTINGS_TITLE,Settings,Paramètres,الإعدادات,Inställningar
+SETTINGS_NAME,Player name,Nom du joueur,اسم اللاعب,Spelarnamn
+SETTINGS_LANGUAGE,Language,Langue,اللغة,Språk
+SETTINGS_SERVER,Server address,Adresse du serveur,عنوان الخادم,Serveradress
+SETTINGS_BAD_URL,"The address must start with ws:// or wss://","L'adresse doit commencer par ws:// ou wss://",يجب أن يبدأ العنوان بـ ws:// أو wss://,Adressen måste börja med ws:// eller wss://
+LANG_EN,English,English,English,English
+LANG_FR,Français,Français,Français,Français
+MENU_NAME_PLACEHOLDER,Your name,Ton nom,اسمك,Ditt namn
+MENU_CREATE_GAME,Create Game,Créer,إنشاء لعبة,Skapa spel
+MENU_JOIN_GAME,Join Game,Rejoindre,انضمام إلى لعبة,Gå med
+MENU_JOIN_TITLE,Enter the room code,Entre le code de la salle,أدخل رمز الغرفة,Ange rumskoden
+MENU_PROFILE,Profile,Profil,الملف الشخصي,Profil
+MENU_PROFILE_SKINS,Skins unlock with your daily scan streak.,Les skins se débloquent avec ta série de scans quotidiens.,تُفتح الأزياء مع سلسلة المسح اليومية.,Utseenden låses upp med din dagliga skanningsserie.
+MENU_SCAN,Scan & earn,Scanne et gagne,امسح واربح,Skanna och tjäna
+"MENU_SCAN_TEXT","Photograph a real recyclable item to earn points, keep your daily streak and unlock skins.","Photographie un vrai objet recyclable pour gagner des points, garder ta série quotidienne et débloquer des skins.","صوّر غرضًا حقيقيًا قابلًا لإعادة التدوير لتربح نقاطًا وتحافظ على سلسلتك اليومية وتفتح أزياء جديدة.","Fotografera ett riktigt återvinningsbart föremål för att tjäna poäng, hålla din dagliga serie och låsa upp utseenden."
+MENU_SCAN_STATS,"Points %d, streak %d","Points %d, série %d","النقاط %d، السلسلة %d","Poäng %d, serie %d"
+MENU_SCAN_START,Scan an item,Scanner un objet,امسح غرضًا,Skanna ett föremål
+MENU_SCAN_WAIT,Getting a scan link...,Création du lien de scan...,جارٍ تجهيز رابط المسح...,Hämtar en skanningslänk...
+MENU_SCAN_OPENED,"Take the photo, then come back.","Prends la photo, puis reviens.",التقط الصورة ثم عد.,Ta bilden och kom sedan tillbaka.
+MENU_SCAN_DONE,Scan saved!,Scan enregistré !,تم حفظ المسح!,Skanningen sparad!
+MENU_SCAN_OFFLINE,The scan service is not reachable right now.,Le service de scan est injoignable pour le moment.,خدمة المسح غير متاحة حاليًا.,Skanningstjänsten går inte att nå just nu.
+MENU_CODE_PLACEHOLDER,Code,Code,الرمز,Kod
+MENU_JOIN,Join,Rejoindre,انضمام,Gå med
+MENU_NAME_REQUIRED,Please enter a name.,Entre un nom d'abord.,أدخل اسمًا أولًا.,Ange ett namn.
+MENU_BAD_CODE,The room code has 4 letters.,Le code de la salle a 4 lettres.,رمز الغرفة مكوّن من 4 أحرف.,Rumskoden har 4 bokstäver.
+MENU_WORKING,Please wait...,Un instant...,لحظة من فضلك...,Vänta...
+MENU_NO_ANSWER,"The server did not answer, try again.","Le serveur n'a pas répondu, réessaie.",لم يردّ الخادم، حاول مرة أخرى.,"Servern svarade inte, försök igen."
+MENU_SESSION_EXPIRED,Your last game has ended. Create or join a room.,Ta dernière partie est terminée. Crée ou rejoins une salle.,انتهت لعبتك الأخيرة. أنشئ غرفة أو انضم إلى غرفة.,Ditt senaste spel är slut. Skapa eller gå med i ett rum.
+JOIN_FAILED_NO_ROOM,This room does not exist.,Cette salle n'existe pas.,هذه الغرفة غير موجودة.,Det här rummet finns inte.
+JOIN_FAILED_FULL,This room is full.,Cette salle est pleine.,هذه الغرفة ممتلئة.,Det här rummet är fullt.
+JOIN_FAILED_IN_MATCH,A match is in progress. Join when it ends.,Une partie est en cours. Rejoins quand elle sera finie.,هناك مباراة جارية. انضم عند انتهائها.,En match pågår. Gå med när den är slut.
+JOIN_FAILED_BAD_NAME,This name is not allowed.,Ce nom n'est pas autorisé.,هذا الاسم غير مسموح.,Det namnet är inte tillåtet.
+JOIN_FAILED_UNKNOWN,Could not join the room.,Impossible de rejoindre la salle.,تعذّر الانضمام إلى الغرفة.,Kunde inte gå med i rummet.
+LOBBY_CODE,Room code,Code de la salle,رمز الغرفة,Rumskod
+LOBBY_YOU,(you),(toi),(أنت),(du)
+LOBBY_HUMAN,Player,Joueur,لاعب,Spelare
+LOBBY_BOT,Bot,Bot,روبوت,Bot
+LOBBY_READY,Ready,Prêt,جاهز,Redo
+LOBBY_COLOR,Colour,Couleur,اللون,Färg
+LOBBY_START,Start (bots fill empty seats),Lancer (des bots remplissent les places vides),ابدأ (تملأ الروبوتات المقاعد الفارغة),Starta (bottar fyller tomma platser)
+LOBBY_LEAVE,Leave,Quitter,مغادرة,Lämna
+LOBBY_WAITING_HOST,Waiting for the host to start the match.,En attente du lancement par l'hôte.,في انتظار أن يبدأ المضيف المباراة.,Väntar på att värden startar matchen.
+RECONNECT_TITLE,Connection lost,Connexion perdue,انقطع الاتصال,Anslutningen bröts
+RECONNECT_WAITING,Reconnecting...,Reconnexion...,جارٍ إعادة الاتصال...,Återansluter...
+RECONNECT_TRYING,Reconnecting...,Reconnexion...,جارٍ إعادة الاتصال...,Återansluter...
+ROLE_CITIZEN,Cleaner,Nettoyeur,منظّف,Städare
+ROLE_POLLUTER,Trasher,Pollueur,ملوِّث,Nedskräpare
+HUD_ROLE,Role: %s,Rôle : %s,الدور: %s,Roll: %s
+HUD_PARTNER,Partner: %s,Complice : %s,الشريك: %s,Partner: %s
+HUD_METER,Cleanliness: %.0f%%,Propreté : %.0f%%,النظافة: %.0f%%,Renhet: %.0f%%
+HUD_POLLUTION,Pollution: %.0f%%,Pollution : %.0f%%,التلوث: %.0f%%,Förorening: %.0f%%
+HUD_PHASE,Phase: %s,Phase : %s,المرحلة: %s,Fas: %s
+HUD_PICK_UPGRADE,Pick upgrade,Choisir un bonus,اختر ترقية,Välj uppgradering
+HUD_PICK_ABILITY,Pick ability,Choisir un pouvoir,اختر قدرة,Välj förmåga
+HUD_PING,Weak connection,Connexion faible,اتصال ضعيف,Svag anslutning
+PHASE_LOBBY,Lobby,Salon,الردهة,Lobby
+PHASE_INTRO,Get ready,Prépare-toi,استعد,Gör dig redo
+PHASE_PLAYING,Find the polluters!,Trouve les pollueurs !,اعثر على الملوِّثين!,Hitta förorenarna!
+PHASE_MEETING,Meeting,Réunion,اجتماع,Möte
+PHASE_EJECTION,Ejection,Éjection,الطرد,Utröstning
+PHASE_ENDED,Game over,Partie terminée,انتهت اللعبة,Spelet är slut
+PLACEHOLDER_HINT,Please wait...,Un instant...,لحظة من فضلك...,Vänta...
+MG_CLOSE,Close,Fermer,إغلاق,Stäng
+MG_SORT_HINT,Drag each item into the right bin.,Glisse chaque objet dans le bon bac.,اسحب كل عنصر إلى الحاوية الصحيحة.,Dra varje föremål till rätt kärl.
+MG_COMPOST_TURN_HINT,Turn the handle around the pile %d times.,Tourne la manivelle %d fois autour du tas.,أدر المقبض حول الكومة %d مرات.,Vrid veven runt högen %d gånger.
+MG_COMPOST_HOLD_HINT,Hold the gauge and release in the green zone.,Maintiens la jauge et relâche dans la zone verte.,اضغط مطوّلًا على المؤشر وأفلته في المنطقة الخضراء.,Håll mätaren och släpp i den gröna zonen.
+BIN_PLASTIC_METAL,Plastic and metal packaging,Emballages plastique et métal,عبوات البلاستيك والمعادن,Plast- och metallförpackningar
+BIN_PAPER,Paper,Papier,ورق,Papper
+BIN_GLASS,Glass,Verre,زجاج,Glas
+BIN_ORGANIC,Organic,Organique,عضوي,Matavfall
+ITEM_WATER_BOTTLE,Water bottle,Bouteille d'eau,زجاجة ماء,Vattenflaska
+ITEM_TIN_CAN,Tin can,Boîte de conserve,علبة معدنية,Konservburk
+ITEM_YOGURT_POT,Yogurt pot,Pot de yaourt,علبة زبادي,Yoghurtbägare
+ITEM_NEWSPAPER,Newspaper,Journal,جريدة,Tidning
+ITEM_CARDBOARD_BOX,Cardboard box,Boîte en carton,صندوق كرتون,Kartong
+ITEM_MAGAZINE,Magazine,Magazine,مجلة,Tidskrift
+ITEM_JAM_JAR,Jam jar,Pot de confiture,برطمان مربى,Syltburk
+ITEM_WINE_BOTTLE,Wine bottle,Bouteille de vin,زجاجة نبيذ,Vinflaska
+ITEM_PERFUME_FLASK,Perfume flask,Flacon de parfum,قارورة عطر,Parfymflaska
+ITEM_APPLE_CORE,Apple core,Trognon de pomme,قلب تفاحة,Äppelskrutt
+ITEM_BANANA_PEEL,Banana peel,Peau de banane,قشرة موز,Bananskal
+ITEM_EGGSHELL,Eggshell,Coquille d'oeuf,قشرة بيض,Äggskal
+MEETING_CAUSE_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط,%s hittade en fallen spelare
+MEETING_SPLASH_REPORT,Fallen player reported!,Joueur à terre signalé !,تم الإبلاغ عن لاعب سقط!,Fallen spelare rapporterad!
+MEETING_SPLASH_FOUND,%s found %s,%s a trouvé %s,%s وجد %s,%s hittade %s
+MEETING_CAUSE_EMERGENCY,%s called an emergency meeting,%s a lancé une réunion d'urgence,%s دعا إلى اجتماع طارئ,%s kallade till ett nödmöte
+MEETING_CLUES,Clues,Indices,أدلة,Ledtrådar
+MEETING_NO_CLUES,No clues.,Aucun indice.,لا توجد أدلة.,Inga ledtrådar.
+MEETING_CLUE_PLAIN,%s (%s),%s (%s),%s (%s),%s (%s)
+MEETING_CHAT,Chat,Discussion,الدردشة,Chatt
+MEETING_DISCUSSION,Discussion,Discussion,نقاش,Diskussion
+MEETING_VOTING,Vote,Vote,تصويت,Röstning
+MEETING_CONFIRM,Vote,Voter,صوّت,Rösta
+MEETING_SKIP,Skip vote,Passer le vote,تخطّي التصويت,Avstå
+MEETING_VOTED,Voted,A voté,صوّت,Röstat
+MEETING_YOU_VOTED,Your vote is in.,Ton vote est enregistré.,تم تسجيل صوتك.,Din röst är lagd.
+MEETING_OUT_NOTE,You are out and cannot vote.,Tu es éliminé et ne peux pas voter.,تم إقصاؤك ولا يمكنك التصويت.,Du är ute och kan inte rösta.
+MEETING_SEAT_OUT,Out,Éliminé,مقصى,Ute
+MEETING_RESULTS,Results,Résultats,النتائج,Resultat
+MEETING_VOTES_FOR,%s: %d,%s : %d,%s: %d,%s: %d
+MEETING_VOTES_SKIP,Skipped votes: %d,Abstentions : %d,أصوات التخطّي: %d,Avstod: %d
+MEETING_TIE,Tie. Nobody is ejected.,Égalité. Personne n'est éjecté.,تعادل. لا أحد يُطرد.,Oavgjort. Ingen röstas ut.
+MEETING_EJECTED,%s is ejected.,%s est éjecté.,تم طرد %s.,%s röstas ut.
+MEETING_NO_EJECTION,Nobody is ejected.,Personne n'est éjecté.,لا أحد يُطرد.,Ingen röstas ut.
+EJECTION_WAS_POLLUTER,%s was a polluter.,%s était un pollueur.,%s كان ملوِّثًا.,%s var en förorenare.
+EJECTION_WAS_NOT_POLLUTER,%s was not a polluter.,%s n'était pas un pollueur.,%s لم يكن ملوِّثًا.,%s var inte en förorenare.
+EJECTION_PENDING,Ejection in progress...,Éjection en cours...,الطرد جارٍ...,Utröstning pågår...
+ZONE_MARKET,Market,Marché,السوق,Marknaden
+ZONE_GARDEN,Garden,Jardin,الحديقة,Trädgården
+ZONE_DEPOT,Depot,Dépôt,المستودع,Depån
+ZONE_OFFICE,Office,Bureau,المكتب,Kontoret
+ZONE_CLUB,Club room,Salle du club,قاعة النادي,Klubbrummet
+ZONE_AMPHI,Amphitheatre,Amphithéâtre,المدرج,Aulan
+ZONE_HALLWAY,Hallway,Couloir,الممر,Korridoren
+ZONE_LOUNGE,Lounge,Salon,الاستراحة,Loungen
+ZONE_PARKING,Parking,Parking,موقف السيارات,Parkeringen
+ZONE_CAFETERIA,Cafeteria,Cafétéria,الكافيتيريا,Cafeterian
+ZONE_RECYCLING,Recycling Room,Salle de recyclage,غرفة إعادة التدوير,Återvinningsrummet
+ZONE_LIBRARY,Library,Bibliothèque,المكتبة,Biblioteket
+ZONE_ART,Art Factory,Art Factory,مصنع الفنون,Konstfabriken
+ZONE_ENACTUS,Enactus room,Salle Enactus,قاعة إيناكتس,Enactus-rummet
+ZONE_HALL_NORTH,North corridor,Couloir nord,الممر الشمالي,Norra korridoren
+ZONE_HALL_WEST,West corridor,Couloir ouest,الممر الغربي,Västra korridoren
+ZONE_HALL_WEST_LOW,Office corridor,Couloir du bureau,ممر المكتب,Kontorskorridoren
+ZONE_HALL_AMPHI,Amphi passage,Passage de l'amphi,ممر المدرج,Aulagången
+ZONE_HALL_LIBRARY,Library corridor,Couloir de la bibliothèque,ممر المكتبة,Bibliotekskorridoren
+ZONE_HALL_GARDEN,Garden path,Allée du jardin,ممشى الحديقة,Trädgårdsstigen
+ZONE_HALL_LOUNGE,Lounge corridor,Couloir du salon,ممر الاستراحة,Loungekorridoren
+ZONE_HALL_ART,Art corridor,Couloir de l'Art Factory,ممر الفنون,Konstkorridoren
+ZONE_HALL_ENACTUS,Enactus corridor,Couloir Enactus,ممر إيناكتس,Enactus-korridoren
+ZONE_HALL_GARDEN_GATE,Garden gate,Portail du jardin,بوابة الحديقة,Trädgårdsgrinden
+ZONE_HALL_PARKING,Parking lane,Allée du parking,ممر الموقف,Parkeringsfilen
+ZONE_HALL_MACHINE,South corridor,Couloir sud,الممر الجنوبي,Södra korridoren
+WASTE_PLASTIC,plastic,plastique,بلاستيك,plast
+WASTE_GLASS,glass,verre,زجاج,glas
+WASTE_PAPER,paper,papier,ورق,papper
+WASTE_METAL,metal,métal,معدن,metall
+WASTE_ORGANIC,organic,organique,عضوي,matavfall
+WASTE_ELECTRONIC,electronic,électronique,إلكتروني,elektronik
+MEETING_RESULTS_PENDING,Counting the votes...,Dépouillement des votes...,جارٍ فرز الأصوات...,Rösterna räknas...
+MEETING_SEAT_TAG,%s (%s),%s (%s),%s (%s),%s (%s)
+MEETING_SEAT_VOTED_TAG,%s [%s],%s [%s],%s [%s],%s [%s]
+MEETING_CHAT_LINE,%s: %s,%s : %s,%s: %s,%s: %s
+RESULT_WINNER_CITIZENS,Cleaners win,Les nettoyeurs gagnent,فاز المنظّفون,Städarna vinner
+RESULT_WINNER_POLLUTERS,Trashers win,Les pollueurs gagnent,فاز الملوِّثون,Nedskräparna vinner
+RESULT_POLLUTERS_VOTED_OUT,The Trashers were voted out.,Les pollueurs ont été éliminés par le vote.,تم إقصاء الملوِّثين بالتصويت.,Nedskräparna röstades ut.
+RESULT_TASKS_DONE,Every task is done.,Toutes les tâches sont faites.,أُنجزت كل المهام.,Alla uppdrag är klara.
+RESULT_POLLUTION_FULL,The pollution meter is full.,La jauge de pollution est pleine.,امتلأ مقياس التلوث.,Föroreningsmätaren är full.
+RESULT_DEADLINE,Time ran out.,Le temps est écoulé.,انتهى الوقت.,Tiden tog slut.
+RESULT_PARITY,There are now as many Trashers as Cleaners.,Il y a maintenant autant de pollueurs que de nettoyeurs.,أصبح عدد الملوِّثين مساويًا لعدد المنظّفين.,Nu finns det lika många Nedskräpare som Städare.
+RESULT_REASON_UNKNOWN,The match is over.,La partie est terminée.,انتهت المباراة.,Matchen är slut.
+RESULT_ROLES,Roles,Rôles,الأدوار,Roller
+RESULT_ROLE_LINE,%s: %s,%s : %s,%s: %s,%s: %s
+RESULT_TIMELINE,Timeline,Chronologie,التسلسل الزمني,Tidslinje
+RESULT_NO_TIMELINE,Nothing happened.,Rien ne s'est passé.,لم يحدث شيء.,Ingenting hände.
+RESULT_TL_LINE,%s  %s,%s  %s,%s  %s,%s  %s
+RESULT_TL_AT,%s (%s),%s (%s),%s (%s),%s (%s)
+RESULT_TL_DUMP,%s dumped waste,%s a jeté des déchets,%s رمى نفايات,%s dumpade avfall
+RESULT_TL_HIT,%s poisoned %s,%s a empoisonné %s,%s سمّم %s,%s förgiftade %s
+RESULT_TL_POISONED_OUT,%s was knocked out by toxic gas,%s a été éliminé par le gaz toxique,%s تم إقصاؤه بالغاز السام,%s slogs ut av giftig gas
+RESULT_TL_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط,%s hittade en fallen spelare
+RESULT_TL_MEETING,%s called a meeting,%s a lancé une réunion,%s دعا إلى اجتماع,%s kallade till ett möte
+RESULT_TL_EJECTION,%s was ejected,%s a été éjecté,تم طرد %s,%s röstades ut
+RESULT_FACT_LABEL,Did you know?,Le savais-tu ?,هل تعلم؟,Visste du?
+FACT_01,Glass can be recycled again and again without losing quality.,Le verre se recycle à l'infini sans perdre en qualité.,يمكن إعادة تدوير الزجاج مرارًا وتكرارًا دون أن تقل جودته.,Glas kan återvinnas om och om igen utan att förlora kvalitet.
+RESULT_COUNTDOWN,Back to the lobby in %d s,Retour au salon dans %d s,العودة إلى الردهة بعد %d ث,Tillbaka till lobbyn om %d s
+RESULT_ROLE_UNKNOWN,Unknown,Inconnu,غير معروف,Okänd
+MG_METER_HINT,Key in the number shown on the sensor.,Saisis le nombre affiché par le capteur.,أدخل الرقم الذي يعرضه المستشعر.,Slå in siffran som visas på sensorn.
+MG_METER_READING,Sensor: %s,Capteur : %s,المستشعر: %s,Sensor: %s
+MG_METER_WRONG,Wrong value. Try again.,Valeur incorrecte. Réessaie.,قيمة خاطئة. حاول مرة أخرى.,Fel värde. Försök igen.
+MG_METER_CLEAR,Clear,Effacer,مسح,Rensa
+MG_CANS_HINT,Tap each can to crush it flat (%d cans).,Touche chaque canette pour l'écraser (%d canettes).,المس كل علبة لتسطيحها (%d علب).,Tryck på varje burk för att platta till den (%d burkar).
+MG_CANS_CAN,Can,Canette,علبة,Burk
+MG_CANS_FLAT,Flat,Écrasée,مسطّحة,Platt
+MG_RINSE_HINT,Hold the tap and release in the green zone to rinse the bottles.,Maintiens le robinet et relâche dans la zone verte pour rincer les bouteilles.,اضغط مطوّلًا على الصنبور وأفلته في المنطقة الخضراء لشطف الزجاجات.,Håll kranen och släpp i den gröna zonen för att skölja flaskorna.
+MG_RINSE_RETRY,Missed the green zone. Hold and try again.,Zone verte manquée. Maintiens et réessaie.,أخطأت المنطقة الخضراء. اضغط وحاول مرة أخرى.,Missade den gröna zonen. Håll och försök igen.
+MG_GLASS_LIFT_HINT,Drag the crate up to lift it.,Tire la caisse vers le haut pour la soulever.,اسحب الصندوق إلى الأعلى لرفعه.,Dra backen uppåt för att lyfta den.
+MG_GLASS_DROP_HINT,"Drop the %d bottles into the bank, one by one.","Dépose les %d bouteilles dans le conteneur, une par une.",ضع %d زجاجات في الحاوية، واحدة تلو الأخرى.,"Släpp de %d flaskorna i glasigloon, en i taget."
+MG_GLASS_CRATE,Crate,Caisse,صندوق,Back
+MG_GLASS_BANK,Bottle bank,Conteneur à verre,حاوية الزجاج,Glasigloo
+MG_GLASS_BOTTLE,Bottle,Bouteille,زجاجة,Flaska
+HUD_TASKS,Tasks,Tâches,المهام,Uppdrag
+HUD_TASK_STEPS,%d/%d,%d/%d,%d/%d,%d/%d
+HUD_TASK_ZONE,(%s),(%s),(%s),(%s)
+HUD_TASK_DONE,done,fait,تمت,klart
+HUD_TIMER,%d:%02d,%d:%02d,%d:%02d,%d:%02d
+ACT_USE,Use,Agir,استخدم,Använd
+ACT_REPORT,Report,Signaler,أبلغ,Rapportera
+TASK_SORT_WASTE,Sort waste,Trier les déchets,فرز النفايات,Sortera avfall
+TASK_SORT_WASTE_DEPOT,Sort waste,Trier les déchets,فرز النفايات,Sortera avfall
+TASK_TURN_COMPOST,Turn the compost,Retourner le compost,تقليب السماد العضوي,Vänd komposten
+TASK_CHECK_METER,Check the meter,Relever le compteur,قراءة العدّاد,Kontrollera mätaren
+TASK_CRUSH_CANS,Crush cans,Écraser les canettes,سحق العلب,Krossa burkar
+TASK_CRUSH_CANS_GARDEN,Crush cans,Écraser les canettes,سحق العلب,Krossa burkar
+TASK_RINSE_BOTTLES,Rinse bottles,Rincer les bouteilles,شطف الزجاجات,Skölj flaskor
+TASK_RINSE_BOTTLES_MARKET,Rinse bottles,Rincer les bouteilles,شطف الزجاجات,Skölj flaskor
+TASK_DELIVER_GLASS,Deliver glass,Livrer le verre,تسليم الزجاج,Lämna glas
+REJECT_ON_COOLDOWN,"Not ready yet, wait a moment.","Pas encore prêt, patiente un instant.",لم يحن الوقت بعد، انتظر قليلًا.,"Inte redo än, vänta lite."
+REJECT_OUT_OF_RANGE,Move closer.,Rapproche-toi.,اقترب أكثر.,Gå närmare.
+REJECT_WALL_BETWEEN,A wall is in the way.,Un mur bloque le passage.,هناك جدار في الطريق.,En vägg är i vägen.
+REJECT_WRONG_PHASE,Not possible right now.,Impossible pour le moment.,غير ممكن الآن.,Inte möjligt just nu.
+REJECT_NOT_ALLOWED,You cannot do that.,Tu ne peux pas faire ça.,لا يمكنك فعل ذلك.,Det kan du inte göra.
+REJECT_TARGET_INVALID,Nobody to target here.,Personne à viser ici.,لا يوجد أحد لاستهدافه هنا.,Ingen att sikta på här.
+REJECT_TARGET_IMMUNE,That player is protected for now.,Ce joueur est protégé pour le moment.,هذا اللاعب محمي حاليًا.,Den spelaren är skyddad just nu.
+REJECT_ALREADY_REPORTED,Already reported.,Déjà signalé.,تم الإبلاغ مسبقًا.,Redan rapporterad.
+REJECT_ALREADY_CLEANING,Someone is already cleaning it.,Quelqu'un le nettoie déjà.,هناك من ينظّفه بالفعل.,Någon städar det redan.
+REJECT_FIRE_ACTIVE,A fire is burning. Put it out first.,Un feu brûle. Éteins-le d'abord.,هناك حريق مشتعل. أطفئه أولًا.,Det brinner. Släck elden först.
+REJECT_NO_EMERGENCIES_LEFT,No emergency meetings left.,Plus de réunion d'urgence.,لا توجد اجتماعات طارئة متبقية.,Inga nödmöten kvar.
+REJECT_RATE_LIMITED,Slow down.,Doucement.,على مهلك.,Ta det lugnt.
+REJECT_TOO_LONG,That line is too long.,Ce message est trop long.,هذه الرسالة طويلة جدًا.,Den raden är för lång.
+REJECT_TEXT_LIMIT,No more typed lines this meeting.,Plus de messages écrits dans cette réunion.,لا مزيد من الرسائل المكتوبة في هذا الاجتماع.,Inga fler skrivna rader på det här mötet.
+REJECT_PHRASE_LIMIT,No more phrases this meeting.,Plus de phrases dans cette réunion.,لا مزيد من العبارات في هذا الاجتماع.,Inga fler fraser på det här mötet.
+REJECT_UNKNOWN,Action refused.,Action refusée.,تم رفض الإجراء.,Handlingen nekades.
+REVEAL_GOAL_CITIZEN,"Clean the spots, bring the bags to the machine and find the Trashers.","Nettoie les zones, apporte les sacs à la machine et démasque les pollueurs.",نظّف الأماكن، أوصل الأكياس إلى الآلة واكشف الملوِّثين.,"Städa platserna, bär säckarna till maskinen och hitta Nedskräparna."
+REVEAL_GOAL_POLLUTER,"Pretend to clean, re-pollute clean spots and jam the machine without being seen.","Fais semblant de nettoyer, repollue les zones propres et bloque la machine sans te faire voir.",تظاهر بالتنظيف، لوّث الأماكن النظيفة من جديد وعطّل الآلة دون أن يراك أحد.,"Låtsas städa, smutsa ner rena platser och sabotera maskinen utan att bli sedd."
+SPECTATOR_TITLE,You are out,Tu es éliminé,تم إقصاؤك,Du är ute
+SPECTATOR_HINT,You can still watch the meetings and the results.,Tu peux encore suivre les réunions et les résultats.,لا يزال بإمكانك متابعة الاجتماعات والنتائج.,Du kan fortfarande se mötena och resultaten.
+SPECTATOR_CAUSE_POISON,You were poisoned.,Tu as été empoisonné.,لقد تسمّمت.,Du blev förgiftad.
+SPECTATOR_CAUSE_VOTE,You were voted out.,Tu as été éjecté par un vote.,تم طردك بالتصويت.,Du röstades ut.
+LOBBY_COLOR_TAKEN,That colour is taken.,Cette couleur est prise.,هذا اللون محجوز.,Den färgen är tagen.
+LOBBY_START_FAILED,Could not start the match. Try again.,Impossible de lancer la partie. Réessaie.,تعذّر بدء المباراة. حاول مرة أخرى.,Kunde inte starta matchen. Försök igen.
+RECONNECT_BACK,Back to menu,Retour au menu,العودة إلى القائمة,Tillbaka till menyn
+ROTATE_HINT,Turn your phone sideways to play.,Tourne ton téléphone à l'horizontale pour jouer.,أدر هاتفك أفقيًا للعب.,Vänd telefonen på sidan för att spela.
+MG_CHECKING,Checking... %d s,Vérification... %d s,جارٍ التحقق... %d ث,Kontrollerar... %d s
+MG_COMPOST_WATER_HINT,Water the heap: hold the tap and release in the green zone.,Arrose le tas : maintiens le robinet et relâche dans la zone verte.,اسقِ الكومة: اضغط مطوّلًا على الصنبور وأفلته في المنطقة الخضراء.,Vattna högen: håll kranen och släpp i den gröna zonen.
+MG_TOO_FAR,Too far from the console.,Trop loin de la console.,أنت بعيد جدًا عن الجهاز.,För långt från konsolen.
+MEETING_CLUE_WASTE_LINE,Waste: %s,Déchet : %s,النفايات: %s,Avfall: %s
+MEETING_CLUE_VICTIM_LINE,Found poisoned: %s,Retrouvé empoisonné : %s,وُجد مسمّمًا: %s,Hittad förgiftad: %s
+EJECTION_LEFT_ONE,%d polluter remains.,Il reste %d pollueur.,بقي %d ملوِّث.,%d förorenare är kvar.
+EJECTION_LEFT_MANY,%d polluters remain.,Il reste %d pollueurs.,بقي %d ملوِّثين.,%d förorenare är kvar.
+SPECTATOR_PHASE_PLAYING,The round goes on.,La partie continue.,الجولة مستمرة.,Rundan fortsätter.
+ACT_SABOTAGE,Sabotage,Saboter,تخريب,Sabotage
+ACT_FIX,Fix,Réparer,أصلح,Laga
+ACT_FIX_HOLD,Hold,Maintenir,اضغط مطوّلًا,Håll
+SABOTAGE_FIRE,Fire,Feu,حريق,Brand
+SABOTAGE_SMOG,Smog,Smog,ضباب دخاني,Smog
+SABOTAGE_BANNER_FIRE,FIRE! Out of control in %s,FEU ! Hors de contrôle dans %s,حريق! خارج عن السيطرة في %s,BRAND! Utom kontroll i %s
+SABOTAGE_BANNER_FIRE_HELD,Hold every fire console together (%d/%d),Maintiens toutes les consoles de feu ensemble (%d/%d),اضغطوا معًا على كل أجهزة الحريق (%d/%d),Håll alla brandkonsoler samtidigt (%d/%d)
+SABOTAGE_BANNER_SMOG,SMOG! Visibility is low. Fix the filter panel.,SMOG ! Visibilité réduite. Répare le panneau de filtre.,ضباب دخاني! الرؤية ضعيفة. أصلح لوحة المرشّح.,SMOG! Dålig sikt. Laga filterpanelen.
+SABOTAGE_REPAIRING,Repairing...,Réparation...,جارٍ الإصلاح...,Lagar...
+SABOTAGE_FIXED,Sabotage fixed.,Sabotage réparé.,تم إصلاح التخريب.,Sabotaget är lagat.
+SABOTAGE_EXPIRED,Too late: the sabotage was not fixed.,Trop tard : le sabotage n'a pas été réparé.,فات الأوان: لم يتم إصلاح التخريب.,För sent: sabotaget lagades inte.
+ACT_CLEAN,Clean,Nettoyer,نظّف,Städa
+CHAT_SUS,I suspect %s.,Je soupçonne %s.,أشتبه في %s.,Jag misstänker %s.
+CHAT_SAW_DUMP,I saw %s re-pollute a clean spot in %s.,J'ai vu %s repolluer un endroit propre en zone %s.,رأيت %s يعيد تلويث موقع نظيف في منطقة %s.,Jag såg %s smutsa ner en ren plats i %s.
+CHAT_SAW_HIT,I saw %s gas or infect someone in %s.,J'ai vu %s gazer ou infecter quelqu'un en zone %s.,رأيت %s يصيب أحدًا بالغاز أو بالفيروس في منطقة %s.,Jag såg %s gasa eller smitta någon i %s.
+CHAT_NEAR_PILE,I saw %s in %s around the time of the death.,J'ai vu %s en zone %s au moment de la mort.,رأيت %s في منطقة %s وقت الوفاة.,Jag såg %s i %s ungefär när det hände.
+CHAT_I_WAS,I was in %s.,J'étais en zone %s.,كنت في منطقة %s.,Jag var i %s.
+CHAT_WITH,I was with %s in %s.,J'étais avec %s en zone %s.,كنت مع %s في منطقة %s.,Jag var med %s i %s.
+CHAT_WHERE,Where was %s?,Où était %s ?,أين كان %s؟,Var var %s?
+CHAT_AGREE,I agree with %s.,Je suis d'accord avec %s.,أتفق مع %s.,Jag håller med %s.
+CHAT_DOUBT,I doubt %s.,Je doute de %s.,أشك في %s.,Jag tvivlar på %s.
+CHAT_NOT_ME,It wasn't me.,Ce n'était pas moi.,لم أكن أنا.,Det var inte jag.
+CHAT_LYING,I think %s is lying.,Je pense que %s ment.,أعتقد أن %s يكذب.,Jag tror att %s ljuger.
+CHAT_SKIP_NO_PROOF,No proof. I will skip.,Pas de preuve. Je passe.,لا يوجد دليل. سأتخطّى.,Inga bevis. Jag avstår.
+CHAT_VOTE,I will vote for %s.,Je vais voter pour %s.,سأصوّت لـ %s.,Jag röstar på %s.
+CHAT_HMM,Hmm...,Hmm...,همم...,Hmm...
+CHAT_IDK,I don't know.,Je ne sais pas.,لا أعرف.,Jag vet inte.
+CHAT_KIND_ACCUSE,Accuse,Accuser,اتهام,Anklaga
+CHAT_KIND_ALIBI,Alibi,Alibi,حجة غياب,Alibi
+CHAT_KIND_QUESTION,Ask,Demander,سؤال,Fråga
+CHAT_KIND_REACT,React,Réagir,ردّ فعل,Reagera
+CHAT_KIND_VOTE,Vote,Vote,تصويت,Rösta
+CHAT_KIND_FILLER,Other,Autre,أخرى,Annat
+CHAT_SAY,Say something,Parler,تحدّث,Säg något
+CHAT_PHRASES_LEFT,Phrases left: %d,Phrases restantes : %d,العبارات المتبقية: %d,Fraser kvar: %d
+CHAT_TEXT_LEFT,Typed lines left: %d,Messages écrits restants : %d,الرسائل المكتوبة المتبقية: %d,Skrivna rader kvar: %d
+CHAT_SEND,Send,Envoyer,إرسال,Skicka
+CHAT_BACK,Back,Retour,رجوع,Tillbaka
+CHAT_PICK_KIND,What do you want to say?,Que veux-tu dire ?,ماذا تريد أن تقول؟,Vad vill du säga?
+CHAT_PICK_PHRASE,Pick a line.,Choisis une phrase.,اختر عبارة.,Välj en rad.
+CHAT_PICK_SEAT,Pick a player.,Choisis un joueur.,اختر لاعبًا.,Välj en spelare.
+CHAT_PICK_ZONE,Pick a place.,Choisis un lieu.,اختر مكانًا.,Välj en plats.
+CHAT_CLOSED,You cannot chat now.,Tu ne peux pas parler maintenant.,لا يمكنك الدردشة الآن.,Du kan inte chatta nu.
+CHAT_NONE_LEFT,No lines left.,Plus de messages.,لا توجد رسائل متبقية.,Inga rader kvar.
+CHAT_REJECTED,That line was not accepted.,Ce message n'a pas été accepté.,لم تُقبل هذه الرسالة.,Den raden godtogs inte.
+CHAT_TYPE_HINT,Type a message,Écris un message,اكتب رسالة,Skriv ett meddelande
+CHAT_DONE,Done,Fermer,إغلاق,Klar
+CHAT_HAS_VOTED,%s has voted,%s a voté,%s صوّت,%s har röstat
+MEETING_GHOST_LINE,%s (ghost): %s,%s (fantôme) : %s,%s (شبح): %s,%s (spöke): %s
+CHAT_GHOST_HINT,Ghost chat: only out players see it.,Discussion des fantômes : seuls les joueurs éliminés la voient.,دردشة الأشباح: لا يراها إلا اللاعبون المقصَون.,Spökchatt: bara utslagna spelare ser den.
+GHOST_CHAT_TITLE,Ghost chat,Discussion des fantômes,دردشة الأشباح,Spökchatt
+HUD_BAGS,Bags: %d/%d,Sacs : %d/%d,الأكياس: %d/%d,Säckar: %d/%d
+HUD_SPOT_CLEANED,Spot cleaned. Take the bag to the Recycling Machine.,Endroit nettoyé. Porte le sac à la machine de recyclage.,تم تنظيف الموقع. احمل الكيس إلى آلة إعادة التدوير.,Platsen är städad. Bär säcken till återvinningsmaskinen.
+REJECT_BAGS_FULL,Your bags are full. Recycle them first.,Tes sacs sont pleins. Recycle-les d'abord.,أكياسك ممتلئة. أعد تدويرها أولًا.,Dina säckar är fulla. Återvinn dem först.
+REJECT_SPOT_CLEAN,This spot is already clean.,Cet endroit est déjà propre.,هذا الموقع نظيف بالفعل.,Den här platsen är redan ren.
+REJECT_SPOT_DIRTY,This spot is still dirty.,Cet endroit est encore sale.,هذا الموقع لا يزال متسخًا.,Den här platsen är fortfarande smutsig.
+UPGRADE_TITLE,Pick an upgrade,Choisis une amélioration,اختر ترقية,Välj en uppgradering
+UPGRADE_BACKPACK,Backpack (3 bags),Sac à dos (3 sacs),حقيبة ظهر (3 أكياس),Ryggsäck (3 säckar)
+UPGRADE_TOOL,Cleaning Tool (faster),Outil de nettoyage (plus rapide),أداة التنظيف (أسرع),Städverktyg (snabbare)
+UPGRADE_HEAL,Healing Kit,Kit de soin,حقيبة العلاج,Förbandslåda
+UPGRADE_MASK,Gas Mask,Masque à gaz,قناع الغاز,Gasmask
+UPGRADE_OK,You got: %s,Obtenu : %s,حصلت على: %s,Du fick: %s
+HUD_ITEMS,Items: %s,Objets : %s,العناصر: %s,Föremål: %s
+HUD_DELIVERED,Recycled %d bag(s)! Cleanliness %.0f%%,%d sac(s) recyclé(s) ! Propreté %.0f%%,تمت إعادة تدوير %d كيس! النظافة %.0f%%,Återvann %d säck(ar)! Renhet %.0f%%
+SABOTAGE_BANNER_MACHINE,The Recycling Machine is jammed! Hold FIX at the machine.,La machine de recyclage est bloquée ! Maintiens RÉPARER à la machine.,آلة إعادة التدوير معطّلة! اضغط مطوّلًا على إصلاح عند الآلة.,Återvinningsmaskinen har fastnat! Håll LAGA vid maskinen.
+REJECT_NO_BAGS,You carry no bags.,Tu ne portes aucun sac.,لا تحمل أي أكياس.,Du bär inga säckar.
+REJECT_MACHINE_JAMMED,The machine is jammed. Fix it first.,La machine est bloquée. Répare-la d'abord.,الآلة معطّلة. أصلحها أولًا.,Maskinen har fastnat. Laga den först.
+REJECT_NO_ITEM,That item is not available.,Cet objet n'est pas disponible.,هذا العنصر غير متوفر.,Det föremålet finns inte.
+ACT_DASH,Dash,Élan,اندفاع,Rusa
+ACT_REPOLLUTE,Re-pollute,Repolluer,إعادة التلويث,Smutsa ner
+ACT_VIRUS,Virus,Virus,فيروس,Virus
+ACT_GAS,Gas,Gaz,غاز,Gas
+ABILITY_TITLE,Pick your ability,Choisis ton pouvoir,اختر قدرتك,Välj din förmåga
+ABILITY_VIRUS,Virus,Virus,فيروس,Virus
+ABILITY_GAS,Toxic Gas,Gaz toxique,غاز سام,Giftig gas
+ABILITY_OK,Unlocked: %s,Débloqué : %s,تم فتح: %s,Upplåst: %s
+GAS_ROOM_TITLE,Which room do you gas?,Quelle salle gazer ?,أي غرفة تريد تسميمها بالغاز؟,Vilket rum vill du gasa?
+GAS_ROOM_MARKET,Market,Marché,السوق,Marknaden
+GAS_ROOM_GARDEN,Garden,Jardin,الحديقة,Trädgården
+GAS_ROOM_DEPOT,Depot,Dépôt,المستودع,Depån
+GAS_ROOM_DARK,Dark room,Salle sombre,الغرفة المظلمة,Mörka rummet
+GAS_ROOM_CLUB,Club room,Salle du club,قاعة النادي,Klubbrummet
+GAS_ROOM_AMPHI,Amphitheatre,Amphithéâtre,المدرج,Aulan
+GAS_ROOM_LOUNGE,Lounge,Salon,الاستراحة,Loungen
+GAS_ROOM_OFFICE,Office,Bureau,المكتب,Kontoret
+VIRUS_PLANTED,Virus planted. Wait for a Cleaner.,Virus caché. Attends un nettoyeur.,تم زرع الفيروس. انتظر منظّفًا.,Viruset är placerat. Vänta på en Städare.
+REPOLLUTE_OK,Spot re-polluted.,Endroit repollué.,تمت إعادة تلويث الموقع.,Platsen är nedsmutsad.
+SABOTAGE_MACHINE,Machine,Machine,الآلة,Maskin
+REJECT_NOT_UNLOCKED,Not unlocked yet.,Pas encore débloqué.,لم يُفتح بعد.,Inte upplåst än.
+LANG_AR,العربية,العربية,العربية,العربية
+RESULT_METER_FULL,The map is 100% clean!,La carte est propre à 100 % !,الخريطة نظيفة بنسبة 100%!,Kartan är 100% ren!
+RESULT_TL_INFECTED,%s was taken out by the virus,%s a été éliminé par le virus,%s أخرجه الفيروس من اللعبة,%s slogs ut av viruset
+SPECTATOR_CAUSE_VIRUS,The virus got you.,Le virus t'a eu.,لقد أصابك الفيروس.,Viruset tog dig.
+SPECTATOR_CAUSE_GAS,You breathed the toxic gas.,Tu as respiré le gaz toxique.,لقد استنشقت الغاز السام.,Du andades in den giftiga gasen.
+HUD_INFECTED,Infected! %d s left. Heal or alert the others.,Infecté ! Encore %d s. Soigne-toi ou alerte les autres.,أنت مصاب! بقي %d ث. عالِج نفسك أو نبّه الآخرين.,Smittad! %d s kvar. Bli helad eller varna de andra.
+ACT_HEAL,Heal,Soigner,عالِج,Hela
+ACT_ALERT,Alert,Alerter,نبّه,Varna
+HUD_HEALED,You were healed.,Tu as été soigné.,تم علاجك.,Du blev helad.
+HUD_MASK_USED,Your gas mask saved you!,Ton masque à gaz t'a sauvé !,قناع الغاز أنقذك!,Din gasmask räddade dig!
+GAS_WARNING,Toxic gas: %s in %d s!,Gaz toxique : %s dans %d s !,غاز سام: %s بعد %d ث!,Giftig gas: %s om %d s!
+COMMON_BACK,Back,Retour,رجوع,Tillbaka
+COMMON_CONFIRM,Confirm,Confirmer,تأكيد,Bekräfta
+CREATE_MAP,Map :,Carte :,الخريطة:,Karta :
+CREATE_BUTTON,Create,Créer,إنشاء,Skapa
+MAP_TBS,TBS,TBS,TBS,TBS
+MAP_INSAT,INSAT,INSAT,INSAT,INSAT
+MAP_SIDI_BOU_SAID,Sidi Bou Said,Sidi Bou Saïd,سيدي بوسعيد,Sidi Bou Said
+MAP_SOON,Coming soon,Bientôt,قريبًا,Kommer snart
+MAP_LOCKED,This map is coming soon.,Cette carte arrive bientôt.,هذه الخريطة قادمة قريبًا.,Den här kartan kommer snart.
+LOBBY_COPY,Copy the code,Copier le code,انسخ الرمز,Kopiera koden
+LOBBY_COPIED,Code copied.,Code copié.,تم نسخ الرمز.,Koden kopierad.
+LOBBY_CHARACTER,Character,Personnage,الشخصية,Figur
+LOBBY_START_SHORT,Start,Lancer,ابدأ,Starta
+CHAR_TITLE,Choose your character,Choisis ton personnage,اختر شخصيتك,Välj din figur
+CHAR_UNLOCK_HINT,Keep a daily scan streak to unlock more characters.,Garde ta série de scans quotidiens pour débloquer d'autres personnages.,حافظ على سلسلة المسح اليومية لفتح شخصيات أخرى.,Håll en daglig skanningsserie för att låsa upp fler figurer.
+CHAR_SPROUT,Sprouty,Sprouty,Sprouty,Sprouty
+CHAR_ROBOT,Abdo,Abdo,Abdo,Abdo
+CHAR_EAGLE,Enactor,Enactor,Enactor,Enactor
+CHAR_RABBIT,Timi,Timi,Timi,Timi
+LANG_SV,Svenska,Svenska,Svenska,Svenska
+SETTINGS_COMMUNITY,Community r/EcoSus,Communauté r/EcoSus,مجتمع r/EcoSus,Gemenskap r/EcoSus
+ACT_RECYCLE,Recycle (%d),Recycler (%d),إعادة التدوير (%d),Återvinn (%d)
+ACT_MEETING,Meeting,Réunion,اجتماع,Möte

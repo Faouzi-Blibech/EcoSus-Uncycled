@@ -94,7 +94,7 @@ namespace Uncycled.Bots.Tests
             for (ulong seed = 1; seed <= 20; seed++)
             {
                 TestMatch m = TestMatch.Create(seed, startPlaying: false);
-                var rig = new BrainRig(m, seed);
+                var rig = new BrainRig(m, seed, s => s.EmergencyOnWitnessChance = 0f); // the coverage scenario of the mask, not the emergency rule: its early meetings would end the infections HealSelf needs
                 int max = (int)(150f / TestMatch.Dt);
                 for (int i = 0; i < max && m.Engine.Phase != MatchPhase.Ended; i++)
                 {

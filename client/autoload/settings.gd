@@ -15,7 +15,9 @@ const DEFAULT_SERVER_URL: String = "ws://localhost:%d%s" % [SERVER_PORT, SERVER_
 const SCAN_URL: String = "http://127.0.0.1:8000"
 const SCAN_PORT: int = 8000
 const SETTINGS_PATH: String = "user://settings.cfg"
-const LANGUAGES: Array[String] = ["en", "fr", "ar"]
+## The players' community (Settings has a button to it).
+const COMMUNITY_URL: String = "https://www.reddit.com/r/EcoSus/"
+const LANGUAGES: Array[String] = ["en", "fr", "ar", "sv"]
 ## Godot's default font has no Arabic letters; this one is added behind it (see _add_font_fallbacks).
 const ARABIC_FONT_PATH: String = "res://assets/fonts/NotoSansArabic.ttf"
 
