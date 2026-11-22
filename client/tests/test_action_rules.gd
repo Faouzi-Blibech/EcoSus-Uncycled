@@ -258,3 +258,20 @@ func test_dash_button_states() -> bool:
 		assert_eq(d["ready"], c[2], "ready %s" % str(c[0]))
 		assert_near(float(d["cooldown"]), float(c[3]), 0.001, "cooldown %s" % str(c[0]))
 	return true
+
+
+## Step 3: USE says what it will do at the console in reach.
+func test_use_look_per_console() -> bool:
+	var meeting: Dictionary = {"id": "meeting_btn", "kind": "emergency"}
+	var table: Array = [
+		[{}, {"kind": "use", "count": 0}, "nothing in reach"],
+		[{"near_console": SPOT, "near_spot_state": "dirty"}, {"kind": "clean", "count": 0}, "dirty spot"],
+		[{"role": "polluter", "near_console": SPOT, "near_spot_state": "dirty"}, {"kind": "clean", "count": 0}, "a Trasher's fake clean looks the same"],
+		[{"near_console": MACHINE, "bags": 2}, {"kind": "recycle", "count": 2}, "machine with 2 bags"],
+		[{"near_console": MACHINE, "bags": 0}, {"kind": "recycle", "count": 0}, "machine, no bags (USE hidden)"],
+		[{"near_console": MACHINE, "bags": 1, "machine_jammed": true}, {"kind": "use", "count": 0}, "jammed: FIX instead"],
+		[{"near_console": meeting}, {"kind": "meeting", "count": 0}, "emergency table"],
+	]
+	for row in table:
+		assert_eq(_states(row[0] as Dictionary)["use_look"], row[1], str(row[2]))
+	return true
