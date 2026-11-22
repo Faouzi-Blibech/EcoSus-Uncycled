@@ -104,6 +104,18 @@ class ScanEndpointTests(unittest.TestCase):
         s = self.start(**{"x-forwarded-proto": "https", "x-forwarded-host": "abc.trycloudflare.com"})
         self.assertTrue(s["url"].startswith("https://abc.trycloudflare.com/scan?t="), s["url"])
 
+    def test_link_uses_the_public_address_when_set(self):
+        """The demo sets ECO_PUBLIC_URL to the PC's Wi-Fi address: a game asking on 127.0.0.1 still gets
+        a link (and QR) that a phone can open."""
+        os.environ["ECO_PUBLIC_URL"] = "http://192.168.1.118:8000/"
+        try:
+            s = self.client.post("/scan/start", json={"player_id": self.pid},
+                                 headers={"host": "127.0.0.1:8000"}).json()
+        finally:
+            del os.environ["ECO_PUBLIC_URL"]
+        self.assertTrue(s["url"].startswith("http://192.168.1.118:8000/scan?t="), s["url"])
+        self.assertTrue(s["qr_url"].startswith("http://192.168.1.118:8000/scan/qr?t="), s["qr_url"])
+
     def test_start_rejects_a_bad_player_id(self):
         r = self.client.post("/scan/start", json={"player_id": "not-a-uuid"})
         self.assertEqual(r.status_code, 400)

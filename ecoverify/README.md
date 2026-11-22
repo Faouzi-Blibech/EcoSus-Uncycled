@@ -77,6 +77,25 @@ Open http://localhost:8000 for the browser tester (webcam or file upload, draws 
 Neither needs test photos: the unit tests generate their own images and the smoke test uses
 the sample photos bundled with Ultralytics. The smoke test makes a new random player each run.
 
+## Pitch demo (Android)
+
+The game is an Android game: "Scan an item" opens the camera page on the phone itself (no QR code).
+
+1. **Before the pitch, once:** build the images (`docker compose build`, ~2 GB to download the first time).
+2. Laptop and phone on the **same Wi-Fi**, or the laptop on the phone's **hotspot** (venue Wi-Fi often
+   keeps devices apart). Docker Desktop running.
+3. On the laptop: `.\start-demo.ps1`. It prints the laptop's address, e.g. `192.168.1.118`.
+4. On the phone, in the game: **Settings -> Server** `ws://192.168.1.118:5000/ws`, Save. The scan
+   service is found on the same laptop automatically (or type `http://192.168.1.118:8000` in
+   **Scan service address**).
+5. Menu -> **Scan & earn** -> **Scan an item**: the camera page opens -> **Open the camera** -> photo of a
+   bottle, can or paper -> the item, bin, CO2 and points appear -> phone **Back** -> the menu shows
+   "Scan saved!" and the new points and streak. The first scan unlocks a character for the lobby.
+
+Talking points: real photo, detected on our own server (YOLO + CLIP + a model we fine-tuned on TACO
+litter photos), item outline, CO2 saved, anti-cheat (same item, other angle, old photo), daily streak
+that unlocks characters in the game.
+
 ## Phone
 
 Easiest (no app to install): the browser scan page.

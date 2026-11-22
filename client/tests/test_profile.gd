@@ -54,13 +54,13 @@ func test_selected_skin_falls_back_when_not_unlocked() -> bool:
 
 
 ## Web: the same tab goes to the scan page (its Back button returns to the game). Android: the browser.
-## Desktop: a QR code for a phone.
+## No QR anywhere: the photo is taken on the device that runs the game.
 func test_open_mode_per_platform() -> bool:
 	var script: GDScript = load(PROFILE_SCRIPT)
 	assert_eq(script.open_mode(true, false), "same_tab", "web")
 	assert_eq(script.open_mode(true, true), "same_tab", "web on a phone")
 	assert_eq(script.open_mode(false, true), "browser", "android app")
-	assert_eq(script.open_mode(false, false), "qr", "windows")
+	assert_eq(script.open_mode(false, false), "browser", "windows test build: same as the app, no QR")
 	return true
 
 
@@ -70,4 +70,16 @@ func test_scan_changed_when_points_or_streak_move() -> bool:
 	assert_true(script.scan_counted({"points": 10, "streak": 1}, {"points": 20, "streak": 1}), "points up")
 	assert_true(script.scan_counted({"points": 30, "streak": 1}, {"points": 30, "streak": 2}), "streak up")
 	assert_true(script.scan_counted({"points": 30, "scans_today": 3}, {"points": 30, "scans_today": 4}), "a 4th scan scores no points but counts")
+	return true
+
+
+## Regression: after the first /profile reply the connection stays open (STATUS_CONNECTED); counting
+## that as busy skipped every later refresh, so the menu never saw the points from the phone's photo.
+func test_an_open_finished_connection_is_not_busy() -> bool:
+	var script: GDScript = load("res://autoload/profile.gd")
+	assert_true(not script.is_busy(HTTPClient.STATUS_CONNECTED), "finished, kept open")
+	assert_true(not script.is_busy(HTTPClient.STATUS_DISCONNECTED), "idle")
+	assert_true(not script.is_busy(HTTPClient.STATUS_CANT_CONNECT), "failed: may retry")
+	assert_true(script.is_busy(HTTPClient.STATUS_REQUESTING), "sending")
+	assert_true(script.is_busy(HTTPClient.STATUS_BODY), "receiving")
 	return true
