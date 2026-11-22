@@ -64,10 +64,10 @@ const ACTION_ART: Dictionary = {
 	"use": "use", "report": "report", "repollute": "repollute", "ability": "virus", "sabotage": "sabotage",
 }
 ## What the USE button looks like for each ActionRules use_look kind: [art, label key]. ACT_RECYCLE
-## takes the bag count. The meeting borrows the alert bell until it has its own art.
+## takes the bag count. The meeting has its own button (btn_meeting).
 const USE_LOOK: Dictionary = {
 	"use": ["use", "ACT_USE"], "clean": ["clean", "ACT_CLEAN"], "recycle": ["recycle", "ACT_RECYCLE"],
-	"meeting": ["alert", "ACT_MEETING"],
+	"meeting": ["meeting", "ACT_MEETING"],
 }
 const BANNER_WIDTH_PX: float = 220.0
 ## Width of the button grid (two 64 px slots and the gap), used to put the choices beside it.
