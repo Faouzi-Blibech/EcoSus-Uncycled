@@ -38,11 +38,16 @@ class Verifier:
         total = int(row["total_co2"]) if row else 0
         new_ids = set(new_unlock_ids or [])
         per_day = self.store.scans_per_day(pid)
+        bought = self.store.purchases(pid)
+        unlocked = unlocked | set(bought)
+        points = rules.points(list(per_day.values()), self.t["points_per_scan"], self.t["max_scored_scans_per_day"])
         return {
             "player_id": pid,
-            # game fields (plan L1): 10 points per scan, at most 3 scans a day count
-            "points": rules.points(list(per_day.values()), self.t["points_per_scan"],
-                                   self.t["max_scored_scans_per_day"]),
+            # game fields: points earned by scans (points_per_scan each, max_scored_scans_per_day a day count);
+            # currency = points not spent in the shop
+            "points": points,
+            "currency": points - sum(bought.values()),
+            "bought": sorted(bought),
             "scans_today": per_day.get(today.isoformat(), 0),
             "skins": [s["id"] for s in config.SKINS if s["id"] in unlocked],
             "new_skins": [s["id"] for s in config.SKINS if s["id"] in new_ids],

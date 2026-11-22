@@ -1,4 +1,21 @@
 keys,en,fr,ar,sv
+SHOP_OWNED,You already own this skin.,Tu as déjà ce skin.,أنت تملك هذا الزي بالفعل.,Du har redan den här skinnen.
+SHOP_BUY_FOR,Buy %d,Acheter %d,شراء %d,Köp %d
+MENU_CURRENCY,Points to spend in the shop,Points à dépenser dans la boutique,نقاط للإنفاق في المتجر,Poäng att handla för i butiken
+MENU_SCAN_GAIN,+%d,+%d,+%d,+%d
+SHOP_NOT_ENOUGH,Not enough points: scan more items!,Pas assez de points : scanne plus d'objets !,النقاط غير كافية: امسح المزيد من الأغراض!,Inte tillräckligt med poäng: skanna fler saker!
+SHOP_OFFLINE,The shop can't be reached right now.,La boutique est injoignable pour le moment.,لا يمكن الوصول إلى المتجر حاليًا.,Butiken går inte att nå just nu.
+SHOP_BOUGHT,Bought! Pick it in the lobby.,Acheté ! Choisis-le dans le salon.,تم الشراء! اختره في الردهة.,Köpt! Välj den i lobbyn.
+CHAR_OWN_COLOURS,This character keeps its own colours.,Ce personnage garde ses propres couleurs.,هذه الشخصية تحتفظ بألوانها الخاصة.,Den här figuren behåller sina egna färger.
+SPECTATOR_LEAVE,Leave game,Quitter la partie,مغادرة اللعبة,Lämna spelet
+GAS_LEAVE_NOW,TOXIC GAS! LEAVE THE ROOM NOW! %d,GAZ TOXIQUE ! QUITTE LA SALLE ! %d,غاز سام! غادر الغرفة الآن! %d,GIFTGAS! LÄMNA RUMMET NU! %d
+GAS_INCOMING,Toxic gas incoming in a room: %d s,Gaz toxique bientôt dans une salle : %d s,غاز سام قادم إلى إحدى الغرف: %d ث,Giftgas på väg till ett rum: %d s
+GUIDE_MAIN_CLEANER,Reach 100% cleanliness before the [color=#ff4d4d]Trashers[/color] get you!,Atteins 100 % de propreté avant que les [color=#ff4d4d]Trashers[/color] t'attrapent !,اوصل إلى نظافة 100٪ قبل أن يمسك بك [color=#ff4d4d]المُلوِّثون[/color]!,Nå 100 % renhet innan [color=#ff4d4d]Skräparna[/color] tar dig!
+GUIDE_MAIN_TRASHER,Stop the Cleaners before the campus is 100% clean.,Arrête les Cleaners avant que le campus soit propre à 100 %.,أوقف المنظّفين قبل أن يصبح الحرم نظيفًا بنسبة 100٪.,Stoppa Städarna innan campus är 100 % rent.
+GUIDE_CLEAN,Next: clean a dirty spot (it fills a bag).,Ensuite : nettoie un endroit sale (ça remplit un sac).,التالي: نظّف مكانًا متسخًا (يملأ كيسًا).,Nästa: städa en smutsig plats (den fyller en säck).
+GUIDE_DELIVER,Next: take your bags to the Recycling Machine. Follow the gold arrow.,Ensuite : apporte tes sacs à la machine de recyclage. Suis la flèche dorée.,التالي: خذ أكياسك إلى آلة إعادة التدوير. اتبع السهم الذهبي.,Nästa: ta dina säckar till återvinningsmaskinen. Följ den gyllene pilen.
+GUIDE_BAG_FULL,Your bag is full! Deliver it at the Recycling Machine.,Ton sac est plein ! Dépose-le à la machine de recyclage.,كيسك ممتلئ! سلّمه في آلة إعادة التدوير.,Din säck är full! Lämna den vid återvinningsmaskinen.
+GUIDE_TRASHER_STEP,Re-pollute clean spots and sabotage the machine. Don't get caught.,Repollue les endroits propres et sabote la machine. Ne te fais pas prendre.,أعد تلويث الأماكن النظيفة وخرّب الآلة. لا تدعهم يمسكون بك.,Smutsa ner rena platser och sabotera maskinen. Bli inte påkommen.
 SETTINGS_SCAN,Scan service address,Adresse du service de scan,عنوان خدمة المسح,Adress till skanningstjänsten
 SETTINGS_BAD_SCAN_URL,The scan address must look like http://192.168.1.20:8000 or https://…,L'adresse de scan doit ressembler à http://192.168.1.20:8000 ou https://…,يجب أن يشبه عنوان المسح http://192.168.1.20:8000 أو https://…,Skanningsadressen ska se ut som http://192.168.1.20:8000 eller https://…
 CHAR_LOCKED,That character is still locked. Keep your scan streak going!,Ce personnage est encore verrouillé. Continue ta série de scans !,هذه الشخصية ما زالت مقفلة. واصل سلسلة المسح!,Den figuren är fortfarande låst. Håll igång din skanningsserie!

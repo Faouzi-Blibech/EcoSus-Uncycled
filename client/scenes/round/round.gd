@@ -8,6 +8,8 @@ const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const Joystick := preload("res://ui/joystick/virtual_joystick.gd")
 const AvatarScene: PackedScene = preload("res://world/player/avatar.tscn")
+const GasBannerScript := preload("res://ui/hud/gas_banner.gd")
+const GuideScript := preload("res://ui/hud/guide_overlay.gd")
 const LocalPlayerScene: PackedScene = preload("res://world/player/local_player.tscn")
 const PileScene: PackedScene = preload("res://world/pile/pile.tscn")
 const SpotViewScript: GDScript = preload("res://world/spot/spot_view.gd")
@@ -114,6 +116,10 @@ var senders: Dictionary = {
 	"dash": Net.send_dash,
 }
 var _hud: Hud = null
+## Red countdown while a gas warning runs ("leave the room" when inside).
+var _gas_banner: GasBanner = null
+## Objectives card and the gold arrow to the Recycling Machine.
+var _guide: GuideOverlay = null
 var _minigames: MinigameLayer = null
 var _joystick: Joystick
 
@@ -253,6 +259,11 @@ func _build_joystick() -> void:
 func _build_overlays() -> void:
 	_hud = HudScene.instantiate() as Hud
 	add_child(_hud)
+	_hud.leave_requested.connect(_leave_to_menu)
+	_gas_banner = GasBannerScript.new() as GasBanner
+	_hud.add_child(_gas_banner)
+	_guide = GuideScript.new() as GuideOverlay
+	_hud.add_child(_guide)
 	_hud.bind(self)
 	_minigames = MinigameLayerScene.instantiate() as MinigameLayer
 	add_child(_minigames)
@@ -311,6 +322,7 @@ func _process(delta: float) -> void:
 		Session.since_meeting_s += delta
 	_update_remote(Session.sample(Net.server_time() - RENDER_DELAY_S))
 	_mark_reportable()
+	_update_guide()
 
 	_joystick.enabled = not _minigames.is_open()
 	if _dash_wait >= 0.0:
@@ -420,6 +432,18 @@ func _build_spots() -> void:
 	_update_spots()
 
 
+## Objectives for the role and the gold arrow from the player to the Recycling Machine.
+func _update_guide() -> void:
+	if _guide == null:
+		return
+	var to_machine: Vector2 = Vector2.ZERO
+	var m: MapMarker = _map.marker(MACHINE_ID) if _map != null else null
+	if m != null:
+		var centre: Vector2 = m.position + Vector2(m.zone_size_tiles) * MapRoot.TILE_PX / 2.0
+		to_machine = centre - _player.global_position
+	_guide.update_state(Session.role, Session.bags, Session.bag_cap, Session.is_out, Session.phase == "playing", to_machine)
+
+
 ## Tints the room of the running gas warning (Session.gas_room), clears it when none.
 func _update_gas() -> void:
 	if _gas_overlay == null:
@@ -427,10 +451,18 @@ func _update_gas() -> void:
 	var m: MapMarker = _map.marker(Session.gas_room) if _map != null and not Session.gas_room.is_empty() else null
 	if m == null:
 		_gas_overlay.clear()
+		if _gas_banner != null:
+			_gas_banner.clear()
 		return
 	var rect: Rect2 = Rect2(m.position / MapRoot.TILE_PX, Vector2(m.zone_size_tiles))
 	var warning_s: float = float(Net.as_dict(Session.tuning.get("trasher")).get("gas_warning_s", 3.0))
 	_gas_overlay.show_room(rect, Session.gas_in_s, warning_s)
+	if _gas_banner != null:
+		if Session.is_out or _player == null:
+			_gas_banner.clear()
+		else:
+			var room_px: Rect2 = Rect2(rect.position * MapRoot.TILE_PX, rect.size * MapRoot.TILE_PX)
+			_gas_banner.show_warning(Session.gas_in_s, room_px.has_point(_player.global_position))
 
 
 func _update_spots() -> void:
@@ -922,6 +954,17 @@ func _fade_occluders() -> void:
 		var rect: Rect2 = piece.get_meta("rect")
 		var behind: bool = rect.has_point(p) and p.y < (piece as Node2D).position.y
 		piece.modulate.a = OCCLUDER_BEHIND_ALPHA if behind else 1.0
+
+
+## Out of the round (dead or voted out): back to the main menu instead of watching to the end.
+func _leave_to_menu() -> void:
+	if _leaving:
+		return
+	_leaving = true
+	_release_holds()
+	Net.send("leave")
+	Session.clear_room()
+	Router.go(get_tree(), Router.MENU)
 
 
 ## The map is missing or older/newer than the server's: this build cannot play the round.

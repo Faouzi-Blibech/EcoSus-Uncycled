@@ -24,11 +24,13 @@ def live_streak(last_day: date | None, today: date, streak: int) -> int:
 
 
 def new_unlocks(streak: int, unlocked_ids: set[str], skins: list[dict]) -> list[dict]:
-    return [s for s in skins if s["required_streak"] <= streak and s["id"] not in unlocked_ids]
+    return [s for s in skins if s.get("required_streak") is not None
+            and s["required_streak"] <= streak and s["id"] not in unlocked_ids]
 
 
 def next_skin(unlocked_ids: set[str], skins: list[dict]) -> dict | None:
-    return next((s for s in skins if s["id"] not in unlocked_ids), None)
+    """The next skin the streak unlocks (shop items are bought, not unlocked)."""
+    return next((s for s in skins if s.get("required_streak") is not None and s["id"] not in unlocked_ids), None)
 
 
 def points(scans_per_day: list[int], per_scan: int, max_per_day: int) -> int:
@@ -53,3 +55,14 @@ def award_co2(kind: str, item_co2: int, streak_co2_today: int, depot_count_today
     if item_co2 > left:
         return left, f"Capped at the daily limit ({daily_cap} g)."
     return item_co2, None
+
+
+def can_buy(item: dict | None, owned: set[str], currency: int) -> str | None:
+    """None when the purchase is allowed, else the reason: unknown, owned or not_enough."""
+    if item is None:
+        return "unknown"
+    if item["id"] in owned:
+        return "owned"
+    if currency < int(item["price"]):
+        return "not_enough"
+    return None

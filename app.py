@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
-from ecoverify import config
+from ecoverify import config, rules
 from ecoverify.clip import ClipEmbedder
 from ecoverify.service import Verifier, co2_equivalence
 from ecoverify.store import Store
@@ -153,12 +153,41 @@ async def scan_upload(token: str = Form(...), file: UploadFile = File(...)):
     pid = verifier.store.redeem_token(token, time.time())
     if pid is None:
         raise HTTPException(status_code=410, detail=LINK_GONE)
+    points_before = verifier.profile(pid, _now())["points"]
     result = await run_in_threadpool(verifier.verify, data, pid, _now(), None, True)
     if not result["verified"]:
         verifier.store.release_token(token)
     # On success the verify result already has the profile with this scan's new skins.
     result["profile"] = result.get("player") or verifier.profile(pid, _now())
+    result["points_gained"] = result["profile"]["points"] - points_before
     return result
+
+
+# ── Shop: skins with a price in content/skins.json, paid with scan points ──
+class ShopBuy(BaseModel):
+    player_id: str
+    item: str
+
+
+@app.get("/shop")
+async def shop():
+    return {"items": [{"id": s["id"], "price": s["price"], "name": s.get("name", s["id"]),
+                       "emoji": s.get("emoji", ""), "kind": "skin"} for s in config.SHOP.values()]}
+
+
+@app.post("/shop/buy")
+async def shop_buy(body: ShopBuy):
+    """409 when already owned, 402 when the player has too few points, 404 for an unknown item."""
+    pid = _player_id(body.player_id)
+    with verifier.store.lock:
+        profile = verifier.profile(pid, _now())
+        item = config.SHOP.get(body.item)
+        why = rules.can_buy(item, set(profile["skins"]), profile["currency"])
+        if why is not None:
+            code = {"unknown": 404, "owned": 409, "not_enough": 402}[why]
+            raise HTTPException(status_code=code, detail=why)
+        verifier.store.buy(pid, item["id"], int(item["price"]), _now().isoformat())
+    return {"ok": True, "item": item["id"], "profile": verifier.profile(pid, _now())}
 
 
 @app.get("/scan/qr")

@@ -4,6 +4,9 @@ extends Control
 ## It tells them why they are out, how the round stands (pollution, phase, time left) and, during
 ## a meeting, which stage it is in. The server sends no world and no players to an out seat.
 
+## The out player taps Leave game: back to the main menu instead of watching to the end.
+signal leave_pressed
+
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const BACKDROP: Color = Color(0.0, 0.0, 0.0, 0.55)
@@ -64,6 +67,12 @@ func _ready() -> void:
 		(l as Label).add_theme_color_override("font_color", PaperKit.CREAM)
 	for l in [_meter_label, _time, hint]:
 		(l as Label).add_theme_color_override("font_color", PaperKit.CREAM.darkened(0.15))
+	# The only control that takes taps on this overlay.
+	var leave: Button = UIKit.make_button(tr("SPECTATOR_LEAVE"))
+	leave.mouse_filter = Control.MOUSE_FILTER_STOP
+	leave.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	leave.pressed.connect(func() -> void: leave_pressed.emit())
+	box.add_child(leave)
 
 
 func _make_meter_bar() -> ProgressBar:

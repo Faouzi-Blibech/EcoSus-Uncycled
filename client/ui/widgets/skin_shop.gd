@@ -1,6 +1,7 @@
 extends HBoxContainer
 ## The skin shop on the home page's Profile: one kit card per skin (face in the card's circle,
-## name, rarity) with Wear / Wearing, or the streak still needed when locked. Wearing a skin saves
+## name, rarity) with Wear / Wearing, or the streak still needed when locked, or Buy with scan points
+## for a skin with a price (the server checks the points and records the purchase). Wearing a skin saves
 ## it as the profile's skin (the lobby puts it on).
 
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
@@ -32,6 +33,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	rebuild()
+	Profile.bought.connect(func(_item: String) -> void: rebuild())
+	Profile.changed.connect(rebuild)
 
 
 func rebuild() -> void:
@@ -67,14 +70,19 @@ func _card(s: Dictionary) -> Control:
 		(l as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		info.add_child(l)
 
-	var b: Button = UIKit.make_button(_button_text(state, int(s["streak"])), 0.0, "green" if state == "wearing" else "cream")
+	var price: int = int(s.get("price", 0))
+	var for_sale: bool = state == "locked" and price > 0
+	var label: String = tr("SHOP_BUY_FOR") % price if for_sale else _button_text(state, int(s.get("streak", 0)))
+	var b: Button = UIKit.make_button(label, 0.0, "green" if state == "wearing" or for_sale else "cream")
 	b.custom_minimum_size = Vector2.ZERO
 	b.add_theme_font_size_override("font_size", 12)
 	b.position = BUTTON_RECT.position * CARD_SIZE
 	b.size = BUTTON_RECT.size * CARD_SIZE
-	b.disabled = state == "locked"
+	b.disabled = state == "locked" and not (for_sale and Profile.currency >= price)
 	if state == "owned":
 		b.pressed.connect(_wear.bind(id))
+	elif for_sale:
+		b.pressed.connect(func() -> void: Profile.buy(id))
 	card.add_child(b)
 	return card
 

@@ -9,6 +9,8 @@ const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const SettingsPanel := preload("res://ui/widgets/settings_panel.gd")
 const LanguagePicker := preload("res://ui/widgets/language_picker.gd")
 const SkinShop := preload("res://ui/widgets/skin_shop.gd")
+const CoinArt := preload("res://ui/widgets/coin_art.gd")
+const GainPop := preload("res://ui/widgets/gain_pop.gd")
 
 const ART_DIR: String = "res://assets/ui/home/"
 
@@ -21,6 +23,10 @@ const CAPTION_FONT_SIZE: int = 34
 const STATUS_TOP: float = 334.0
 ## The two big circles cast a larger shadow so it reads at their size.
 const BIG_SHADOW_SCALE: float = 2.0
+## Currency box, top right, left of the settings button.
+const CURRENCY_SIZE: Vector2 = Vector2(96.0, 40.0)
+const CURRENCY_GAP: float = 6.0
+const COIN_PX: float = 24.0
 
 
 var _status: Label
@@ -33,6 +39,8 @@ var _name_edit: LineEdit = null
 ## Scan popup parts (null when it is closed).
 var _scan_stats: Label = null
 var _scan_status: Label = null
+var _currency_label: Label = null
+var _currency_box: PanelContainer = null
 ## Run after the profile popup saves a name (Create or Join pressed with no name).
 var _after_name: Callable = Callable()
 
@@ -49,6 +57,8 @@ func _ready() -> void:
 	Profile.scan_opened.connect(_on_scan_opened)
 	Profile.scan_failed.connect(_on_scan_failed)
 	Profile.scan_done.connect(_on_scan_done)
+	Profile.bought.connect(_on_bought)
+	Profile.buy_failed.connect(_on_buy_failed)
 	var stage: Control = PaperKit.stage(self)
 
 	var logo: TextureRect = PaperKit.picture(Assets.texture(ART_DIR + "logo.png"), LOGO_RECT)
@@ -77,6 +87,8 @@ func _ready() -> void:
 	var lang_btn: TextureButton = _make_flag_button()
 	lang_btn.pressed.connect(_open_language_popup)
 	PaperKit.pin_icon(lang_btn, true, 1)
+	_build_currency_box()
+	_show_scan_stats()
 
 	if Session.pending_notice != "":
 		_status.text = tr(Session.pending_notice)
@@ -262,6 +274,43 @@ static func tr_static(key: String) -> String:
 func _show_scan_stats() -> void:
 	if _scan_stats != null:
 		_scan_stats.text = scan_stats_text(Profile.points, Profile.streak) if Profile.loaded else ""
+	if _currency_label != null:
+		_currency_label.text = str(Profile.currency) if Profile.loaded else "-"
+
+
+## Top right, left of the settings button: a coin and the points the player can spend.
+func _build_currency_box() -> void:
+	_currency_box = PanelContainer.new()
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = PaperKit.CREAM
+	style.border_color = PaperKit.INK
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(int(CURRENCY_SIZE.y / 2.0))
+	style.content_margin_left = 8.0
+	style.content_margin_right = 12.0
+	_currency_box.add_theme_stylebox_override("panel", style)
+	_currency_box.tooltip_text = tr("MENU_CURRENCY")
+	_currency_box.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	var right: float = -PaperKit.ICON_MARGIN - UIKit.MIN_TOUCH - CURRENCY_GAP
+	_currency_box.offset_right = right
+	_currency_box.offset_left = right - CURRENCY_SIZE.x
+	_currency_box.offset_top = PaperKit.ICON_MARGIN + (UIKit.MIN_TOUCH - CURRENCY_SIZE.y) / 2.0
+	_currency_box.offset_bottom = _currency_box.offset_top + CURRENCY_SIZE.y
+	add_child(_currency_box)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	_currency_box.add_child(row)
+	var coin: TextureRect = TextureRect.new()
+	coin.texture = CoinArt.texture()
+	coin.custom_minimum_size = Vector2(COIN_PX, COIN_PX)
+	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(coin)
+	_currency_label = UIKit.make_label("-", 20, PaperKit.INK)
+	_currency_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_currency_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(_currency_label)
 
 
 func _on_scan_pressed() -> void:
@@ -285,6 +334,22 @@ func _on_scan_failed() -> void:
 func _on_scan_done() -> void:
 	if _scan_status != null:
 		_set_scan_status(tr("MENU_SCAN_DONE"))
+	if Profile.last_gain > 0 and _currency_box != null:
+		var at: Vector2 = _currency_box.global_position + Vector2(CURRENCY_SIZE.x / 2.0, CURRENCY_SIZE.y + 22.0)
+		GainPop.spawn(self, at, tr("MENU_SCAN_GAIN") % Profile.last_gain)
+
+
+# --- Buying a skin (the skin shop's Buy button; the server checks the points and records it) ---
+
+func _on_bought(_item: String) -> void:
+	if _popup_error != null:
+		_popup_error.add_theme_color_override("font_color", Color(0.15, 0.5, 0.2))
+		_popup_error.text = tr("SHOP_BOUGHT")
+
+
+func _on_buy_failed(reason_key: String) -> void:
+	if _popup_error != null:
+		_popup_error.text = tr(reason_key)
 
 
 ## The status line only takes room when it says something.

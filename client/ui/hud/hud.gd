@@ -4,6 +4,9 @@ extends CanvasLayer
 ## cooldown rings, the sabotage banner, the role reveal card, toasts and the spectator overlay. It only shows
 ## what Session holds; actions go through the bound round (RoundScene.perform_action).
 
+## The out player asked to leave the round (button on the spectator overlay).
+signal leave_requested
+
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const CharacterSprite := preload("res://ui/widgets/character_sprite.gd")
@@ -156,6 +159,7 @@ func _build() -> void:
 
 	_spectator = SpectatorScene.instantiate() as SpectatorOverlay
 	_spectator.visible = false
+	_spectator.leave_pressed.connect(func() -> void: leave_requested.emit())
 	_root.add_child(_spectator)
 
 	_build_top_left()

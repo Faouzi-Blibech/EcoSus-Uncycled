@@ -69,7 +69,8 @@ def pid():
 
 def unlocked_at(streak: int) -> list[str]:
     """Skin ids a streak of exactly `streak` unlocks, from content/skins.json (data, not test code)."""
-    return [s["id"] for s in config.SKINS if streak - 1 < s["required_streak"] <= streak]
+    return [s["id"] for s in config.SKINS
+            if s["required_streak"] is not None and streak - 1 < s["required_streak"] <= streak]
 
 
 class VerifyTests(unittest.TestCase):

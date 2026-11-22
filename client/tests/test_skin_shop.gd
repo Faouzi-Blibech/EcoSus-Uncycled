@@ -21,7 +21,7 @@ func test_catalogue_matches_the_characters() -> bool:
 	for entry in Net.as_array(json.get("skins")):
 		var found: bool = false
 		for s in Skins.CATALOGUE:
-			if s["id"] == entry["id"] and int(s["streak"]) == int(entry["streak"]):
+			if s["id"] == entry["id"] and int(s.get("streak", 0)) == int(entry.get("streak", 0)) 					and int(s.get("price", 0)) == int(entry.get("price", 0)):
 				found = true
 		assert_true(found, "in step with content/skins.json: " + str(entry["id"]))
 	return true
