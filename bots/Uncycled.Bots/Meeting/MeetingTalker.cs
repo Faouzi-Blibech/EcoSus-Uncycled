@@ -206,6 +206,14 @@ namespace Uncycled.Bots.Meeting
                 _readyState = state;
             }
 
+            if (Grounding.IsRepeat(log.Acts, view.Me.Seat, _ready!.PhraseId!, _ready.Seat, _ready.Zone))
+            {
+                // another bot said it while this one waited for the floor: decide again on the chat as it is now
+                _ready = null;
+                _readyState = null;
+                return;
+            }
+
             if (!_floor.TryTake(now))
             {
                 return;
@@ -239,6 +247,11 @@ namespace Uncycled.Bots.Meeting
             {
                 _announced = true;
                 _announcedVote = null;
+            }
+            else if (say.Announces != null)
+            {
+                _announced = true;
+                _announcedVote = say.Announces;
             }
 
             _replyAt = null;

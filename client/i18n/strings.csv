@@ -225,9 +225,9 @@ SABOTAGE_FIXED,Sabotage fixed.,Sabotage réparé.,تم إصلاح التخريب
 SABOTAGE_EXPIRED,Too late: the sabotage was not fixed.,Trop tard : le sabotage n'a pas été réparé.,فات الأوان: لم يتم إصلاح التخريب.
 ACT_CLEAN,Clean,Nettoyer,نظّف
 CHAT_SUS,I suspect %s.,Je soupçonne %s.,أشتبه في %s.
-CHAT_SAW_DUMP,I saw %s dump waste in %s.,J'ai vu %s jeter des déchets en zone %s.,رأيت %s يرمي نفايات في منطقة %s.
-CHAT_SAW_HIT,I saw %s poison someone in %s.,J'ai vu %s empoisonner quelqu'un en zone %s.,رأيت %s يسمّم أحدًا في منطقة %s.
-CHAT_NEAR_PILE,%s was next to a waste pile in %s.,%s était près d'un tas de déchets en zone %s.,كان %s بجانب كومة نفايات في منطقة %s.
+CHAT_SAW_DUMP,I saw %s re-pollute a clean spot in %s.,J'ai vu %s repolluer un endroit propre en zone %s.,رأيت %s يعيد تلويث موقع نظيف في منطقة %s.
+CHAT_SAW_HIT,I saw %s gas or infect someone in %s.,J'ai vu %s gazer ou infecter quelqu'un en zone %s.,رأيت %s يصيب أحدًا بالغاز أو بالفيروس في منطقة %s.
+CHAT_NEAR_PILE,I saw %s in %s around the time of the death.,J'ai vu %s en zone %s au moment de la mort.,رأيت %s في منطقة %s وقت الوفاة.
 CHAT_I_WAS,I was in %s.,J'étais en zone %s.,كنت في منطقة %s.
 CHAT_WITH,I was with %s in %s.,J'étais avec %s en zone %s.,كنت مع %s في منطقة %s.
 CHAT_WHERE,Where was %s?,Où était %s ?,أين كان %s؟

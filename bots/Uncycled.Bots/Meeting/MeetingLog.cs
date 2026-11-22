@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Sim.Core;
 using Sim.Match;
@@ -13,20 +14,47 @@ namespace Uncycled.Bots.Meeting
         private const string AccuseKind = "accuse";
 
         private readonly PhraseCatalogue _catalogue;
+        private readonly ChatWords? _words;
         private readonly List<ChatAct> _acts = new List<ChatAct>();
 
-        public MeetingLog(PhraseCatalogue catalogue)
+        public MeetingLog(PhraseCatalogue catalogue, ChatWords? words = null)
         {
             _catalogue = catalogue;
+            _words = words;
         }
 
         public IReadOnlyList<ChatAct> Acts => _acts;
 
+        /// <summary>
+        /// The display names of the seats a typed line may name (the living seats, the speaker included), read when a line
+        /// arrives. Null: typed lines are not read.
+        /// </summary>
+        public Func<IReadOnlyDictionary<byte, string>>? LivingNames { get; set; }
+
         /// <summary>Adds a chat line; a phrase id missing from the catalogue is ignored. Ghost lines (out seats talking among themselves)
-        /// and typed lines (no phrase id) are ignored too.</summary>
+        /// never enter. A typed line is read by TextReader into the acts of the phrases it says (nothing when the log has no words or
+        /// no names, or the line is not clear).</summary>
         public void Add(ChatEvent e, float matchTime)
         {
-            if (e.Ghost || e.PhraseId == null || !_catalogue.TryGet(e.PhraseId, out PhraseInfo info))
+            if (e.Ghost)
+            {
+                return;
+            }
+
+            if (e.PhraseId == null)
+            {
+                if (e.Text != null && _words != null && LivingNames != null)
+                {
+                    foreach (ChatAct act in TextReader.Read(e.Text, e.Seat, LivingNames(), _words, matchTime))
+                    {
+                        _acts.Add(act);
+                    }
+                }
+
+                return;
+            }
+
+            if (!_catalogue.TryGet(e.PhraseId, out PhraseInfo info))
             {
                 return;
             }

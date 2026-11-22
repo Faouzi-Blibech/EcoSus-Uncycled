@@ -102,8 +102,8 @@ public class BotBrains : IDisposable
     }
 
     /// <summary>The shared state of one match in a room, or null when bots do not talk (no kit or no phrase catalogue).</summary>
-    public RoomMeeting? NewRoomMeeting(PhraseCatalogue? phrases, string matchId) =>
-        _meeting == null || phrases == null ? null : new RoomMeeting(new MeetingLog(phrases), matchId);
+    public RoomMeeting? NewRoomMeeting(PhraseCatalogue? phrases, string matchId, ChatWords? words = null) =>
+        _meeting == null || phrases == null ? null : new RoomMeeting(new MeetingLog(phrases, words), matchId);
 
     /// <summary>True when this role plays a loaded network.</summary>
     internal bool HasModel(Role role) => _policies.ContainsKey(role);

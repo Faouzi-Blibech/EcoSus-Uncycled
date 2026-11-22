@@ -15,6 +15,9 @@ namespace Uncycled.Bots.Meeting
         /// <summary>The phrase's zone slot, if it has one.</summary>
         public string? Zone { get; set; }
 
+        /// <summary>The seat whose accusation this line stands in for (a repeat turned into agree or where): the bot still votes for it.</summary>
+        public byte? Announces { get; set; }
+
         /// <summary>The seat to vote for (voting stage).</summary>
         public byte? Vote { get; set; }
 
