@@ -448,7 +448,10 @@ func _seat_card(seat: int, has_voted: bool, enabled: bool) -> Button:
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.toggle_mode = true
 	var tint: Color = Session.seat_color(seat)
-	btn.icon = Assets.texture(ICON_PATH % int(Session.seat_info(seat).get("color", 0)), tint)
+	# Only real seat art: a missing icon would show as a plain colour square beside the name.
+	var icon_path: String = ICON_PATH % int(Session.seat_info(seat).get("color", 0))
+	if ResourceLoader.exists(icon_path):
+		btn.icon = Assets.texture(icon_path, tint)
 	btn.expand_icon = true
 	btn.add_theme_constant_override("icon_max_width", ICON_SIZE)
 	btn.text = _seat_text(seat, has_voted)

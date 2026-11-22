@@ -72,12 +72,14 @@ No server or protocol change is needed.
    - `btn_recycle*`: the green recycle disc, normal, pressed and disabled;
    - `btn_sabotage_machine*`: the "jam machine" choice now uses the purple bag disc, so the recycle icon
      stays a Cleaner icon.
-2. **Two button sizes.**
+2. **Two button sizes** (done 2026-11-22, branch `hud/parity-steps-2-3`; also removed the coloured
+   squares beside player names).
    - **Basic (52 px disc):** Use, Report, Dash and Fix, plus the two sabotage choices.
    - **Special (64 px disc):** Clean, Heal and Alert for Cleaners; Re-pollute, Virus/Gas and Sabotage
      for Trashers.
    - The label pill stays under the disc; the grid and the Dash position adapt.
-3. **Context Use button.** It changes with the console the player is next to:
+3. **Context Use button** (done 2026-11-22, same branch: `ActionRules` `use_look`, `Hud.use_look_face`).
+   It changes with the console the player is next to:
    - dirty spot: Clean (sponge);
    - machine with bags: Recycle (n) (recycle disc);
    - emergency table: Meeting (bell);
@@ -101,7 +103,7 @@ No server or protocol change is needed.
 
 Open points:
 - Confirm the basic/special split in step 2.
-- Bell for "Meeting"? Alert also uses the bell.
+- Bell for "Meeting"? For now it borrows the Alert bell (`btn_alert`); a separate bell art can replace it.
 
 ## Known issues
 - Server has 12 colours, client palette has 8 (colours 8-11 draw white). Fixed in gameplay step 1.
