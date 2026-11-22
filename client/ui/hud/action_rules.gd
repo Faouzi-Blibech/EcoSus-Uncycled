@@ -9,7 +9,9 @@ extends RefCounted
 ## ability ("", "virus" or "gas"), heals, infected, heal_target (nearest seat in heal reach or -1),
 ## alert_used, dash_s (seconds until the dash is ready, -1 unknown), fresh_pile (pile id or -1), cd ({repollute, virus, gas, sabotage} seconds), emergencies_left, sabotage (Session.sabotage: {} or {kind, ...}), clean_pile (cleanable pile id
 ## in range or -1).
-## Result: {"use": bool, "report": bool, "repollute": {visible, ready, cooldown},
+## emergency_wait (seconds until the server takes an emergency call, 0 when it does).
+## Result: {"use": bool, "use_wait": seconds (the meeting button shows but waits), "report": bool,
+## "repollute": {visible, ready, cooldown},
 ## "ability": {visible, ready, cooldown, kind ("virus", "gas" or "")}, "heal": bool, "alert": bool,
 ## "sabotage": {...}, "fix": {visible, kind ("fire", "smog", "machine" or "")}, "clean": bool,
 ## "dash": {visible, ready, cooldown}}.
@@ -18,7 +20,7 @@ extends RefCounted
 
 static func button_states(ctx: Dictionary) -> Dictionary:
 	var states: Dictionary = {
-		"use": false, "report": false, "repollute": _hidden(), "ability": _hidden_ability(), "sabotage": _hidden(),
+		"use": false, "use_wait": 0.0, "report": false, "repollute": _hidden(), "ability": _hidden_ability(), "sabotage": _hidden(),
 		"fix": {"visible": false, "kind": ""}, "clean": false, "heal": false, "alert": false, "dash": _hidden(),
 	}
 	if str(ctx.get("phase", "")) != "playing" or bool(ctx.get("is_out", false)):
@@ -37,7 +39,11 @@ static func button_states(ctx: Dictionary) -> Dictionary:
 			var dirty: bool = str(ctx.get("near_spot_state", "")) == "dirty"
 			states["use"] = dirty and (polluter or not bool(ctx.get("bags_full", false)))
 		"emergency":
+			# The server takes a call only emergency_min_since_meeting_s after the start or the last
+			# meeting: the button shows with a ring until then instead of being refused.
 			states["use"] = int(ctx.get("emergencies_left", 0)) > 0
+			if bool(states["use"]):
+				states["use_wait"] = maxf(0.0, float(ctx.get("emergency_wait", 0.0)))
 		"machine":
 			# The Recycling Machine: a Cleaner delivers the bags carried, or holds FIX while it is jammed.
 			if not polluter:

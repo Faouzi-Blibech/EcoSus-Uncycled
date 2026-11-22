@@ -75,6 +75,17 @@ func test_sabotage_hidden_while_the_machine_is_jammed() -> bool:
 	return true
 
 
+## Regression: the meeting button looked ready right after a meeting and the server refused it.
+func test_emergency_waits_after_a_meeting() -> bool:
+	var near: Dictionary = {"id": "meeting_btn", "kind": "emergency"}
+	var s: Dictionary = _states({"near_console": near, "emergencies_left": 1, "emergency_wait": 6.5})
+	assert_eq(s["use"], true, "shown")
+	assert_eq(s["use_wait"], 6.5, "waits 6.5 s")
+	assert_eq(_states({"near_console": near, "emergencies_left": 1, "emergency_wait": 0.0})["use_wait"], 0.0, "ready")
+	assert_eq(_states({"near_console": SPOT, "near_spot_state": "dirty", "emergency_wait": 9.0})["use_wait"], 0.0, "only the meeting button waits")
+	return true
+
+
 func test_emergency_console_without_emergencies_left() -> bool:
 	var near: Dictionary = {"id": "meeting_btn", "kind": "emergency"}
 	assert_eq(_states({"near_console": near, "emergencies_left": 0})["use"], false, "none left")

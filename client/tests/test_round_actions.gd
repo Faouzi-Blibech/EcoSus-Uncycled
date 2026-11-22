@@ -16,7 +16,7 @@ const SESSION_FIELDS: Array[String] = [
 	"my_tasks", "piles", "out_seats", "is_out", "spawn", "spawn_pending", "has_me_pos", "seats",
 	"cooldowns", "emergencies_left", "move_seq", "sabotage", "spots", "bags", "bag_cap",
 	"machine_jammed", "machine_repair_t", "upgrade_offer", "ability", "repollutes", "ability_choices",
-	"ability_pick_sent", "heals", "infected_s", "alert_used", "dash_s",
+	"ability_pick_sent", "heals", "infected_s", "alert_used", "dash_s", "since_meeting_s",
 ]
 
 var _saved: Dictionary = {}
@@ -170,6 +170,10 @@ func test_clean_spot_offers_no_use_to_anyone() -> bool:
 
 func test_use_at_the_emergency_console_calls_the_meeting() -> bool:
 	var r: RoundScene = _round("citizen", EMERGENCY, 0.0)
+	Session.since_meeting_s = 0.0
+	r.perform_action("use")
+	assert_eq(_sent.size(), 0, "right after the start: the server would refuse, nothing sent")
+	Session.since_meeting_s = 60.0
 	r.perform_action("use")
 	assert_eq(_sent, [["call_meeting", null]], "meeting called")
 	Session.emergencies_left = 0
