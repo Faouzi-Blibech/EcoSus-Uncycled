@@ -117,10 +117,18 @@ namespace Uncycled.Server.Tests
             Room.Post(new MsgInput(conn, new ClientMessage(type, doc.RootElement.Clone())));
         }
 
-        /// <summary>The human creates the room and starts the match; runs until the round is playing.</summary>
-        public void JoinAndStart()
+        /// <summary>The human creates the room and starts a match of `size` seats (bots fill the rest); runs until
+        /// the round is playing. 8 by default: these tests were written for 8-seat matches, and rooms.default_size
+        /// is 4 since the 22 Nov playtest.</summary>
+        public void JoinAndStart(int size = 8)
         {
             Room.Post(new JoinInput(Human, "Human", null, true));
+            Step();
+            using (JsonDocument doc = JsonDocument.Parse("{\"t\":\"set_size\",\"size\":" + size + "}"))
+            {
+                Room.Post(new MsgInput(Human, new ClientMessage("set_size", doc.RootElement.Clone())));
+            }
+
             Step();
             Send(Human, "start");
             Step();

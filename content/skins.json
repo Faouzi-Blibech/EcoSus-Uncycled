@@ -1,8 +1,8 @@
 {
-  "_comment": "TEMPORARY skin list until the team picks the final skins: ids must match the game's characters (client/ui/widgets/characters.gd, art in client/assets/characters/<id>/). The sprout is the free default and is not listed. Unlocked by the daily scan streak. Read by the photo service (ecoverify/) and the game server (set_skin). Edit this file to change skins; no code names them. A skin with \"price\" (and no \"streak\") is bought in the shop with scan points.",
+  "_comment": "TEMPORARY skin list until the team picks the final skins: ids must match the game's characters (client/ui/widgets/characters.gd, art in client/assets/characters/<id>/). The sprout is the free default and is not listed. Every skin is bought in the shop with scan points (\"price\"); the player picks which one to buy. No skin is unlocked by the daily streak. Read by the photo service (ecoverify/) and the game server (set_skin). Edit this file to change skins; no code names them. Shop order is the order of this list.",
   "skins": [
-    {"id": "rabbit", "streak": 1, "name": "Rabbit", "emoji": "🐰", "rarity": "Uncommon", "description": "Your first scan unlocks the rabbit."},
-    {"id": "eagle", "streak": 3, "name": "Eagle", "emoji": "🦅", "rarity": "Rare", "description": "Three days of scans in a row."},
-    {"id": "robot", "name": "Robot", "emoji": "🤖", "rarity": "Common", "description": "Buy it in the shop with your scan points.", "price": 100}
+    {"id": "robot", "name": "Robot", "emoji": "🤖", "rarity": "Common", "description": "Buy it in the shop with your scan points.", "price": 100},
+    {"id": "rabbit", "name": "Rabbit", "emoji": "🐰", "rarity": "Uncommon", "description": "Buy it in the shop with your scan points.", "price": 150},
+    {"id": "eagle", "name": "Eagle", "emoji": "🦅", "rarity": "Rare", "description": "Buy it in the shop with your scan points.", "price": 250}
   ]
 }

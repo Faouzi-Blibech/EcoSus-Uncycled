@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 using Sim.Match;
 using Uncycled.Server.Content;
@@ -29,8 +30,9 @@ namespace Uncycled.Server.Tests
         {
             ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null));
             using JsonDocument doc = JsonDocument.Parse(content.TuningJson);
-            Assert.Equal(8, doc.RootElement.GetProperty("rooms").GetProperty("default_size").GetInt32());
-            Assert.Equal(new[] { 6, 8, 10 }, content.Config.RoomSizes);
+            Assert.Equal(4, doc.RootElement.GetProperty("rooms").GetProperty("default_size").GetInt32());
+            Assert.Equal(new[] { 4, 5, 6, 7, 8 }, content.Config.RoomSizes);
+            Assert.Equal(new[] { 1, 1, 2, 2, 2 }, content.Config.RoomSizes.Select(content.Config.TrashersFor).ToArray());
         }
 
         [Fact]
@@ -115,7 +117,7 @@ namespace Uncycled.Server.Tests
             Assert.Equal((60f, 10f, 90f, 1.5f), (d.VirusStartS, d.VirusFatalS, d.VirusGrowS, d.HealRange));
 
             MatchConfig real = ContentLoader.Load(ContentLoader.ResolveDir(null)).Config;
-            Assert.Equal((60f, 10f, 90f, 1.5f), (real.VirusStartS, real.VirusFatalS, real.VirusGrowS, real.HealRange));
+            Assert.Equal((20f, 10f, 90f, 1.5f), (real.VirusStartS, real.VirusFatalS, real.VirusGrowS, real.HealRange));
         }
 
         [Fact]
