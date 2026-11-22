@@ -45,7 +45,6 @@ func _build() -> void:
 	var lay: Dictionary = parsed
 	var size: Vector2i = _vec2i(lay.get("size", [1, 1]))
 	var art_scale: float = float(lay.get("art_scale", 0.5))
-	var art_tile: float = TILE_PX / art_scale
 
 	# Cells: "#" wall, "o" obstacle, "." floor. Everything starts as wall.
 	var cells: Array = []
@@ -75,7 +74,9 @@ func _build() -> void:
 
 	var room_rects: Array[Rect2i] = []
 	for room in lay.get("rooms", []):
-		room_rects.append(_add_room(room as Dictionary, cells, art, occluders, art_scale, art_tile))
+		# A room may set its own art_scale (its picture drawn larger or smaller), always uniform.
+		var rs: float = float((room as Dictionary).get("art_scale", art_scale))
+		room_rects.append(_add_room(room as Dictionary, cells, art, occluders, rs, TILE_PX / rs))
 	ground.room_rects = room_rects
 
 	add_child(_floor_layer(cells))
