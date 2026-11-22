@@ -42,3 +42,34 @@ func test_space_also_uses_and_the_hint_still_shows_e() -> bool:
 	assert_true(keys.has(KEY_SPACE), "Space is a second key for USE (the design lists WASD/E/Space)")
 	assert_eq(keys[0], int(KEY_E), "E stays the first key, so the hint says [E]")
 	return true
+
+
+func test_scan_address_follows_a_plain_http_page() -> bool:
+	assert_eq(Settings.scan_url_for_page("http:", "192.168.1.20"), "http://192.168.1.20:8000", "LAN demo page")
+	assert_eq(Settings.scan_url_for_page("https:", "play.example.org"), Settings.SCAN_URL, "https page: set it in Settings")
+	assert_eq(Settings.scan_url_for_page("", ""), Settings.SCAN_URL, "no page")
+	assert_eq(Settings.default_scan_url(), Settings.SCAN_URL, "desktop default")
+	return true
+
+
+func test_typed_scan_address_is_cleaned_up() -> bool:
+	var cases: Array = [
+		["192.168.1.118:8000", "http://192.168.1.118:8000"],
+		["  http://192.168.1.118:8000/  ", "http://192.168.1.118:8000"],
+		["https://abc.trycloudflare.com", "https://abc.trycloudflare.com"],
+		["ws://localhost:5000/ws", ""],
+		["not an address", ""],
+		["", ""],
+		["http://", ""],
+	]
+	for c in cases:
+		assert_eq(Settings.normalize_scan_url(c[0]), c[1], "'%s'" % c[0])
+	return true
+
+
+func test_scan_address_follows_a_game_server_on_the_same_laptop() -> bool:
+	assert_eq(Settings.scan_url_for_server("ws://192.168.1.118:5000/ws"), "http://192.168.1.118:8000", "demo laptop")
+	assert_eq(Settings.scan_url_for_server("ws://localhost:5000/ws"), "", "local: keep the default")
+	assert_eq(Settings.scan_url_for_server("ws://127.0.0.1:5000/ws"), "", "local: keep the default")
+	assert_eq(Settings.scan_url_for_server("wss://play.example.org/ws"), "", "hosted: set by hand")
+	return true

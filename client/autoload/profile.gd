@@ -1,19 +1,20 @@
 extends Node
 ## The player's scan profile, kept by the photo service (ecoverify/): points, daily streak, skins.
 ## The player id is a random UUID created once on this device (user://profile.cfg); the service knows
-## the player only by it. start_scan() asks the service for a single-use link and opens it the way
-## the platform allows (open_mode); the menu listens to the signals.
+## the player only by it. start_scan() asks the service for a single-use link and opens the camera
+## page on this device (open_mode): the game is a phone game, so the photo is taken right here, no QR.
+## The menu listens to the signals.
 
 signal changed()
-## Desktop only: the QR code of the scan link, for a phone to read.
-signal qr_ready(texture: Texture2D)
+## The scan page (camera) was opened; the game watches for the photo to be counted.
+signal scan_opened()
 signal scan_failed()
 ## The service counted a new scan (points, streak or today's scans went up).
 signal scan_done()
 
 const PROFILE_PATH: String = "user://profile.cfg"
 const TIMEOUT_S: float = 8.0
-## Desktop: how often to ask whether the phone's photo was counted, and for how long.
+## While the scan page is open: how often to ask whether the photo was counted, and for how long.
 const POLL_S: float = 3.0
 const POLL_MAX_S: float = 180.0
 
@@ -29,7 +30,6 @@ var loaded: bool = false
 
 var _get: HTTPRequest
 var _post: HTTPRequest
-var _qr: HTTPRequest
 var _poll: Timer
 var _poll_left: float = 0.0
 var _before: Dictionary = {}
@@ -39,7 +39,6 @@ func _ready() -> void:
 	load_or_create_id(PROFILE_PATH)
 	_get = _make_request(_on_profile)
 	_post = _make_request(_on_scan_start)
-	_qr = _make_request(_on_qr)
 	_poll = Timer.new()
 	_poll.wait_time = POLL_S
 	_poll.timeout.connect(_on_poll)
@@ -84,11 +83,10 @@ static func new_uuid() -> String:
 
 
 ## How a scan link is opened: "same_tab" on the web (the scan page's Back returns to the game),
-## "browser" in the Android app, "qr" on desktop (a phone reads the code).
-static func open_mode(is_web: bool, is_mobile: bool) -> String:
-	if is_web:
-		return "same_tab"
-	return "browser" if is_mobile else "qr"
+## "browser" in the Android app (Back returns to the game). Desktop builds are for testing only and
+## behave like the app: the page opens in the PC's browser.
+static func open_mode(is_web: bool, _is_mobile: bool) -> String:
+	return "same_tab" if is_web else "browser"
 
 
 ## True when the newer /profile shows a scan the older one did not.
@@ -170,20 +168,12 @@ func _on_scan_start(_result: int, code: int, _headers: PackedStringArray, body: 
 	match open_mode(OS.has_feature("web"), OS.has_feature("mobile")):
 		"same_tab":
 			JavaScriptBridge.eval("window.location.href = %s" % JSON.stringify(url))
-		"browser":
-			OS.shell_open(url)
 		_:
-			_qr.request(str(data.get("qr_url", "")))
+			OS.shell_open(url)
+			# Watch for the photo while the camera page is open; coming back also refreshes.
 			_poll_left = POLL_MAX_S
 			_poll.start()
-
-
-func _on_qr(_result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
-	var img: Image = Image.new()
-	if code != 200 or img.load_png_from_buffer(body) != OK:
-		scan_failed.emit()
-		return
-	qr_ready.emit(ImageTexture.create_from_image(img))
+			scan_opened.emit()
 
 
 func _on_poll() -> void:

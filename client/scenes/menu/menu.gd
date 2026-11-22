@@ -24,8 +24,6 @@ const POPUP_BG: Color = Color(0.13, 0.19, 0.15)
 const POPUP_BORDER: Color = Color(0.97, 0.94, 0.85)
 const POPUP_BORDER_PX: int = 2
 const POPUP_RADIUS_PX: int = 10
-## The scan QR code's side in the popup (logical px; 8 px modules stay readable for a phone camera).
-const SCAN_QR_PX: float = 140.0
 
 var _status: Label
 var _panel: SettingsPanel = null
@@ -37,7 +35,6 @@ var _name_edit: LineEdit = null
 ## Scan popup parts (null when it is closed).
 var _scan_stats: Label = null
 var _scan_status: Label = null
-var _scan_qr: TextureRect = null
 ## Run after the profile popup saves a name (Create or Join pressed with no name).
 var _after_name: Callable = Callable()
 
@@ -51,7 +48,7 @@ func _ready() -> void:
 	UIKit.fill(self)
 	PaperKit.background(self)
 	Profile.changed.connect(_show_scan_stats)
-	Profile.qr_ready.connect(_on_scan_qr)
+	Profile.scan_opened.connect(_on_scan_opened)
 	Profile.scan_failed.connect(_on_scan_failed)
 	Profile.scan_done.connect(_on_scan_done)
 	var stage: Control = PaperKit.stage(self)
@@ -174,7 +171,6 @@ func _close_popup() -> void:
 	_name_edit = null
 	_scan_stats = null
 	_scan_status = null
-	_scan_qr = null
 
 
 func _open_profile_popup() -> void:
@@ -206,13 +202,6 @@ func _open_scan_popup() -> void:
 	box.add_child(text)
 	_scan_stats = UIKit.make_label("")
 	box.add_child(_scan_stats)
-	_scan_qr = TextureRect.new()
-	_scan_qr.custom_minimum_size = Vector2(SCAN_QR_PX, SCAN_QR_PX)
-	_scan_qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_scan_qr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_scan_qr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_scan_qr.visible = false
-	box.add_child(_scan_qr)
 	_scan_status = UIKit.make_label("", UIKit.FONT_SIZE, Color(0.7, 0.85, 0.75))
 	_scan_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_scan_status.visible = false
@@ -247,11 +236,9 @@ func _on_scan_pressed() -> void:
 	Profile.start_scan()
 
 
-func _on_scan_qr(texture: Texture2D) -> void:
-	if _scan_qr != null:
-		_scan_qr.texture = texture
-		_scan_qr.visible = true
-		_set_scan_status(tr("MENU_SCAN_QR"))
+## The camera page is open on this phone: take the photo there, then come back.
+func _on_scan_opened() -> void:
+	_set_scan_status(tr("MENU_SCAN_OPENED"))
 
 
 func _on_scan_failed() -> void:
@@ -262,7 +249,6 @@ func _on_scan_failed() -> void:
 
 func _on_scan_done() -> void:
 	if _scan_status != null:
-		_scan_qr.visible = false
 		_set_scan_status(tr("MENU_SCAN_DONE"))
 
 

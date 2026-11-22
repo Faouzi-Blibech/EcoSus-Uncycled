@@ -54,13 +54,13 @@ func test_selected_skin_falls_back_when_not_unlocked() -> bool:
 
 
 ## Web: the same tab goes to the scan page (its Back button returns to the game). Android: the browser.
-## Desktop: a QR code for a phone.
+## No QR anywhere: the photo is taken on the device that runs the game.
 func test_open_mode_per_platform() -> bool:
 	var script: GDScript = load(PROFILE_SCRIPT)
 	assert_eq(script.open_mode(true, false), "same_tab", "web")
 	assert_eq(script.open_mode(true, true), "same_tab", "web on a phone")
 	assert_eq(script.open_mode(false, true), "browser", "android app")
-	assert_eq(script.open_mode(false, false), "qr", "windows")
+	assert_eq(script.open_mode(false, false), "browser", "windows test build: same as the app, no QR")
 	return true
 
 

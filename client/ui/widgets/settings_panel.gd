@@ -1,5 +1,5 @@
 extends Control
-## Modal settings overlay: name, language, server URL. Emits closed(applied). The caller reloads
+## Modal settings overlay: name, language, server URL, scan service URL. Emits closed(applied). The caller reloads
 ## its scene when applied is true (language may have changed) and frees the panel.
 
 signal closed(applied: bool)
@@ -11,6 +11,10 @@ const COLUMN_WIDTH_PX: float = 270.0
 var _name_edit: LineEdit
 var _lang: OptionButton
 var _url_edit: LineEdit
+var _scan_edit: LineEdit
+## The scan address shown when the panel opened, when it was the automatic one: left as is, it follows
+## a new server address.
+var _scan_auto_shown: String = ""
 var _error: Label
 var _panel: PanelContainer
 
@@ -63,6 +67,12 @@ func _ready() -> void:
 	_url_edit = UIKit.make_line_edit(Settings.default_server_url(), Settings.server_url)
 	right.add_child(_url_edit)
 
+	right.add_child(UIKit.make_label(tr("SETTINGS_SCAN")))
+	_scan_edit = UIKit.make_line_edit(Settings.default_scan_url(), Settings.scan_url)
+	if Settings.scan_url == Settings.default_scan_url():
+		_scan_auto_shown = Settings.scan_url
+	right.add_child(_scan_edit)
+
 	_error = UIKit.make_label("", 14, Color(1.0, 0.5, 0.5))
 	_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(_error)
@@ -87,11 +97,19 @@ func _on_save() -> void:
 	if not (url.begins_with("ws://") or url.begins_with("wss://")):
 		_error.text = tr("SETTINGS_BAD_URL")
 		return
+	var typed: String = _scan_edit.text.strip_edges()
+	var follow: bool = typed.is_empty() or typed == _scan_auto_shown
+	var scan: String = "" if follow else Settings.normalize_scan_url(typed)
+	if not follow and scan.is_empty():
+		_error.text = tr("SETTINGS_BAD_SCAN_URL")
+		return
 	Settings.player_name = _name_edit.text.strip_edges()
 	Settings.language = Settings.LANGUAGES[maxi(_lang.selected, 0)]
 	Settings.server_url = url
+	Settings.scan_url = scan if not follow else Settings.default_scan_url()
 	Settings.apply_language()
 	Settings.save()
+	Profile.refresh()
 	closed.emit(true)
 
 
