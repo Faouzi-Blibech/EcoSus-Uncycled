@@ -4,16 +4,17 @@ extends RefCounted
 ## is always available. Which others a player has unlocked is data, not code: the scan service lists
 ## them (Profile.skins, from content/skins.json), so the skin set can change without touching this list.
 ## "face": where the face is in a walk frame (0..1), and "zoom": the frame width per avatar circle
-## width, so a round profile picture shows the face.
+## width, so a round profile picture shows the face. "faces_right": which way the walk frames
+## look (the world mirrors them to face the way the player walks).
 
 const DIR: String = "res://assets/characters/%s/walk_%d.png"
 const DEFAULT_ID: String = "sprout"
 
 const LIST: Array[Dictionary] = [
-	{"id": "sprout", "name_key": "CHAR_SPROUT", "frame_ms": [100, 100, 100, 100], "tint": true, "face": Vector2(0.5, 0.42), "zoom": 1.15},
-	{"id": "robot", "name_key": "CHAR_ROBOT", "frame_ms": [100, 100, 200], "tint": false, "face": Vector2(0.5, 0.25), "zoom": 1.35},
-	{"id": "eagle", "name_key": "CHAR_EAGLE", "frame_ms": [100, 200, 100, 200, 100, 100], "tint": false, "face": Vector2(0.55, 0.24), "zoom": 1.45},
-	{"id": "rabbit", "name_key": "CHAR_RABBIT", "frame_ms": [100, 200, 100, 200], "tint": false, "face": Vector2(0.5, 0.3), "zoom": 1.35},
+	{"id": "sprout", "name_key": "CHAR_SPROUT", "frame_ms": [100, 100, 100, 100], "tint": true, "face": Vector2(0.5, 0.42), "zoom": 1.15, "faces_right": false},
+	{"id": "robot", "name_key": "CHAR_ROBOT", "frame_ms": [100, 100, 200], "tint": false, "face": Vector2(0.5, 0.25), "zoom": 1.35, "faces_right": false},
+	{"id": "eagle", "name_key": "CHAR_EAGLE", "frame_ms": [100, 200, 100, 200, 100, 100], "tint": false, "face": Vector2(0.55, 0.24), "zoom": 1.45, "faces_right": true},
+	{"id": "rabbit", "name_key": "CHAR_RABBIT", "frame_ms": [100, 200, 100, 200], "tint": false, "face": Vector2(0.5, 0.3), "zoom": 1.35, "faces_right": true},
 ]
 
 

@@ -188,6 +188,14 @@ namespace Uncycled.Train
                     continue;
                 }
 
+                if (_agents[a].Report.Holds(_engine.ViewFor(_agents[a].Seat), _agents[a].Memory, _engine.Map, _agents[a].Executor))
+                {
+                    // the report rule has the seat (a Cleaner sees a body): same treatment as a committed step, the rule
+                    // runs the reaction delay and the walk, the action the trainer sent for the placeholder frame is ignored
+                    _agents[a].Report.Step(_ticksPerDecision * TickDt, _engine.ViewFor(_agents[a].Seat), _agents[a].Memory, _engine.Map, _agents[a].Executor, _engine.MatchTime);
+                    continue;
+                }
+
                 asked++;
                 int action = actions[a];
                 if (OnlyStay(_masks[a]))
@@ -234,7 +242,7 @@ namespace Uncycled.Train
             {
                 _reward[a] += _owed[a];
                 _owed[a] = 0f;
-                if (!_done[a] && _agents[a].Executor.Committed)
+                if (!_done[a] && IsPlaceholder(_agents[a]))
                 {
                     _owed[a] = _reward[a];
                     _reward[a] = 0f;
@@ -243,6 +251,10 @@ namespace Uncycled.Train
 
             _prepared = false;
         }
+
+        /// <summary>A frame that is no decision: a committed task step, or the report rule has the seat (Stay only, no reward, no sample).</summary>
+        private bool IsPlaceholder(Agent agent) =>
+            agent.Executor.Committed || agent.Report.Holds(_engine.ViewFor(agent.Seat), agent.Memory, _engine.Map, agent.Executor);
 
         private static bool OnlyStay(bool[] mask)
         {
@@ -536,7 +548,7 @@ namespace Uncycled.Train
                 Array.Copy(_obsBuf, _obs[a], _obsBuf.Length);
                 bool[] mask = PolicyActionsV2.Mask(view, agent.Memory, _engine.Map);
                 Array.Copy(mask, _masks[a], mask.Length);
-                if (agent.Executor.Committed)
+                if (IsPlaceholder(agent))
                 {
                     Array.Clear(_masks[a], 0, _masks[a].Length);
                     _masks[a][StayIndex] = true;
@@ -554,6 +566,7 @@ namespace Uncycled.Train
                 Seat = seat;
                 Role = role;
                 Memory = new BotMemory(content.Map, content.Config);
+                Report = new ReportRule(settings, rng);
                 Executor = new ActionExecutor(new Navigator(content.Map.Walk, content.Config.SpeedTilesPerS), new MoveSender())
                 {
                     Memory = Memory,
@@ -581,6 +594,9 @@ namespace Uncycled.Train
             public ActionExecutor Executor { get; }
 
             public PolicyDriver Policy { get; } = new PolicyDriver();
+
+            /// <summary>A network Cleaner that sees a body reports it (Trashers are not forced).</summary>
+            public ReportRule Report { get; }
 
             public MeetingVoter Voter { get; set; } = null!;
 

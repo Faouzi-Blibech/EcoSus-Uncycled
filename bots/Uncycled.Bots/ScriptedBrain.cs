@@ -227,12 +227,15 @@ namespace Uncycled.Bots
             }
         }
 
-        private float ReactionDelay()
+        private float ReactionDelay() => ReactionDelayOf(_settings, Rng);
+
+        /// <summary>The human reaction delay of a seat with these settings (also used by the report rule of the network seats).</summary>
+        internal static float ReactionDelayOf(BotsSettings settings, IRandom rng)
         {
-            float skill = Math.Min(1f, Math.Max(0f, _settings.Skill));
+            float skill = Math.Min(1f, Math.Max(0f, settings.Skill));
             float scale = Math.Max(MinReactionScale, SkillScaleBase - skill);
-            float span = Math.Max(0f, _settings.ReactionMaxS - _settings.ReactionMinS);
-            return (_settings.ReactionMinS + Rng.NextFloat() * span) * scale;
+            float span = Math.Max(0f, settings.ReactionMaxS - settings.ReactionMinS);
+            return (settings.ReactionMinS + rng.NextFloat() * span) * scale;
         }
 
         private void ThinkMeeting(SeatView view, float dt, Action<ICommand> send)

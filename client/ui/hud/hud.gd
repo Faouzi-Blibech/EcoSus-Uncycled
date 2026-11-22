@@ -14,7 +14,6 @@ const TOP_RIGHT_WIDTH_PX: float = 170.0
 const TOAST_BOTTOM_OFFSET_PX: float = -84.0
 const SMALL_FONT: int = 11
 const DONE_COLOR: Color = Color(0.6, 0.6, 0.6)
-const METER_COLOR: Color = Color(0.3, 0.8, 0.35)
 ## The ping line appears only above this (a good ping is a debug readout, not player information).
 const WEAK_PING_MS: int = 250
 ## Grid slot order (REPORT USE / DUMP HIT / SABOTAGE); each button keeps its slot while hidden.
@@ -29,7 +28,12 @@ const ACTION_LABEL: Dictionary = {
 	"use": "ACT_USE", "report": "ACT_REPORT", "repollute": "ACT_REPOLLUTE", "ability": "ACT_VIRUS", "sabotage": "ACT_SABOTAGE",
 }
 const SABOTAGE_KINDS: Array[String] = ["machine", "smog"]
-const CHOICE_SIZE: Vector2 = Vector2(56.0, 48.0)
+const CHOICE_SIZE: Vector2 = Vector2(52.0, 52.0)
+## The painted button of each grid action (assets/ui/hud/btn_<art>.png); the ability slot follows
+## the unlocked ability (virus or gas).
+const ACTION_ART: Dictionary = {
+	"use": "use", "report": "report", "repollute": "repollute", "ability": "virus", "sabotage": "sabotage",
+}
 const BANNER_WIDTH_PX: float = 220.0
 ## Width of the button grid (two 64 px slots and the gap), used to put the choices beside it.
 const GRID_WIDTH_PX: float = 134.0
@@ -46,7 +50,7 @@ var _task_rows: VBoxContainer
 var _tasks_header: Label
 var _timer_label: Label
 var _meter_label: Label
-var _meter_bar: ProgressBar
+var _meter_bar: PollutionBar
 var _bags_label: Label
 ## Upgrades owned (backpack, tool, heal, mask), Cleaners only.
 var _items_label: Label
@@ -208,7 +212,7 @@ func _build_top_right() -> void:
 	_timer_label = UIKit.make_hud_label(18)
 	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_meter_label = UIKit.make_hud_label(SMALL_FONT)
-	_meter_bar = _make_bar(METER_COLOR)
+	_meter_bar = PollutionBar.new()
 	_bags_label = UIKit.make_hud_label(SMALL_FONT)
 	_bags_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_items_label = UIKit.make_hud_label(SMALL_FONT)
@@ -229,19 +233,6 @@ func _build_banner() -> void:
 	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_root.add_child(_banner)
-
-
-func _make_bar(color: Color) -> ProgressBar:
-	var bar: ProgressBar = ProgressBar.new()
-	bar.min_value = 0.0
-	bar.max_value = 100.0
-	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0.0, 10.0)
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fill: StyleBoxFlat = StyleBoxFlat.new()
-	fill.bg_color = color
-	bar.add_theme_stylebox_override("fill", fill)
-	return bar
 
 
 func _build_buttons() -> void:
@@ -272,6 +263,7 @@ func _build_buttons() -> void:
 		b.text = action_text(tr(ACTION_LABEL[action]), _key_text(str(ACTION_INPUT[action])), DisplayServer.is_touchscreen_available())
 		b.visible = false
 		b.pressed.connect(_on_action_pressed.bind(action))
+		b.set_art(str(ACTION_ART[action]))
 		slot.add_child(b)
 		UIKit.fill(b)
 		_buttons[action] = b
@@ -282,6 +274,10 @@ func _build_buttons() -> void:
 	# A Cleaner never sees RE-POLLUTE or the ability, so HEAL and ALERT take those two slots and keys.
 	_heal_button = _make_tap_button(slots["repollute"] as Control, "ACT_HEAL", "act_hit", "heal")
 	_alert_button = _make_tap_button(slots["ability"] as Control, "ACT_ALERT", "act_dump", "alert")
+	_fix_button.set_art("fix")
+	_clean_button.set_art("clean")
+	_heal_button.set_art("heal")
+	_alert_button.set_art("alert")
 	_clean_button.hold_started.connect(_on_hold_started.bind("clean"))
 	_clean_button.hold_ended.connect(_on_hold_ended.bind("clean"))
 	# An empty last slot keeps the grid two columns wide; both go when the role has no SABOTAGE.
@@ -294,6 +290,7 @@ func _build_buttons() -> void:
 	_dash_button.text = action_text(tr("ACT_DASH"), _key_text("act_dash"), DisplayServer.is_touchscreen_available())
 	_dash_button.visible = false
 	_dash_button.pressed.connect(_on_action_pressed.bind("dash"))
+	_dash_button.set_art("dash")
 	_dash_button.anchor_left = 1.0
 	_dash_button.anchor_right = 1.0
 	_dash_button.anchor_top = 1.0
@@ -343,11 +340,10 @@ func _build_choices() -> void:
 	_choices.visible = false
 	_root.add_child(_choices)
 	for kind in SABOTAGE_KINDS:
-		var b: Button = Button.new()
+		var b: ActionButton = ActionButton.new()
 		b.text = tr("SABOTAGE_" + kind.to_upper())
 		b.custom_minimum_size = CHOICE_SIZE
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 12)
+		b.set_art("sabotage_" + kind)
 		b.pressed.connect(_on_choice_pressed.bind(kind))
 		_choices.add_child(b)
 
@@ -464,8 +460,10 @@ func _update_header() -> void:
 		_partner_label.text = tr("HUD_PARTNER") % Session.seat_name(Session.partner_seat)
 	else:
 		_partner_label.text = ""
-	_meter_label.text = tr("HUD_METER") % Session.meter
-	_meter_bar.value = Session.meter
+	# The meter counts cleanliness; the bar and its label show what is left: the pollution.
+	var pollution: float = clampf(100.0 - Session.meter, 0.0, 100.0)
+	_meter_label.text = tr("HUD_POLLUTION") % pollution
+	_meter_bar.value = pollution
 	var left: int = maxi(ceili(Session.deadline_t - Session.clock_t), 0) if Session.deadline_t > 0.0 else 0
 	_timer_label.text = tr("HUD_TIMER") % [floori(left / 60.0), left % 60] if Session.deadline_t > 0.0 else ""
 	# Only a Cleaner has bags (cap > 0); the server never sends a Trasher's.
@@ -700,6 +698,7 @@ func _update_ability(ability: Dictionary) -> void:
 	if kind != _ability_kind:
 		_ability_kind = kind
 		b.text = action_text(tr("ACT_" + kind.to_upper()), _key_text("act_dump"), DisplayServer.is_touchscreen_available())
+		b.set_art(kind)
 	var total: float = float(Net.as_dict(Session.tuning.get("trasher")).get(kind + "_cooldown_s", 0.0))
 	b.set_ring(float(ability.get("cooldown", 0.0)), total)
 

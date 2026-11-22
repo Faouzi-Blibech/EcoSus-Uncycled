@@ -3,7 +3,7 @@ extends SceneTree
 ## godot --headless --path client --script res://tools/export_map.gd -- --map <id> [--out <path>] [--check] [--preview <png>] [--stats]
 ## Exit 0 ok, 1 --check mismatch, 2 validation failure or bad arguments.
 
-const STATS_SPEED_TILES_PER_S: float = 2.5
+const STATS_SPEED_TILES_PER_S: float = 3.0
 const PREVIEW_PX: int = 8
 const FLOOR_COLOR := Color(0.8, 0.8, 0.8)
 const WALL_COLOR := Color(0.25, 0.25, 0.25)
