@@ -6,6 +6,7 @@ extends Node2D
 ## remote ones. The node's origin is the player's position; the feet stand just below it.
 
 const Characters := preload("res://ui/widgets/characters.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const TINT_SHADER: Shader = preload("res://ui/widgets/sprout_tint.gdshader")
 const ICON_PATH: String = "res://assets/player/icons/icon_%02d.png"
 ## Collision radius (the body is a circle for walls and range checks, whatever its art).
@@ -52,6 +53,7 @@ var _still_s: float = STILL_AFTER_S
 
 func _ready() -> void:
 	_radius_px = Net.tiles_to_px(RADIUS_TILES)
+	_label.add_theme_font_override("font", PaperKit.font())
 	_apply()
 
 

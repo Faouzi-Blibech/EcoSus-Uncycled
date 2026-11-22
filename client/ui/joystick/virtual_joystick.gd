@@ -1,9 +1,19 @@
 extends Control
-## Floating virtual joystick on the left half of the screen. Reads raw touch events in _input,
+## Virtual joystick: it rests at the bottom-left corner and jumps under a thumb that touches the
+## left half of the screen. Reads raw touch events in _input,
 ## so it works regardless of what Controls sit on top. `value` is a vector of length 0..1.
 
 const RADIUS: float = 40.0
 const DEADZONE: float = 0.15
+const BASE_PATH: String = "res://assets/ui/hud/joystick_base.png"
+const KNOB_PATH: String = "res://assets/ui/hud/joystick_knob.png"
+## Drawn size of the base (px); the art keeps its ratio.
+const BASE_PX: float = 84.0
+const HOME_MARGIN: float = 12.0
+const IDLE_ALPHA: float = 0.85
+## The base art is see-through; a paper disc under it keeps it readable on any floor.
+const PAPER: Color = Color(0.98, 0.95, 0.87, 0.8)
+const INK: Color = Color(0.24, 0.17, 0.15, 0.9)
 
 var value: Vector2 = Vector2.ZERO
 ## Off while a mini-game is open: its drags must not steer, and a held stick is dropped.
@@ -16,11 +26,17 @@ var enabled: bool = true:
 var _index: int = -1
 var _origin: Vector2 = Vector2.ZERO
 var _current: Vector2 = Vector2.ZERO
+var _base: Texture2D
+var _knob: Texture2D
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if ResourceLoader.exists(BASE_PATH) and ResourceLoader.exists(KNOB_PATH):
+		_base = load(BASE_PATH) as Texture2D
+		_knob = load(KNOB_PATH) as Texture2D
+	resized.connect(queue_redraw)
 
 
 func _input(event: InputEvent) -> void:
@@ -72,10 +88,27 @@ func _reset() -> void:
 
 
 func _draw() -> void:
-	if _index != -1:
-		draw_circle(_origin, RADIUS, Color(1.0, 1.0, 1.0, 0.12))
-		draw_arc(_origin, RADIUS, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.35), 2.0)
-		draw_circle(_origin + value * RADIUS, 16.0, Color(1.0, 1.0, 1.0, 0.45))
-	elif DisplayServer.is_touchscreen_available():
-		var hint: Vector2 = Vector2(90.0, size.y - 90.0)
-		draw_arc(hint, RADIUS, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.2), 2.0)
+	# At rest it waits at its home corner; a touch brings it under the thumb.
+	var centre: Vector2 = _origin if _index != -1 else home()
+	if _base == null or _knob == null:
+		draw_circle(centre, RADIUS, Color(1.0, 1.0, 1.0, 0.12))
+		draw_arc(centre, RADIUS, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.35), 2.0)
+		draw_circle(centre + value * RADIUS, 16.0, Color(1.0, 1.0, 1.0, 0.45))
+		return
+	var alpha: float = 1.0 if _index != -1 else IDLE_ALPHA
+	var k: float = BASE_PX / float(maxi(_base.get_width(), _base.get_height()))
+	var base_size: Vector2 = Vector2(_base.get_width(), _base.get_height()) * k
+	var disc_r: float = base_size.x * 0.47
+	draw_circle(centre, disc_r, Color(PAPER, PAPER.a * alpha), true, -1.0, true)
+	draw_arc(centre, disc_r, 0.0, TAU, 48, Color(INK, INK.a * alpha), 2.0, true)
+	draw_texture_rect(_base, Rect2(centre - base_size * 0.5, base_size), false, Color(1.0, 1.0, 1.0, alpha))
+	var knob_size: Vector2 = Vector2(_knob.get_width(), _knob.get_height()) * k
+	# The knob stays inside the base; `value` still uses the full RADIUS of thumb travel.
+	var travel: float = (base_size.x - knob_size.x) * 0.5
+	var knob_centre: Vector2 = centre + value * travel
+	draw_texture_rect(_knob, Rect2(knob_centre - knob_size * 0.5, knob_size), false, Color(1.0, 1.0, 1.0, alpha))
+
+
+## Where the stick rests, bottom-left, clear of the screen edge.
+func home() -> Vector2:
+	return Vector2(HOME_MARGIN + BASE_PX * 0.5, size.y - HOME_MARGIN - BASE_PX * 0.5)

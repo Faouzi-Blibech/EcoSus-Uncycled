@@ -4,21 +4,28 @@ extends Button
 ## seconds the server reports; it never counts time itself. In `hold_mode` it reports
 ## `hold_started` / `hold_ended` (finger or mouse down and up) instead of `pressed`.
 ## With `set_art` it is drawn as a painted round button (normal, pressed and disabled pictures,
-## ratio kept) with its label written across the bottom; without art it keeps the theme look.
+## ratio kept) with its label on a paper pill under the disc (never over the art); without art it
+## keeps the theme look.
 
 signal hold_started()
 signal hold_ended()
 
-const BUTTON_SIZE: Vector2 = Vector2(64.0, 64.0)
+## A 64 px disc with its label pill underneath (PILL_GAP + PILL_H), never over the art.
+const BUTTON_SIZE: Vector2 = Vector2(64.0, 78.0)
 const RING_WIDTH: float = 4.0
 const RING_COLOR: Color = Color(1.0, 0.85, 0.3, 0.95)
 const RING_TRACK_COLOR: Color = Color(0.0, 0.0, 0.0, 0.45)
 const RING_POINTS: int = 48
 const ART_PATH: String = "res://assets/ui/hud/btn_%s%s.png"
 const LABEL_FONT_SIZE: int = 10
-const LABEL_OUTLINE: int = 4
-const LABEL_COLOR: Color = Color(1.0, 0.98, 0.92)
-const LABEL_OUTLINE_COLOR: Color = Color(0.24, 0.17, 0.15)
+const LABEL_INK: Color = Color("3e2b25")
+const LABEL_MUTED: Color = Color(0.45, 0.4, 0.36)
+const LABEL_PAPER: Color = Color("faf2dd")
+const PILL_H: float = 13.0
+const PILL_GAP: float = 1.0
+const PILL_PAD_X: float = 5.0
+
+static var _pill_style: StyleBoxFlat
 
 ## Set before use: the button is held, not tapped.
 var hold_mode: bool = false
@@ -127,6 +134,11 @@ func _draw() -> void:
 		return
 	var center: Vector2 = size * 0.5
 	var radius: float = minf(size.x, size.y) * 0.5 - RING_WIDTH * 0.5
+	if not _art.is_empty():
+		# Around the painted disc, which sits above the label pill.
+		var side: float = _disc_side(not text.is_empty())
+		center = Vector2(size.x * 0.5, side * 0.5)
+		radius = side * 0.5 - RING_WIDTH * 0.5
 	draw_arc(center, radius, 0.0, TAU, RING_POINTS, RING_TRACK_COLOR, RING_WIDTH, true)
 	draw_arc(center, radius, -PI * 0.5, -PI * 0.5 + TAU * _fraction, RING_POINTS, RING_COLOR, RING_WIDTH, true)
 
@@ -138,20 +150,36 @@ func _draw_art() -> void:
 	elif get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED:
 		state = "_pressed"
 	var tex: Texture2D = _art[state] as Texture2D
-	var side: float = minf(size.x, size.y)
+	var has_label: bool = not text.is_empty()
+	# The disc on top, the label's paper pill below it: no text over the art.
+	var side: float = _disc_side(has_label)
 	var k: float = side / maxf(float(tex.get_width()), float(tex.get_height()))
 	var art_size: Vector2 = Vector2(tex.get_width(), tex.get_height()) * k
-	draw_texture_rect(tex, Rect2((size - art_size) * 0.5, art_size), false)
-	if text.is_empty():
+	draw_texture_rect(tex, Rect2(Vector2((size.x - art_size.x) * 0.5, 0.0), art_size), false)
+	if not has_label:
 		return
 	var font: Font = get_theme_font("font")
-	var lines: PackedStringArray = text.split("
-")
-	var line_h: float = font.get_height(LABEL_FONT_SIZE)
-	var y: float = size.y - line_h * float(lines.size()) + font.get_ascent(LABEL_FONT_SIZE) - 1.0
-	for line in lines:
-		var w: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE).x
-		var pos: Vector2 = Vector2((size.x - w) * 0.5, y)
-		draw_string_outline(font, pos, line, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE, LABEL_OUTLINE, LABEL_OUTLINE_COLOR)
-		draw_string(font, pos, line, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE, LABEL_COLOR)
-		y += line_h
+	# Caroni's space is narrow: two keep the key hint apart from the label.
+	var line: String = text.replace("\n", "  ")
+	var w: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE).x
+	var pill_w: float = w + PILL_PAD_X * 2.0
+	var pill: Rect2 = Rect2((size.x - pill_w) * 0.5, side + PILL_GAP, pill_w, PILL_H)
+	draw_style_box(_pill_box(), pill)
+	var baseline: float = pill.position.y + (PILL_H - font.get_height(LABEL_FONT_SIZE)) * 0.5 + font.get_ascent(LABEL_FONT_SIZE)
+	draw_string(font, Vector2(pill.position.x + PILL_PAD_X, baseline), line, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_FONT_SIZE, LABEL_MUTED if disabled else LABEL_INK)
+
+
+## The disc's diameter: the button's width, leaving room for the label pill underneath.
+func _disc_side(has_label: bool) -> float:
+	return minf(size.x, size.y - (PILL_H + PILL_GAP if has_label else 0.0))
+
+
+static func _pill_box() -> StyleBoxFlat:
+	if _pill_style == null:
+		_pill_style = StyleBoxFlat.new()
+		_pill_style.bg_color = LABEL_PAPER
+		_pill_style.border_color = LABEL_INK
+		_pill_style.set_border_width_all(1)
+		_pill_style.set_corner_radius_all(7)
+		_pill_style.anti_aliasing = true
+	return _pill_style

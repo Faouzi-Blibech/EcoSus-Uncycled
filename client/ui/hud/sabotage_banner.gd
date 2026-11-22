@@ -3,8 +3,10 @@ extends Label
 ## The line under the timer while a sabotage runs: what it is, the fire countdown and how many fire
 ## consoles are held. It shows what Session holds; the round decides nothing here.
 
-const FIRE_COLOR: Color = Color(0.45, 0.12, 0.08, 0.8)
-const SMOG_COLOR: Color = Color(0.3, 0.3, 0.3, 0.8)
+const FIRE_COLOR: Color = Color("c8553f")
+const SMOG_COLOR: Color = Color("707093")
+const INK: Color = Color("3e2b25")
+const PAPER: Color = Color("faf2dd")
 
 var _box: StyleBoxFlat = StyleBoxFlat.new()
 
@@ -13,8 +15,13 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_theme_font_size_override("font_size", 12)
-	add_theme_color_override("font_outline_color", Color.BLACK)
+	add_theme_color_override("font_color", PAPER)
+	add_theme_color_override("font_outline_color", INK)
 	add_theme_constant_override("outline_size", 3)
+	_box.border_color = INK
+	_box.set_border_width_all(2)
+	_box.set_corner_radius_all(8)
+	_box.anti_aliasing = true
 	_box.set_content_margin_all(5.0)
 	add_theme_stylebox_override("normal", _box)
 	visible = false
