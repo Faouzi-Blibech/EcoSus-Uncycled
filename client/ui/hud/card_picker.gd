@@ -16,6 +16,9 @@ signal picked(item: String)
 var title_key: String = ""
 ## Accepted items; empty accepts any item.
 var known_items: Array[String] = []
+## Card icons are drawn at most this wide (the art keeps its ratio).
+const ICON_MAX_WIDTH: int = 48
+
 ## Icon path format with one %s for the item; empty means no icon.
 var icon_format: String = ""
 ## Prefix of the card label key.
@@ -112,7 +115,8 @@ func _make_card(item: String) -> Button:
 	card.custom_minimum_size = CARD_SIZE
 	if not icon_format.is_empty():
 		card.icon = Assets.texture(icon_format % item)
-		card.expand_icon = false
+		card.expand_icon = true
+		card.add_theme_constant_override("icon_max_width", ICON_MAX_WIDTH)
 		card.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	card.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
