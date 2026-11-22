@@ -25,6 +25,39 @@ namespace Uncycled.Server.Tests
             Assert.Equal(new[] { 1, 2, 2 }, new[] { d.TrashersFor(6), d.TrashersFor(8), d.TrashersFor(10) });
         }
 
+        /// <summary>net.snapshot_hz: snapshots go out at that rate while the room ticks at 20 Hz (less upload per player).</summary>
+        [Theory]
+        [InlineData(20.0, 20)]
+        [InlineData(13.0, 13)]
+        [InlineData(10.0, 10)]
+        [InlineData(40.0, 20)]
+        [InlineData(0.0, 20)]
+        public void SnapshotDue_sends_at_the_snapshot_rate(double hz, int expectedPerSecond)
+        {
+            double acc = 0;
+            int sent = 0;
+            for (int tick = 0; tick < 20; tick++)
+            {
+                if (Uncycled.Server.Rooms.Room.SnapshotDue(ref acc, 0.05, hz))
+                {
+                    sent++;
+                }
+            }
+
+            Assert.Equal(expectedPerSecond, sent);
+        }
+
+        [Fact]
+        public void The_real_tuning_json_holds_the_net_section()
+        {
+            ContentBundle content = ContentLoader.Load(ContentLoader.ResolveDir(null));
+            using JsonDocument doc = JsonDocument.Parse(content.TuningJson);
+            Assert.Equal(13f, content.Config.SnapshotHz);
+            Assert.Equal(12, doc.RootElement.GetProperty("net").GetProperty("silence_s").GetInt32());
+            using JsonDocument none = JsonDocument.Parse("{}");
+            Assert.Equal(20f, ContentLoader.ReadConfig(none.RootElement).SnapshotHz);
+        }
+
         [Fact]
         public void The_real_tuning_json_holds_the_rooms_section()
         {

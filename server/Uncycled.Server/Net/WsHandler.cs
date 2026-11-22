@@ -17,7 +17,13 @@ public static class WsHandler
             return;
         }
 
-        using WebSocket ws = await ctx.WebSockets.AcceptWebSocketAsync();
+        // permessage-deflate when the client offers it (browsers do; Godot's native socket does not):
+        // JSON snapshots shrink about 60%. No context takeover: each message is compressed on its own.
+        using WebSocket ws = await ctx.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext
+        {
+            DangerousEnableCompression = true,
+            DisableServerContextTakeover = true,
+        });
         var conn = new Connection(ws, log);
         Task sendTask = conn.RunSendLoopAsync();
         rooms.ConnectionOpened();

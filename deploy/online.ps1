@@ -11,11 +11,16 @@
 # Run it again after a reboot or if a tunnel dies: healthy tunnels are reused, dead ones replaced.
 # The laptop must stay on, awake and online while people play.
 
+#   .\deploy\online.ps1 -NoBuild -GameServer wss://uncycled-server.onrender.com/ws
+#                                  the game server runs in the cloud: no local server or game tunnel,
+#                                  only the photo service stays on this laptop
+
 param(
     [switch]$NoBuild,
     [switch]$Stop,
     [string]$Project = "uncycled",
-    [string]$Site = ""
+    [string]$Site = "",
+    [string]$GameServer = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -111,12 +116,19 @@ if ($Stop) {
 
 $script:cloudflared = Find-Cloudflared
 
-Write-Host "1/5 Game server (port 5000)" -ForegroundColor Cyan
-if (-not (Test-Url "http://127.0.0.1:5000/health")) {
-    docker compose up -d --build server
-    if ($LASTEXITCODE -ne 0) { throw "Docker could not start the game server. Is Docker Desktop running?" }
+Write-Host "1/5 Game server" -ForegroundColor Cyan
+if ($GameServer) {
+    if ($GameServer -notmatch "^wss?://[^/\s]+/ws$") { throw "-GameServer must look like wss://host/ws" }
+    $cloudHealth = ($GameServer -replace "^wss://", "https://" -replace "^ws://", "http://") -replace "/ws$", "/health"
+    # A free cloud instance may be asleep: the first request wakes it (about a minute).
+    Wait-Url $cloudHealth 180 "Cloud game server"
+} else {
+    if (-not (Test-Url "http://127.0.0.1:5000/health")) {
+        docker compose up -d --build server
+        if ($LASTEXITCODE -ne 0) { throw "Docker could not start the game server. Is Docker Desktop running?" }
+    }
+    Wait-Url "http://127.0.0.1:5000/health" 120 "Game server"
 }
-Wait-Url "http://127.0.0.1:5000/health" 120 "Game server"
 
 Write-Host "2/5 Photo service (port 8000) and its tunnel" -ForegroundColor Cyan
 $scan = Start-Tunnel "scan" 8000 "/health"
@@ -130,8 +142,13 @@ if (-not (Test-Url "http://127.0.0.1:8000/health")) {
 Wait-Url "http://127.0.0.1:8000/health" 180 "Photo service (models load in ~30 s)"
 
 Write-Host "3/5 Game server tunnel" -ForegroundColor Cyan
-$game = Start-Tunnel "game" 5000 "/health"
-Wait-Url "$game/health" 90 "Game server through the tunnel"
+if ($GameServer) {
+    Stop-Tunnel "game"
+    Write-Host "  not needed: the game server is $GameServer" -ForegroundColor Green
+} else {
+    $game = Start-Tunnel "game" 5000 "/health"
+    Wait-Url "$game/health" 90 "Game server through the tunnel"
+}
 Wait-Url "$scan/health" 90 "Photo service through the tunnel"
 
 Write-Host "4/5 Web build" -ForegroundColor Cyan
@@ -140,7 +157,7 @@ if (-not $NoBuild) {
 }
 $web = Join-Path $root "build\web"
 if (-not (Test-Path (Join-Path $web "index.html"))) { throw "No build/web. Run without -NoBuild." }
-$server = "wss://" + ($game -replace "^https://", "") + "/ws"
+$server = if ($GameServer) { $GameServer } else { "wss://" + ($game -replace "^https://", "") + "/ws" }
 $config = [ordered]@{ server = $server; scan = $scan; updated = (Get-Date).ToUniversalTime().ToString("s") + "Z" }
 ($config | ConvertTo-Json) | Set-Content -Encoding ascii (Join-Path $web "config.json")
 

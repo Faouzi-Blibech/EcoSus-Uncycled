@@ -45,6 +45,7 @@ public sealed class Room
     private RoomMeeting? _meeting;
     private int _matchNo;
     private double _noHumansSince = -1;
+    private double _snapshotAcc;
     private int _tickSampleIndex;
     private int _botSampleIndex;
     private volatile bool _closed;
@@ -224,7 +225,10 @@ public sealed class Room
             IReadOnlyList<GameEvent> events = _engine.Tick(dt);
             FeedMeeting(events);
             RouteEvents(events, now);
-            SendSnapshots(now);
+            if (SnapshotDue(ref _snapshotAcc, dt, _content.Config.SnapshotHz))
+            {
+                SendSnapshots(now);
+            }
             if (_engine.Phase == MatchPhase.Ended && HumanCount == 0)
             {
                 // nobody is left to see the result and a lobby without humans only waits for its idle limit
@@ -798,6 +802,26 @@ public sealed class Room
         {
             _log.LogWarning(ex, "Room {Code}: the meeting feed failed on this tick", Code);
         }
+    }
+
+    /// <summary>True when a snapshot is due this tick: they go out at `hz` while the room ticks faster.
+    /// `acc` carries the time since the last one; hz at or above the tick rate sends every tick.</summary>
+    internal static bool SnapshotDue(ref double acc, double dt, double hz)
+    {
+        if (hz <= 0)
+        {
+            return true;
+        }
+
+        acc += dt;
+        double interval = 1.0 / hz;
+        if (acc + 1e-9 < interval)
+        {
+            return false;
+        }
+
+        acc = Math.Min(acc - interval, interval);
+        return true;
     }
 
     private void SendSnapshots(double now)
