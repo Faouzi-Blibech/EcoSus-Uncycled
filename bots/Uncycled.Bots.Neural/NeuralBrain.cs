@@ -83,7 +83,8 @@ namespace Uncycled.Bots.Neural
             private readonly IPolicy _policy;
             private readonly float _temperature;
             private readonly float[] _obs = new float[ObservationBuilderV2.Size];
-            private PolicyChoice _resolved;
+            private readonly PolicyDriver _driver = new PolicyDriver();
+            private int _index;
 
             public NeuralCore(IPolicy policy, BotsSettings settings, IRandom rng, IReadOnlyList<TaskTypeDef>? taskTypes)
                 : base(settings, rng, taskTypes)
@@ -108,18 +109,17 @@ namespace Uncycled.Bots.Neural
                     throw new InvalidOperationException("the policy chose invalid action " + index);
                 }
 
-                // the hint (spot, upgrade, ability, room) is resolved once, now; Prepare hands it to the executor
-                _resolved = PolicyActionsV2.Resolve(index, view, Mem, Mem.Map);
-
-                // Urgent: the network may change its mind while an action runs (the same action again just continues).
-                return Choice.Now(_resolved.Action);
+                // the action to start; the hints (spot, upgrade, ability, room, zone) are resolved by the driver in Prepare,
+                // when the action begins. Urgent: the network may change its mind while an action runs.
+                _index = index;
+                return Choice.Now(PolicyActionsV2.Resolve(index, view, Mem, Mem.Map).Action);
             }
 
             internal override void Prepare(BotAction action, SeatView view)
             {
-                // always all four hints, so none of an earlier choice is left over; a stale spot is the executor's to handle.
-                // Prepare only follows a Choose (the pending action is always the resolved one).
-                _resolved.ApplyTo(Exec);
+                // the shared driver (as the training host's MatchRunner uses): the same index while its action still runs
+                // keeps the running target; any other index resolves afresh. Prepare only follows a Choose.
+                _driver.Prepare(_index, view, Mem, Mem.Map, Exec);
             }
         }
     }
