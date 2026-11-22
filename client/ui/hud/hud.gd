@@ -59,6 +59,7 @@ const ACTION_ART: Dictionary = {
 const BANNER_WIDTH_PX: float = 220.0
 ## Width of the button grid (two 64 px slots and the gap), used to put the choices beside it.
 const GRID_WIDTH_PX: float = 134.0
+const PICK_BUTTON_WIDTH_PX: float = 150.0
 ## REPORT pulses while a body is in reach (scale and red tint, 0..1 by a sine).
 const REPORT_PULSE_SCALE: float = 0.1
 const REPORT_PULSE_TINT: Color = Color(1.0, 0.45, 0.4)
@@ -77,6 +78,11 @@ var _bags_label: Label
 var _items_label: Label
 var _picker: UpgradePicker
 var _ability_picker: AbilityPicker
+## The player closed an open offer: it stays closed until the "Pick" button or a new offer.
+var _upgrade_later: bool = false
+var _ability_later: bool = false
+## Reopens a closed upgrade or ability offer (bottom centre).
+var _pick_button: Button
 var _room_picker: RoomPicker
 ## The kind the ability button is labelled with ("virus" or "gas"), "" until known.
 var _ability_kind: String = ""
@@ -167,11 +173,25 @@ func _build() -> void:
 
 	_picker = UpgradePicker.new()
 	_picker.picked.connect(_on_upgrade_picked)
+	_picker.dismissed.connect(func() -> void: _upgrade_later = true)
 	_root.add_child(_picker)
 	# The Trasher's ability choice and the gas room choice, same card picker.
 	_ability_picker = AbilityPicker.new()
 	_ability_picker.picked.connect(_on_ability_picked)
+	_ability_picker.dismissed.connect(func() -> void: _ability_later = true)
 	_root.add_child(_ability_picker)
+	_pick_button = UIKit.make_button("", PICK_BUTTON_WIDTH_PX)
+	_pick_button.visible = false
+	_pick_button.anchor_left = 0.5
+	_pick_button.anchor_right = 0.5
+	_pick_button.anchor_top = 1.0
+	_pick_button.anchor_bottom = 1.0
+	_pick_button.offset_left = -PICK_BUTTON_WIDTH_PX * 0.5
+	_pick_button.offset_right = PICK_BUTTON_WIDTH_PX * 0.5
+	_pick_button.offset_bottom = -MARGIN_PX
+	_pick_button.offset_top = -MARGIN_PX - UIKit.MIN_TOUCH
+	_pick_button.pressed.connect(_on_pick_pressed)
+	_root.add_child(_pick_button)
 	_room_picker = RoomPicker.new()
 	_room_picker.picked.connect(_on_room_picked)
 	_root.add_child(_room_picker)
@@ -806,13 +826,29 @@ func _on_event(data: Dictionary) -> void:
 
 ## The open offers come back after a meeting or a rejoin: Session keeps them until a pick (the server
 ## keeps the upgrade offer; the ability choice is rebuilt from the snapshot after a rejoin).
+## A closed offer waits behind the "Pick" button until the player reopens it.
 func _update_pickers() -> void:
-	if Session.phase != "playing" or Session.is_out:
+	if Session.upgrade_offer.is_empty():
+		_upgrade_later = false
+	if Session.ability_choices.is_empty():
+		_ability_later = false
+	var playing: bool = Session.phase == "playing" and not Session.is_out
+	var upgrade_waits: bool = _upgrade_later and not Session.upgrade_offer.is_empty()
+	var ability_waits: bool = _ability_later and not Session.ability_choices.is_empty()
+	_pick_button.visible = playing and (upgrade_waits or ability_waits)
+	if _pick_button.visible:
+		_pick_button.text = tr("HUD_PICK_ABILITY") if ability_waits else tr("HUD_PICK_UPGRADE")
+	if not playing:
 		return
-	if not Session.upgrade_offer.is_empty() and not _picker.is_open():
+	if not Session.upgrade_offer.is_empty() and not _picker.is_open() and not _upgrade_later:
 		_picker.open(_as_strings(Session.upgrade_offer))
-	if not Session.ability_choices.is_empty() and not _ability_picker.is_open():
+	if not Session.ability_choices.is_empty() and not _ability_picker.is_open() and not _ability_later:
 		_ability_picker.open(_as_strings(Session.ability_choices))
+
+
+func _on_pick_pressed() -> void:
+	_upgrade_later = false
+	_ability_later = false
 
 
 ## "gas_market" -> "GAS_ROOM_MARKET" (same names as the room picker).

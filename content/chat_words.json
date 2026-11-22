@@ -28,9 +28,21 @@
     "hallway": ["hallway", "the hallway", "corridor", "the corridor"],
     "lounge": ["lounge", "the lounge"],
     "parking": ["parking", "the parking", "parking lot", "the parking lot"],
-    "art": ["art", "the art room", "art room", "the art studio", "art studio"],
-    "cafeteria": ["cafeteria", "the cafeteria", "canteen", "the canteen", "cafe", "the cafe"],
-    "enactus": ["enactus", "the enactus", "enactus room", "the enactus room"],
-    "library": ["library", "the library"]
+    "hall_north": ["north corridor", "the north corridor", "north hall"],
+    "hall_west": ["west corridor", "the west corridor", "west hall"],
+    "hall_west_low": ["office corridor", "the office corridor"],
+    "hall_amphi": ["amphi passage", "the amphi passage"],
+    "hall_library": ["library corridor", "the library corridor"],
+    "hall_garden": ["garden path", "the garden path"],
+    "hall_lounge": ["lounge corridor", "the lounge corridor"],
+    "hall_art": ["art corridor", "the art corridor"],
+    "hall_enactus": ["enactus corridor", "the enactus corridor"],
+    "hall_garden_gate": ["garden gate", "the garden gate"],
+    "hall_parking": ["parking lane", "the parking lane"],
+    "hall_machine": ["machine hall", "the machine hall", "by the machine", "near the machine"],
+    "cafeteria": ["cafeteria", "the cafeteria", "canteen", "the canteen"],
+    "library": ["library", "the library"],
+    "art": ["art factory", "the art factory", "art room", "the art room"],
+    "enactus": ["enactus", "enactus room", "the enactus room"]
   }
 }
