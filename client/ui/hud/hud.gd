@@ -5,15 +5,37 @@ extends CanvasLayer
 ## what Session holds; actions go through the bound round (RoundScene.perform_action).
 
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
+const CharacterSprite := preload("res://ui/widgets/character_sprite.gd")
+const Characters := preload("res://ui/widgets/characters.gd")
 const RoleRevealScene: PackedScene = preload("res://ui/hud/role_reveal.tscn")
 const SpectatorScene: PackedScene = preload("res://ui/hud/spectator_overlay.tscn")
 const GhostChatPanel := preload("res://ui/hud/ghost_chat_panel.gd")
 
 const MARGIN_PX: float = 8.0
-const TOP_RIGHT_WIDTH_PX: float = 170.0
 const TOAST_BOTTOM_OFFSET_PX: float = -84.0
 const SMALL_FONT: int = 11
-const DONE_COLOR: Color = Color(0.6, 0.6, 0.6)
+const DONE_COLOR: Color = Color(0.55, 0.48, 0.42)
+## Storybook HUD look (Screens reference): ink text on cream paper, Caroni font.
+const INK: Color = Color("3e2b25")
+const PAPER: Color = Color("faf2dd")
+const PAPER_SHADOW: Color = Color(0.24, 0.17, 0.12, 0.35)
+const LEAF: Color = Color("6f9a52")
+const CORAL: Color = Color("c8553f")
+const CARD_WIDTH_PX: float = 150.0
+const AVATAR_PX: float = 34.0
+const NOTE_WIDTH_PX: float = 132.0
+const BAR_WIDTH_PX: float = 170.0
+const CHECKBOX_PX: float = 11.0
+const STOPWATCH_PX: float = 16.0
+## The round mini map sits under the player card.
+const MINIMAP_TOP_PX: float = 66.0
+const CHECKBOX_DONE: String = "res://assets/ui/kit/checkbox_checked.png"
+const CHECKBOX_OPEN: String = "res://assets/ui/kit/checkbox_empty.png"
+const STOPWATCH: String = "res://assets/ui/hud/icon_stopwatch.png"
+## Below the pollution bar: the sabotage banner, then the virus countdown.
+const BANNER_TOP_PX: float = 58.0
+const VIRUS_TIMER_TOP_PX: float = 86.0
 ## The ping line appears only above this (a good ping is a debug readout, not player information).
 const WEAK_PING_MS: int = 250
 ## Grid slot order (REPORT USE / DUMP HIT / SABOTAGE); each button keeps its slot while hidden.
@@ -28,7 +50,7 @@ const ACTION_LABEL: Dictionary = {
 	"use": "ACT_USE", "report": "ACT_REPORT", "repollute": "ACT_REPOLLUTE", "ability": "ACT_VIRUS", "sabotage": "ACT_SABOTAGE",
 }
 const SABOTAGE_KINDS: Array[String] = ["machine", "smog"]
-const CHOICE_SIZE: Vector2 = Vector2(52.0, 52.0)
+const CHOICE_SIZE: Vector2 = Vector2(52.0, 66.0)
 ## The painted button of each grid action (assets/ui/hud/btn_<art>.png); the ability slot follows
 ## the unlocked ability (virus or gas).
 const ACTION_ART: Dictionary = {
@@ -86,6 +108,12 @@ var _reveal_shown: bool = false
 var _spectator: SpectatorOverlay
 var _shown_cause: String = ""
 var _tasks_signature: String = ""
+var _name_label: Label
+var _avatar_slot: Control
+var _avatar_key: String = ""
+var _note: PanelContainer
+var _minimap: Minimap
+var _minimap_bound: bool = false
 
 
 func _ready() -> void:
@@ -101,7 +129,9 @@ func bind(round: Node) -> void:
 
 func _build() -> void:
 	_root = Control.new()
-	_root.theme = UIKit.theme()
+	var th: Theme = UIKit.theme().duplicate() as Theme
+	th.default_font = PaperKit.font()
+	_root.theme = th
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
 	UIKit.fill(_root)
@@ -112,6 +142,7 @@ func _build() -> void:
 	_root.add_child(_spectator)
 
 	_build_top_left()
+	_build_top_center()
 	_build_top_right()
 	_build_banner()
 	_build_buttons()
@@ -135,7 +166,7 @@ func _build() -> void:
 	_virus_timer = VirusTimer.new()
 	_virus_timer.anchor_left = 0.5
 	_virus_timer.anchor_right = 0.5
-	_virus_timer.offset_top = 52.0
+	_virus_timer.offset_top = VIRUS_TIMER_TOP_PX
 	_virus_timer.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_root.add_child(_virus_timer)
 	_virus_timer.show_seconds(-1.0)
@@ -184,51 +215,154 @@ func _apply_safe_area() -> void:
 
 
 func _build_top_left() -> void:
-	var box: VBoxContainer = UIKit.make_vbox(0)
+	# The player card: round portrait, name, role tag, the partner for a Trasher.
+	var card: PanelContainer = _paper_panel()
+	card.position = Vector2(MARGIN_PX, MARGIN_PX)
+	card.custom_minimum_size = Vector2(CARD_WIDTH_PX, 0.0)
+	_root.add_child(card)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(row)
+	_avatar_slot = Control.new()
+	_avatar_slot.custom_minimum_size = Vector2(AVATAR_PX, AVATAR_PX)
+	_avatar_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_avatar_slot)
+	var col: VBoxContainer = UIKit.make_vbox(0)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(col)
+	_name_label = _ink_label(14)
+	_name_label.clip_text = true
+	_role_label = _ink_label(SMALL_FONT)
+	_role_label.add_theme_color_override("font_color", PAPER)
+	_role_label.add_theme_stylebox_override("normal", _pill(LEAF))
+	_role_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_partner_label = _ink_label(SMALL_FONT - 1)
+	for n in [_name_label, _role_label, _partner_label]:
+		col.add_child(n)
+	_minimap = Minimap.new()
+	_minimap.position = Vector2(MARGIN_PX + 4.0, MINIMAP_TOP_PX)
+	_root.add_child(_minimap)
+
+
+## The pollution bar under its paper tab, top centre.
+func _build_top_center() -> void:
+	var box: VBoxContainer = UIKit.make_vbox(-3, BAR_WIDTH_PX)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.position = Vector2(MARGIN_PX, MARGIN_PX - 2.0)
+	box.anchor_left = 0.5
+	box.anchor_right = 0.5
+	box.offset_left = -BAR_WIDTH_PX * 0.5
+	box.offset_right = BAR_WIDTH_PX * 0.5
+	box.offset_top = MARGIN_PX - 4.0
 	_root.add_child(box)
-	_role_label = UIKit.make_hud_label(SMALL_FONT)
-	_partner_label = UIKit.make_hud_label(SMALL_FONT)
-	_tasks_header = UIKit.make_hud_label()
+	_meter_label = _ink_label(SMALL_FONT + 1)
+	_meter_label.add_theme_stylebox_override("normal", _pill(PAPER, true))
+	_meter_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_meter_label.z_index = 1
+	_meter_bar = PollutionBar.new()
+	box.add_child(_meter_label)
+	box.add_child(_meter_bar)
+
+
+## The paper note, top right: tasks (when the mode has them), bags, items and the match clock.
+func _build_top_right() -> void:
+	_note = _paper_panel()
+	_note.anchor_left = 1.0
+	_note.anchor_right = 1.0
+	_note.offset_left = -MARGIN_PX - NOTE_WIDTH_PX
+	_note.offset_right = -MARGIN_PX
+	_note.offset_top = MARGIN_PX
+	_note.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_root.add_child(_note)
+	var box: VBoxContainer = UIKit.make_vbox(1)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_note.add_child(box)
+	_tasks_header = _ink_label(15)
 	_tasks_header.text = tr("HUD_TASKS")
+	_tasks_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_task_rows = UIKit.make_vbox(0)
 	_task_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for n in [_role_label, _partner_label, _tasks_header, _task_rows]:
-		box.add_child(n)
-
-
-func _build_top_right() -> void:
-	var box: VBoxContainer = UIKit.make_vbox(2, TOP_RIGHT_WIDTH_PX)
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.anchor_left = 1.0
-	box.anchor_right = 1.0
-	box.offset_left = -MARGIN_PX
-	box.offset_right = -MARGIN_PX
-	box.offset_top = MARGIN_PX - 2.0
-	box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_root.add_child(box)
-
-	_timer_label = UIKit.make_hud_label(18)
-	_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_meter_label = UIKit.make_hud_label(SMALL_FONT)
-	_meter_bar = PollutionBar.new()
-	_bags_label = UIKit.make_hud_label(SMALL_FONT)
-	_bags_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_items_label = UIKit.make_hud_label(SMALL_FONT)
-	_items_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_bags_label = _ink_label(SMALL_FONT + 1)
+	_items_label = _ink_label(SMALL_FONT)
 	_items_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var clock: HBoxContainer = HBoxContainer.new()
+	clock.alignment = BoxContainer.ALIGNMENT_CENTER
+	clock.add_theme_constant_override("separation", 4)
+	clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if ResourceLoader.exists(STOPWATCH):
+		var icon: TextureRect = TextureRect.new()
+		icon.texture = load(STOPWATCH) as Texture2D
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = Vector2(STOPWATCH_PX, STOPWATCH_PX)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clock.add_child(icon)
+	_timer_label = _ink_label(16)
+	clock.add_child(_timer_label)
+	for n in [_tasks_header, _task_rows, _bags_label, _items_label, clock]:
+		box.add_child(n)
 	_ping_label = UIKit.make_hud_label(SMALL_FONT)
 	_ping_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	for n in [_timer_label, _meter_label, _meter_bar, _bags_label, _items_label, _ping_label]:
-		box.add_child(n)
+	_ping_label.anchor_left = 1.0
+	_ping_label.anchor_right = 1.0
+	_ping_label.offset_left = -MARGIN_PX - NOTE_WIDTH_PX
+	_ping_label.offset_right = -MARGIN_PX
+	_ping_label.offset_top = 96.0
+	_root.add_child(_ping_label)
+
+
+## Cream paper with an ink rim and a soft drop shadow.
+static func _paper_panel() -> PanelContainer:
+	var p: PanelContainer = PanelContainer.new()
+	var box: StyleBoxFlat = StyleBoxFlat.new()
+	box.bg_color = PAPER
+	box.border_color = INK
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(9)
+	box.shadow_color = PAPER_SHADOW
+	box.shadow_size = 3
+	box.shadow_offset = Vector2(1.0, 2.0)
+	box.content_margin_left = 7.0
+	box.content_margin_right = 7.0
+	box.content_margin_top = 5.0
+	box.content_margin_bottom = 5.0
+	box.anti_aliasing = true
+	p.add_theme_stylebox_override("panel", box)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return p
+
+
+## A rounded tag behind a label (role tag, the "Pollution" tab).
+static func _pill(color: Color, rim: bool = false) -> StyleBoxFlat:
+	var box: StyleBoxFlat = StyleBoxFlat.new()
+	box.bg_color = color
+	box.set_corner_radius_all(8)
+	if rim:
+		box.border_color = INK
+		box.set_border_width_all(2)
+	box.content_margin_left = 7.0
+	box.content_margin_right = 7.0
+	box.content_margin_top = 0.0
+	box.content_margin_bottom = 1.0
+	box.anti_aliasing = true
+	return box
+
+
+## Ink text for the paper panels (the theme gives the Caroni font).
+static func _ink_label(font_size: int) -> Label:
+	var l: Label = Label.new()
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", INK)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
 
 
 func _build_banner() -> void:
 	_banner = SabotageBanner.new()
 	_banner.anchor_left = 0.5
 	_banner.anchor_right = 0.5
-	_banner.offset_top = MARGIN_PX - 2.0
+	_banner.offset_top = BANNER_TOP_PX
 	_banner.custom_minimum_size = Vector2(BANNER_WIDTH_PX, 0.0)
 	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -441,6 +575,7 @@ func _on_hold_ended(action: String) -> void:
 
 
 func _process(_delta: float) -> void:
+	_bind_minimap()
 	_update_header()
 	_update_tasks()
 	_update_buttons()
@@ -452,14 +587,17 @@ func _process(_delta: float) -> void:
 
 
 func _update_header() -> void:
-	if not Session.role.is_empty():
-		_role_label.text = tr("HUD_ROLE") % tr("ROLE_" + Session.role.to_upper())
-	else:
-		_role_label.text = ""
+	_role_label.visible = not Session.role.is_empty()
+	if _role_label.visible:
+		_role_label.text = tr("ROLE_" + Session.role.to_upper())
+		_role_label.add_theme_stylebox_override("normal", _pill(CORAL if Session.role == "polluter" else LEAF))
 	if Session.partner_seat >= 0:
 		_partner_label.text = tr("HUD_PARTNER") % Session.seat_name(Session.partner_seat)
 	else:
 		_partner_label.text = ""
+	_partner_label.visible = not _partner_label.text.is_empty()
+	_name_label.text = Session.seat_name(Session.seat_id) if Session.seat_id >= 0 else ""
+	_update_avatar()
 	# The meter counts cleanliness; the bar and its label show what is left: the pollution.
 	var pollution: float = clampf(100.0 - Session.meter, 0.0, 100.0)
 	_meter_label.text = tr("HUD_POLLUTION") % pollution
@@ -478,6 +616,30 @@ func _update_header() -> void:
 
 
 ## One label per task: "Name 1/2 (Zone)", greyed when done. Rebuilt only when the data changes.
+## The mini map follows the local player once the round has its map.
+func _bind_minimap() -> void:
+	if _minimap_bound or _round == null or _round.map() == null:
+		return
+	_minimap_bound = true
+	_minimap.player_position = _round.local_position_px
+	_minimap.bind_map(_round.map())
+
+
+## The card's round portrait: the seat's character (its lobby skin) in the seat colour.
+func _update_avatar() -> void:
+	var skin: String = str(Session.seat_info(Session.seat_id).get("skin", "")) if Session.seat_id >= 0 else ""
+	var id: String = skin if Characters.has(skin) else Characters.DEFAULT_ID
+	var colour: Color = Session.seat_color(Session.seat_id) if Session.seat_id >= 0 else Color.WHITE
+	var key: String = "%s/%s" % [id, colour.to_html()]
+	if key == _avatar_key:
+		return
+	_avatar_key = key
+	for c in _avatar_slot.get_children():
+		_avatar_slot.remove_child(c)
+		c.queue_free()
+	_avatar_slot.add_child(CharacterSprite.avatar(id, colour, Rect2(Vector2.ZERO, Vector2(AVATAR_PX, AVATAR_PX))))
+
+
 func _update_tasks() -> void:
 	var signature: String = str(Session.my_tasks)
 	if signature == _tasks_signature:
@@ -489,11 +651,25 @@ func _update_tasks() -> void:
 		child.queue_free()
 	for entry in Session.my_tasks:
 		var t: Dictionary = Net.as_dict(entry)
-		var l: Label = UIKit.make_hud_label(SMALL_FONT + 1)
+		var done: bool = int(t.get("steps_done", 0)) >= int(t.get("steps", 1))
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 3)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var box: TextureRect = TextureRect.new()
+		box.texture = Assets.texture(CHECKBOX_DONE if done else CHECKBOX_OPEN)
+		box.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		box.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		box.custom_minimum_size = Vector2(CHECKBOX_PX, CHECKBOX_PX)
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var l: Label = _ink_label(SMALL_FONT)
 		l.text = task_line(t, _round.map() if _round != null else null)
-		if int(t.get("steps_done", 0)) >= int(t.get("steps", 1)):
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if done:
 			l.add_theme_color_override("font_color", DONE_COLOR)
-		_task_rows.add_child(l)
+		row.add_child(box)
+		row.add_child(l)
+		_task_rows.add_child(row)
 
 
 ## "Name", "Name 1/2", with " (Zone)" when the console sits inside a zone of the map.

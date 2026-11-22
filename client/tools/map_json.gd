@@ -198,6 +198,20 @@ static func root_errors(root: MapRoot) -> PackedStringArray:
 	return errors
 
 
+## True when `c` is inside a zone (a room) that reaches the map's outer ring: the recycling machine may
+## stand inside a recycling room at the edge instead of on the edge itself.
+static func _in_edge_zone(c: Vector2i, d: Dictionary, width: int, height: int) -> bool:
+	for z in (d["zones"] if d.get("zones") is Array else []):
+		if not z is Dictionary or not z.get("rect") is Array or (z["rect"] as Array).size() != 4:
+			continue
+		var r: Array = z["rect"]
+		var rect: Rect2i = Rect2i(int(r[0]), int(r[1]), int(r[2]), int(r[3]))
+		var touches: bool = rect.position.x <= 1 or rect.position.y <= 1 or rect.end.x >= width - 1 or rect.end.y >= height - 1
+		if touches and rect.has_point(c):
+			return true
+	return false
+
+
 ## True when a 4-neighbour of `c` is on the map's outer ring (the recycling machine stands at the map edge).
 static func _next_to_edge(c: Vector2i, width: int, height: int) -> bool:
 	for step in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
@@ -268,8 +282,8 @@ static func validate(d: Dictionary) -> PackedStringArray:
 			elif _is_wall(walk, _cell(c["pos"])):
 				errors.append("%s at %s is on a wall or outside the map" % [id, str(c["pos"])])
 	for c in (d["special"] if d.get("special") is Array else []):
-		if c is Dictionary and c.get("kind") == "machine" and _is_pair(c.get("pos")) and not _next_to_edge(_cell(c["pos"]), width, height):
-			errors.append("%s at %s must be next to the map edge" % [String(c.get("id", "")), str(c["pos"])])
+		if c is Dictionary and c.get("kind") == "machine" and _is_pair(c.get("pos")) 				and not _next_to_edge(_cell(c["pos"]), width, height) and not _in_edge_zone(_cell(c["pos"]), d, width, height):
+			errors.append("%s at %s must be next to the map edge or in a room at the edge" % [String(c.get("id", "")), str(c["pos"])])
 	for id in REQUIRED_SPECIALS:
 		if not special_kinds.has(id):
 			errors.append("missing special marker %s" % id)

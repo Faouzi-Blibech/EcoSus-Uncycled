@@ -127,6 +127,7 @@ ZONE_HALLWAY,Hallway,Couloir,الممر
 ZONE_LOUNGE,Lounge,Salon,الاستراحة
 ZONE_PARKING,Parking,Parking,موقف السيارات
 ZONE_CAFETERIA,Cafeteria,Cafétéria,الكافيتيريا
+ZONE_RECYCLING,Recycling Room,Salle de recyclage,غرفة إعادة التدوير
 ZONE_LIBRARY,Library,Bibliothèque,المكتبة
 ZONE_ART,Art Factory,Art Factory,مصنع الفنون
 ZONE_ENACTUS,Enactus room,Salle Enactus,قاعة إيناكتس
