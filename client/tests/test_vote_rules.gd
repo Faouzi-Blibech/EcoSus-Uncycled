@@ -53,3 +53,11 @@ func test_ejection_reveal() -> bool:
 	assert_eq(VoteRules.ejection_reveal(true), "EJECTION_WAS_POLLUTER", "polluter")
 	assert_eq(VoteRules.ejection_reveal(false), "EJECTION_WAS_NOT_POLLUTER", "not polluter")
 	return true
+
+
+func test_voters_by_target_groups_and_skips() -> bool:
+	var got: Dictionary = load("res://scenes/meeting/vote_rules.gd").voters_by_target({"3": 1, "0": 1, "2": "skip", "1": 2, "4": null})
+	assert_eq(got[1], [0, 3], "two votes for seat 1, sorted")
+	assert_eq(got[2], [1], "one vote for seat 2")
+	assert_eq(got[-1], [2, 4], "skip and timed-out under -1")
+	return true

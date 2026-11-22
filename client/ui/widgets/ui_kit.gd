@@ -37,8 +37,12 @@ static func make_label(text: String, font_size: int = FONT_SIZE, color: Color = 
 	return l
 
 
-static func make_button(text: String, min_width: float = 120.0) -> Button:
+## kind: the pill colour, "green" (go, the default), "cream" (cancel, close, back) or "coral"
+## (skip, danger).
+static func make_button(text: String, min_width: float = 120.0, kind: String = "green") -> Button:
 	var b: Button = Button.new()
+	if kind != "green":
+		b.theme_type_variation = kind.capitalize() + "Button"
 	b.text = text
 	b.custom_minimum_size = Vector2(min_width, MIN_TOUCH)
 	return b

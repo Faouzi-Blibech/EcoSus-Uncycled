@@ -9,6 +9,7 @@ const SEATS: Array = [
 	{"seat": 2, "name": "Cy", "color": 2, "human": false, "skin": "robot"},
 	{"seat": 3, "name": "Dee", "color": 3, "human": true, "skin": "rabbit"},
 ]
+const MAP_STAND_IN: String = "res://assets/maps/tbs/garden.jpg"
 const MINIGAMES: Array[String] = ["sort_waste", "crush_cans", "rinse_bottles", "turn_compost", "deliver_glass", "check_meter"]
 
 var _out: String = ""
@@ -61,7 +62,7 @@ func _tour() -> void:
 		["results_lose", func() -> Node: _game_over("polluters", "deadline"); return _scene("res://scenes/results/results.tscn")],
 		["meeting_discussion", func() -> Node: _meeting("discussion"); return _scene("res://scenes/meeting/meeting.tscn")],
 		["meeting_voting", func() -> Node: _meeting("voting"); return _scene("res://scenes/meeting/meeting.tscn")],
-		["meeting_results", func() -> Node: _meeting("results"); return _scene("res://scenes/meeting/meeting.tscn")],
+		["meeting_results", func() -> Node: _meeting("results"); Session.meeting["votes"] = {"0": 1, "2": 1, "1": 0, "3": "skip"}; var m: Node = _scene("res://scenes/meeting/meeting.tscn"); m.set("_result", {"votes": Session.meeting["votes"], "ejected": 1, "tie": false}); return m],
 		["meeting_ejection", func() -> Node: _meeting("results"); Session.phase = "ejection"; var m: Node = _scene("res://scenes/meeting/meeting.tscn"); m.set("_ejection", {"seat": 1, "was_polluter": true}); return m],
 		["report_splash", func() -> Node: return _splash()],
 		["role_cleaner", func() -> Node: return _reveal("citizen", "")],
@@ -81,7 +82,9 @@ func _tour() -> void:
 		get_tree().root.add_child(node)
 		# The screen is the current scene, so a screen that routes away replaces itself, not the tour.
 		get_tree().current_scene = node
-		for i in 20:
+		# The ejection plays a short tumble: shoot it once the character is mid-way and the line is in.
+		var frames: int = 130 if name == "meeting_ejection" else 20
+		for i in frames:
 			await get_tree().process_frame
 		var img: Image = get_viewport().get_texture().get_image()
 		img.save_png("%s/%s.png" % [_out, name])
@@ -157,6 +160,16 @@ func _spectator() -> Node:
 
 
 func _minigame(task_type: String) -> Node:
+	# The games float over the round: a map picture stands in for it.
+	var root: Control = Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var map: TextureRect = TextureRect.new()
+	map.texture = load(MAP_STAND_IN) as Texture2D
+	map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	map.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	root.add_child(map)
+	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var layer: Node = (load("res://minigames/minigame_layer.tscn") as PackedScene).instantiate()
 	layer.call_deferred("_open", {"id": 1, "type": task_type, "steps": 1}, 0, false, 0.5)
-	return layer
+	root.add_child(layer)
+	return root

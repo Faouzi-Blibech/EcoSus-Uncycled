@@ -1,7 +1,7 @@
 class_name Avatar
 extends Node2D
 ## One player as seen in the world: the seat's character (its lobby skin, the sprout by default)
-## playing its walk cycle while it moves, standing on a seat-coloured shadow, with the name above
+## playing its walk cycle while it moves, standing on a black shadow, with the name above
 ## it (the name and the character, not colour alone, tell players apart). Used for the local player
 ## and the remote ones. The node's origin is the player's position; the feet stand just below it.
 
@@ -382,7 +382,7 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	# The seat-coloured shadow the character stands on (it follows the body through a dash).
+	# The shadow the character stands on (it follows the body through a dash).
 	var shadow_at: Vector2 = Vector2.ZERO
 	var shadow_k: float = 1.0
 	if is_dashing():
@@ -396,9 +396,8 @@ func _draw() -> void:
 			shadow_k = _in_progress()
 	if shadow_k <= 0.0:
 		return
-	var body: Color = _color
-	if _out:
-		body = body.darkened(OUT_DARKEN)
+	# A plain black shadow for every seat (the name and the character tell players apart).
+	var body: Color = Color.BLACK
 	body.a = SHADOW_ALPHA * shadow_k
 	var outline: Color = SHADOW_OUTLINE
 	outline.a *= shadow_k

@@ -57,7 +57,7 @@ func _ready() -> void:
 	var retry: Button = UIKit.make_button(tr("BOOT_RETRY"))
 	retry.pressed.connect(_start)
 	_buttons.add_child(retry)
-	var settings_btn: Button = UIKit.make_button(tr("COMMON_SETTINGS"))
+	var settings_btn: Button = UIKit.make_button(tr("COMMON_SETTINGS"), 120.0, "cream")
 	settings_btn.pressed.connect(_open_settings)
 	_buttons.add_child(settings_btn)
 

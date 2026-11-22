@@ -1,9 +1,9 @@
 {
   "bins": [
-    {"id": "plastic_metal", "name_key": "BIN_PLASTIC_METAL"},
-    {"id": "paper", "name_key": "BIN_PAPER"},
-    {"id": "glass", "name_key": "BIN_GLASS"},
-    {"id": "organic", "name_key": "BIN_ORGANIC"}
+    {"id": "plastic_metal", "name_key": "BIN_PLASTIC_METAL", "color": "#f2c531"},
+    {"id": "paper", "name_key": "BIN_PAPER", "color": "#3e7cc4"},
+    {"id": "glass", "name_key": "BIN_GLASS", "color": "#3f9a4a"},
+    {"id": "organic", "name_key": "BIN_ORGANIC", "color": "#8b5a2b"}
   ],
   "items": [
     {"id": "water_bottle", "name_key": "ITEM_WATER_BOTTLE", "bin": "plastic_metal"},

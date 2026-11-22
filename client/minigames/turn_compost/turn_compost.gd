@@ -67,7 +67,7 @@ func drag_handle_to(p: Vector2) -> void:
 func _build_hold() -> void:
 	_hint.text = tr("MG_COMPOST_WATER_HINT")
 	var g: HoldGauge = GAUGE_SCENE.instantiate() as HoldGauge
-	g.position = _centre - Vector2(24.0, 100.0)
+	g.position = _centre - g.custom_minimum_size * 0.5
 	g.released.connect(_on_gauge_released)
 	add_child(g)
 
