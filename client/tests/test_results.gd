@@ -20,3 +20,11 @@ func test_debrief_text_only_when_present() -> bool:
 	assert_eq(Results.debrief_text({"debrief_text": null}), "", "null")
 	assert_eq(Results.debrief_text({"debrief_text": "Ana dumped twice."}), "Ana dumped twice.", "shown as sent")
 	return true
+
+
+## Time ran out with the pollution bar not full: the Trashers win by the clock, and the screen says so loudly.
+func test_deadline_reason_is_loud_and_explicit() -> bool:
+	assert_true(Results.reason_font_size("deadline") > Results.reason_font_size("pollution_full"), "the deadline reason is bigger than the others")
+	assert_true(tr("RESULT_DEADLINE").contains("not clean"), "it says the campus was not clean")
+	assert_true(tr("RESULT_DEADLINE").contains("Trashers win"), "it says the Trashers win")
+	return true

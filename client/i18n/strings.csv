@@ -160,7 +160,7 @@ RESULT_WINNER_POLLUTERS,Trashers win,Les pollueurs gagnent,فاز الملوِّ
 RESULT_POLLUTERS_VOTED_OUT,The Trashers were voted out.,Les pollueurs ont été éliminés par le vote.,تم إقصاء الملوِّثين بالتصويت.,Nedskräparna röstades ut.
 RESULT_TASKS_DONE,Every task is done.,Toutes les tâches sont faites.,أُنجزت كل المهام.,Alla uppdrag är klara.
 RESULT_POLLUTION_FULL,The pollution meter is full.,La jauge de pollution est pleine.,امتلأ مقياس التلوث.,Föroreningsmätaren är full.
-RESULT_DEADLINE,Time ran out.,Le temps est écoulé.,انتهى الوقت.,Tiden tog slut.
+RESULT_DEADLINE,Time ran out: the campus was not clean. Trashers win.,Le temps est écoulé : le campus n'est pas propre. Les pollueurs gagnent.,انتهى الوقت: لم يصبح الحرم نظيفًا. فاز الملوِّثون.,Tiden tog slut: campuset blev inte rent. Nedskräparna vinner.
 RESULT_PARITY,There are now as many Trashers as Cleaners.,Il y a maintenant autant de pollueurs que de nettoyeurs.,أصبح عدد الملوِّثين مساويًا لعدد المنظّفين.,Nu finns det lika många Nedskräpare som Städare.
 RESULT_REASON_UNKNOWN,The match is over.,La partie est terminée.,انتهت المباراة.,Matchen är slut.
 RESULT_ROLES,Roles,Rôles,الأدوار,Roller

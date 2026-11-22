@@ -18,8 +18,18 @@ const LOSE_COLOR: Color = Color(0.68, 0.27, 0.15)
 ## The fact note: wide enough for two lines, never a thin strip.
 const FACT_CARD_SIZE: Vector2 = Vector2(440.0, 78.0)
 
+## The reason that gets a loud line: time ran out with the pollution bar not full (the Trashers win by the clock).
+const LOUD_REASON: String = "deadline"
+const REASON_SIZE: int = 17
+const LOUD_REASON_SIZE: int = 24
+
 var _countdown: Label
 var _left_s: float = DEFAULT_LOBBY_DELAY_S
+
+
+## Font size of the reason line under the winner title.
+static func reason_font_size(reason: String) -> int:
+	return LOUD_REASON_SIZE if reason == LOUD_REASON else REASON_SIZE
 
 
 func _ready() -> void:
@@ -41,8 +51,10 @@ func _ready() -> void:
 	var title: Label = UIKit.make_label(_tr_or("RESULT_WINNER_", winner, "RESULT_REASON_UNKNOWN"), 32, WIN_COLOR if winner == "citizens" else LOSE_COLOR)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(title)
-	var reason: Label = UIKit.make_label(_tr_or("RESULT_", str(over.get("reason", "")), "RESULT_REASON_UNKNOWN"), 17, MUTED)
+	var reason_id: String = str(over.get("reason", ""))
+	var reason: Label = UIKit.make_label(_tr_or("RESULT_", reason_id, "RESULT_REASON_UNKNOWN"), reason_font_size(reason_id), LOSE_COLOR if reason_id == LOUD_REASON else MUTED)
 	reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(reason)
 
 	var cols: HBoxContainer = HBoxContainer.new()
