@@ -44,11 +44,29 @@ add `-v "<WT>/bots/.build:/out"`, body `cp -r /repo /work && cd /work && dotnet 
 
 ## Bots on the server
 
-The server reads `bots.json` and `models/` from `UNCYCLED_BOTS_DIR` (the image: `/app/bots`). The image
-ships `"brain": "scripted"`. To play the trained networks, put `citizen.onnx`/`citizen.json` and
-`polluter.onnx`/`polluter.json` in `models/` (rebuild the image, or mount a folder over `/app/bots/models`)
-and set `UNCYCLED_BOTS_BRAIN=neural`, which overrides the file's `brain` without a rebuild. The models are
-loaded once when the server starts; a role whose model is missing, corrupt, a v1 network or of another schema plays the
+The server reads `bots.json` and `models/` from `UNCYCLED_BOTS_DIR` (the image: `/app/bots`). The `brain`
+setting in `bots.json` (shipped as `"neural_polluter"`: Trasher network, scripted Cleaners) and the environment variable `UNCYCLED_BOTS_BRAIN`, which
+overrides the file without a rebuild, take one of these values (Trasher = polluter, Cleaner = citizen):
+
+| Value | Trasher bots | Cleaner bots |
+|---|---|---|
+| `scripted` | scripted | scripted |
+| `neural` | network | network |
+| `neural_polluter` (default) | network | scripted |
+| `neural_citizen` | scripted | network |
+
+Any other value plays scripted and is logged once. `NeuralBrainFactory` (tests, training) and the server's
+`BotBrains` both ask `BotsSettings.UsesNetwork(role)`, so they cannot disagree.
+
+Shipped in `models/` (SchemaV2 hash `e4aa0cb0...`, trained 2026-11-22, no retraining on copy):
+
+| File | Run | Result on tbs_01, 500 matches |
+|---|---|---|
+| `polluter.onnx` (Trasher) | `t1-polluter` (league-tbs3) | 76.2% win vs scripted Cleaners |
+| `citizen.onnx` (Cleaner) | `cit-final-s2` (cleaner-final) | 92.8% win vs scripted Trashers |
+
+Default `neural_polluter`, from a balance test on the final tbs_01 at speed 4 with the 5 s gas warning (500 matches each): network Trashers vs scripted Cleaners win 37.6%, scripted vs scripted only 8.6%, and network against network the Trasher wins about 72%, so the Cleaner network stays off. The models are loaded
+once when the server starts; a role whose model is missing, corrupt, a v1 network or of another schema plays the
 scripted brain, and the reason is logged once at startup.
 
 ## Bots talk in meetings

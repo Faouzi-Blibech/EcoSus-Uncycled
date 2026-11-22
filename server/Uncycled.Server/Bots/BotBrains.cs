@@ -46,9 +46,15 @@ public class BotBrains : IDisposable
         _slowMs = slowMs;
         _slowStrikes = slowStrikes;
         _meeting = meeting;
-        if (primary == null && string.Equals(settings.Brain, "neural", StringComparison.OrdinalIgnoreCase))
+        string? unknown = settings.UnknownBrainMessage();
+        if (unknown != null)
         {
-            foreach (Role role in new[] { Role.Citizen, Role.Polluter })
+            _log.LogWarning("{Message}", unknown);
+        }
+
+        if (primary == null)
+        {
+            foreach (Role role in new[] { Role.Citizen, Role.Polluter }.Where(settings.UsesNetwork))
             {
                 LoadModel(role, NeuralBrainFactory.ModelPath(role, modelsDir));
             }
@@ -86,7 +92,7 @@ public class BotBrains : IDisposable
 
     /// <summary>
     /// Settings from dir/bots.json (defaults when missing), models from dir/models.
-    /// brainOverride ("scripted" or "neural", from UNCYCLED_BOTS_BRAIN) replaces the file's "brain".
+    /// brainOverride ("scripted", "neural", "neural_polluter" or "neural_citizen", from UNCYCLED_BOTS_BRAIN) replaces the file's "brain".
     /// </summary>
     public static BotBrains Load(string dir, ContentBundle content, ILogger log, string? brainOverride = null)
     {

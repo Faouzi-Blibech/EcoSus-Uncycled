@@ -1,0 +1,8 @@
+{
+  "schema_hash": "e4aa0cb05099abb1a055b200c3bc163028f07841648bc82f8798176b914730fa",
+  "obs_size": 199,
+  "action_count": 35,
+  "run_id": "cit-final-s2",
+  "learner": "citizen",
+  "git_commit": "20cd3c4fd0961f8e7d491698e52ba73b97546424"
+}
