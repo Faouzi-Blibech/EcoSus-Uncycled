@@ -107,3 +107,28 @@ func test_ejection_view_says_how_many_polluters_remain() -> bool:
 	Session.ejected_polluters = saved_count
 	_restore()
 	return true
+
+
+## The splash paints the body of the reported pile's victim; another victim's clue is only a fallback.
+func test_report_victim_is_the_reported_piles_clue() -> bool:
+	var script: GDScript = load("res://scenes/meeting/meeting.gd")
+	var clues: Array = [{"pile": 3, "zone": "a", "victim": 4}, {"pile": 8, "zone": "b", "victim": 6}]
+	assert_eq(script.report_victim({"pile": 8, "clues": clues}), 6, "the reported pile")
+	assert_eq(script.report_victim({"pile": 99, "clues": clues}), 4, "unknown pile: first victim")
+	assert_eq(script.report_victim({"pile": 1, "clues": [{"pile": 1, "zone": "a"}]}), -1, "no victim")
+	return true
+
+
+func test_report_splash_shows_once_per_meeting() -> bool:
+	var m: Control = _voting_scene()
+	Session.meeting["cause"] = "report"
+	Session.meeting["pile"] = 3
+	Session.meeting["clues"] = [{"pile": 3, "zone": "a", "victim": 1}]
+	Session.meeting["splash"] = true
+	var before: int = m.get_child_count()
+	m._show_report_splash()
+	assert_eq(m.get_child_count(), before + 1, "splash added")
+	m._show_report_splash()
+	assert_eq(m.get_child_count(), before + 1, "not twice")
+	_restore()
+	return true

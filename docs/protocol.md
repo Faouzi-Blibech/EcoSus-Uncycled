@@ -11,9 +11,10 @@ client in the same PR, and bump `PROTOCOL_VERSION` on any breaking change.
 - Max message: 4 KB client -> server (whole message, all frames). Rate limit: 30 msg/s, burst 60.
 - Coordinates must be finite numbers; NaN/Infinity closes the connection.
 
-`PROTOCOL_VERSION = 3`
+`PROTOCOL_VERSION = 4`
 
 Changelog:
+- 4: a body pile carries `victim` (the fallen seat id) so the client draws it in that seat's colour.
 - 3: dash for every seat (`dash`, `dash_ok`, `me.dash`); spots get littered again `tuning.spots.relitter_s` after their last clean (they simply turn `dirty` in `snapshot.spots`).
 - 2: Cleaners vs Trashers rules (spots, bags, Recycling Machine, upgrades, re-pollute, virus, gas, machine jam), room size 6/8/10 and seat ids 0-9, skins, `net_report`. Code names stay `citizen`/`polluter` on the wire.
 - 1: typed chat `chat_text`, `chat` event `text` and `ghost`, `my_text`, `ghost_chat`, reasons `too_long`, `text_limit`, `phrase_limit`.
@@ -147,7 +148,7 @@ follows on the next tick.
   "me": { "pos": [12.0, 8.5], "vision": 4.0, "emergencies_left": 2,
           "bags": 1, "cap": 1, "tool": false, "heals": 0, "masks": 1, "infected_s": 24.0 },
   "players": [ { "seat": 3, "pos": [13.1, 9.0], "color": 2, "out": false } ],
-  "piles": [ { "id": 7, "pos": [20.0, 4.0], "kind": "body", "state": "fresh" } ],
+  "piles": [ { "id": 7, "pos": [20.0, 4.0], "kind": "body", "state": "fresh", "victim": 3 } ],
   "spots": [ { "id": "market_bins", "state": "dirty" } ],
   "machine": { "jammed": false, "repair_t": 1.5 },
   "gas": { "room": "gas_market", "in_s": 2.1 },
@@ -168,7 +169,7 @@ v2 hidden fields, and who receives each:
 - `me.repollutes`, `me.ability` (`null`, "virus" or "gas"), `me.cd.repollute`, `me.cd.virus`, `me.cd.gas`, `me.cd.sabotage`: Trashers only. `cd.sabotage` starts at `trasher.start_cooldown_s` (10 s): a `sabotage` sent before it reaches 0 is rejected with `on_cooldown`. Server behaviour, not in the design doc: whether `start_cooldown_s` also delays the first repollute is not specified.
 - `machine.repair_t`: only the seat repairing the machine (seconds of the repair counted so far); omitted for everyone else. `machine.jammed` goes to everyone.
 - `gas` goes to everyone and is `null` when no warning runs.
-- `piles` now only hold bodies (`kind` "body"). The v1 `me.poison`, `me.cd.hit` and `me.cd.dump` are out of play and absent. Server behaviour, not in the design doc: `sabotage.held` and the fire kind are absent.
+- `piles` now only hold bodies (`kind` "body"); each carries `victim`, the seat that fell (version 4). The v1 `me.poison`, `me.cd.hit` and `me.cd.dump` are out of play and absent. Server behaviour, not in the design doc: `sabotage.held` and the fire kind are absent.
 
 `me.vision` is the radius the server filters `players` and `piles` with: a citizen standing in a dark room (the map JSON `dark` rects) gets `tuning.vision.citizen * tuning.vision.dark_mult`, or the smog value if that is lower; polluters are not affected. The `sabotage` object also carries `smog_level` (0..1, smog easing) for smog. A smog repair takes `tuning.sabotage.smog_fix_s` at the panel. `me.smog_level` (0..1) is the smog strength vision follows; it stays above 0 for about two seconds after the smog ends while vision eases back (the `sabotage` object is already `null` then), so a client can keep its light radius in step. `sabotage.repair_t` (smog only) is the seconds of the repair counted so far, sent only to the seat that is repairing and omitted for everyone else (nobody learns who is at the panel); it vanishes when the server drops the repair (the repairer left range). A second `fix` tap while repairing is accepted and does not restart the count.
 `emergencies_left` is the match-wide count. `players` and `piles` hold only what is within

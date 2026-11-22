@@ -393,6 +393,11 @@ public static class Wire
                     w.Pos("pos", p.Position);
                     w.WriteString("kind", Snake(p.Kind));
                     w.WriteString("state", Snake(p.State));
+                    if (p.Victim.HasValue)
+                    {
+                        w.WriteNumber("victim", (int)p.Victim.Value);
+                    }
+
                     w.WriteEndObject();
                 }
 
