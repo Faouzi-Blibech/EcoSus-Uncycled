@@ -5,11 +5,12 @@ extends Control
 signal closed(applied: bool)
 
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const LanguagePicker := preload("res://ui/widgets/language_picker.gd")
 
 const COLUMN_WIDTH_PX: float = 270.0
 
 var _name_edit: LineEdit
-var _lang: OptionButton
+var _lang: LanguagePicker
 var _url_edit: LineEdit
 var _scan_edit: LineEdit
 ## The scan address shown when the panel opened, when it was the automatic one: left as is, it follows
@@ -55,12 +56,7 @@ func _ready() -> void:
 	left.add_child(_name_edit)
 
 	left.add_child(UIKit.make_label(tr("SETTINGS_LANGUAGE")))
-	_lang = OptionButton.new()
-	_lang.custom_minimum_size = Vector2(0.0, UIKit.MIN_TOUCH)
-	for code in Settings.LANGUAGES:
-		_lang.add_item(tr("LANG_" + code.to_upper()))
-	var idx: int = Settings.LANGUAGES.find(Settings.language)
-	_lang.select(maxi(idx, 0))
+	_lang = LanguagePicker.new(true)
 	left.add_child(_lang)
 
 	right.add_child(UIKit.make_label(tr("SETTINGS_SERVER")))
@@ -104,7 +100,7 @@ func _on_save() -> void:
 		_error.text = tr("SETTINGS_BAD_SCAN_URL")
 		return
 	Settings.player_name = _name_edit.text.strip_edges()
-	Settings.language = Settings.LANGUAGES[maxi(_lang.selected, 0)]
+	Settings.language = _lang.selected()
 	Settings.server_url = url
 	Settings.scan_url = scan if not follow else Settings.default_scan_url()
 	Settings.apply_language()

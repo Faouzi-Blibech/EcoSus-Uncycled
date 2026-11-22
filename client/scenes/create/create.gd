@@ -28,6 +28,8 @@ func _build(stage: Control) -> void:
 
 	var map_label: Label = PaperKit.label(tr("CREATE_MAP"), BIG_FONT_SIZE)
 	map_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# A longer word (Arabic) widens the label to the left, onto the paper, not under the first card.
+	map_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	PaperKit.place(map_label, MAP_LABEL_RECT)
 	stage.add_child(map_label)
 	for m in MAPS:
