@@ -62,7 +62,11 @@ func _ready() -> void:
 	_poll.wait_time = POLL_S
 	_poll.timeout.connect(_on_poll)
 	add_child(_poll)
-	refresh()
+	# Exported builds wait for the hosted address: boot reads config.json, then refreshes. Asking the
+	# built-in local address first would, on the web, make the browser ask the player for access to
+	# their local network.
+	if not Settings.wants_hosted_config(OS.has_feature("template"), Settings.hosted_config_url()):
+		refresh()
 
 
 ## Android: back from the browser, the photo may have been counted.
@@ -160,9 +164,13 @@ func choose_skin(id: String) -> void:
 	changed.emit()
 
 
-func refresh() -> void:
+## force: drop a request still on its way (boot calls it once the hosted scan address is known, while
+## the startup request may still be waiting on the old address).
+func refresh(force: bool = false) -> void:
 	if is_busy(_get.get_http_client_status()):
-		return
+		if not force:
+			return
+		_get.cancel_request()
 	_get.request("%s/profile/%s" % [Settings.scan_url, player_id])
 
 

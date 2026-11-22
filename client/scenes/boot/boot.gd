@@ -1,13 +1,18 @@
 extends Control
-## Boot: connect, hello, version check, then route (menu, or straight back into a saved seat).
-## Shows an "update needed" screen on proto_mismatch and a retry screen when unreachable.
+## Boot: (exported builds) read the hosted config.json, then connect, hello, version check, then
+## route (menu, or straight back into a saved seat). Shows an "update needed" screen on
+## proto_mismatch and a retry screen when unreachable. Retry reads the config again: the laptop's
+## tunnel addresses change when it restarts.
 
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const SettingsPanel := preload("res://ui/widgets/settings_panel.gd")
 const LOADING_ART: String = "res://assets/ui/loading_screen.jpg"
+## How long to wait for config.json before connecting with the defaults.
+const CONFIG_TIMEOUT_S: float = 6.0
 
+var _config_req: HTTPRequest = null
 var _status: Label
 var _buttons: HBoxContainer
 var _mismatch: bool = false
@@ -75,6 +80,37 @@ func _start() -> void:
 	_mismatch = false
 	_buttons.visible = false
 	_status.text = tr("BOOT_CONNECTING")
+	var config_url: String = Settings.hosted_config_url()
+	if Settings.wants_hosted_config(OS.has_feature("template"), config_url):
+		_fetch_config(config_url)
+		return
+	Net.connect_to(Settings.server_url)
+
+
+func _fetch_config(url: String) -> void:
+	if _config_req == null:
+		_config_req = HTTPRequest.new()
+		_config_req.timeout = CONFIG_TIMEOUT_S
+		_config_req.request_completed.connect(_on_config)
+		add_child(_config_req)
+	_config_req.cancel_request()
+	if _config_req.request(url) != OK:
+		_on_config(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
+
+
+## The hosted addresses (when the file answered and holds a server) become the defaults; then connect.
+## No config: connect with the built-in defaults, as before. The profile (points, skins) is asked here,
+## once the scan address is known (Profile skips its startup request in exported builds); a web page
+## without a config skips it, since the built-in address is the player's own machine.
+func _on_config(_result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var hosted: bool = false
+	if code == 200:
+		var cfg: Dictionary = Settings.parse_hosted_config(body.get_string_from_utf8())
+		if not str(cfg["server"]).is_empty():
+			Settings.apply_hosted(str(cfg["server"]), str(cfg["scan"]))
+			hosted = true
+	if hosted or not OS.has_feature("web"):
+		Profile.refresh(true)
 	Net.connect_to(Settings.server_url)
 
 

@@ -73,3 +73,44 @@ func test_scan_address_follows_a_game_server_on_the_same_laptop() -> bool:
 	assert_eq(Settings.scan_url_for_server("ws://127.0.0.1:5000/ws"), "", "local: keep the default")
 	assert_eq(Settings.scan_url_for_server("wss://play.example.org/ws"), "", "hosted: set by hand")
 	return true
+
+
+## Hosted mode (deploy/online.ps1): config.json gives the laptop's current tunnel addresses.
+func test_hosted_config_is_read_and_checked() -> bool:
+	var table: Array = [
+		['{"server": "wss://a-b.trycloudflare.com/ws", "scan": "https://c-d.trycloudflare.com"}', "wss://a-b.trycloudflare.com/ws", "https://c-d.trycloudflare.com", "both"],
+		['{"server": "wss://a.trycloudflare.com/ws"}', "wss://a.trycloudflare.com/ws", "", "no scan"],
+		['{"server": "http://a.example.org/ws", "scan": "ftp://x"}', "", "", "wrong schemes are dropped"],
+		['{"server": "wss://has space/ws"}', "", "", "not an address"],
+		["not json", "", "", "broken file"],
+		["[1, 2]", "", "", "not an object"],
+		['{"scan": "https://c.trycloudflare.com/"}', "", "https://c.trycloudflare.com", "trailing slash removed"],
+	]
+	for row in table:
+		var got: Dictionary = Settings.parse_hosted_config(row[0])
+		assert_eq(got["server"], row[1], str(row[3]) + ": server")
+		assert_eq(got["scan"], row[2], str(row[3]) + ": scan")
+	return true
+
+
+func test_hosted_addresses_become_the_defaults_and_a_saved_choice_still_wins() -> bool:
+	var before: Array = [Settings.hosted_server_url, Settings.hosted_scan_url, Settings.server_url, Settings.scan_url]
+	Settings.hosted_server_url = "wss://a.trycloudflare.com/ws"
+	Settings.hosted_scan_url = "https://c.trycloudflare.com"
+	assert_eq(Settings.default_server_url(), "wss://a.trycloudflare.com/ws", "hosted server is the default")
+	assert_eq(Settings.default_scan_url(), "https://c.trycloudflare.com", "hosted scan is the default")
+	Settings.hosted_server_url = ""
+	Settings.hosted_scan_url = ""
+	assert_eq(Settings.default_server_url(), Settings.DEFAULT_SERVER_URL, "no config: the old default")
+	Settings.hosted_server_url = before[0]
+	Settings.hosted_scan_url = before[1]
+	Settings.server_url = before[2]
+	Settings.scan_url = before[3]
+	return true
+
+
+func test_only_exported_builds_with_a_config_address_ask_for_it() -> bool:
+	assert_true(Settings.wants_hosted_config(true, "https://x.pages.dev/config.json"), "exported build")
+	assert_true(not Settings.wants_hosted_config(false, "https://x.pages.dev/config.json"), "editor run stays on localhost")
+	assert_true(not Settings.wants_hosted_config(true, ""), "no config address")
+	return true
