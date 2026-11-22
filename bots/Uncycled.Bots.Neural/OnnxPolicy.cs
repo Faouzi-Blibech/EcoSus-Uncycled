@@ -73,10 +73,10 @@ namespace Uncycled.Bots.Neural
 
                 int obsSize = LastDimension(session.InputMetadata, ObsInput);
                 int actionCount = LastDimension(session.OutputMetadata, LogitsOutput);
-                if (obsSize != ObservationBuilder.Size || actionCount != ActionCatalogue.Count)
+                if (obsSize != ObservationBuilderV2.Size || actionCount != PolicyActionsV2.Count)
                 {
                     reason = "network shape " + obsSize + " -> " + actionCount + " does not match the bots ("
-                        + ObservationBuilder.Size + " -> " + ActionCatalogue.Count + ")";
+                        + ObservationBuilderV2.Size + " -> " + PolicyActionsV2.Count + ")";
                     session.Dispose();
                     return false;
                 }

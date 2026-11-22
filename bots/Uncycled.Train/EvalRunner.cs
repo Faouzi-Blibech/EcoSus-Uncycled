@@ -66,6 +66,14 @@ namespace Uncycled.Train
             int dumps = 0;
             int meetings = 0;
             int chatLines = 0;
+            int identicalLines = 0;
+            var saidInMeeting = new HashSet<string>();
+            int hedgeLines = 0;
+            int accusedSeats = 0;
+            int accusedAnswered = 0;
+            var accused = new Dictionary<byte, bool>(); // accused seat of this meeting -> has spoken since
+            int votesCast = 0;
+            int votesMissed = 0;
             int wrongEjections = 0;
             int deliveries = 0;
             int repollutes = 0;
@@ -113,10 +121,53 @@ namespace Uncycled.Train
                     else if (e is MeetingStartedEvent)
                     {
                         meetings++;
+                        saidInMeeting.Clear();
+                        accused.Clear();
+                    }
+                    else if (e is MeetingResultEvent mr)
+                    {
+                        foreach (VoteRecord v in mr.Votes)
+                        {
+                            if (v.Missed)
+                            {
+                                votesMissed++;
+                            }
+                            else
+                            {
+                                votesCast++;
+                            }
+                        }
                     }
                     else if (e is ChatEvent chat && !chat.Ghost)
                     {
                         chatLines++;
+                        if (chat.PhraseId == "hmm" || chat.PhraseId == "idk" || chat.PhraseId == "sus")
+                        {
+                            hedgeLines++; // an unsure line: no eyewitness claim behind it
+                        }
+
+                        if (accused.TryGetValue(chat.Seat, out bool spoke) && !spoke)
+                        {
+                            accused[chat.Seat] = true;
+                            accusedAnswered++;
+                        }
+
+                        if (chat.PhraseId == "sus" || chat.PhraseId == "saw_dump" || chat.PhraseId == "saw_hit" || chat.PhraseId == "near_pile")
+                        {
+                            foreach (ChatArg arg in chat.Args)
+                            {
+                                if (arg.Kind == ChatArgKind.Seat && arg.Seat != chat.Seat && !accused.ContainsKey(arg.Seat))
+                                {
+                                    accused[arg.Seat] = false;
+                                    accusedSeats++;
+                                }
+                            }
+                        }
+
+                        if (chat.PhraseId != null && !saidInMeeting.Add(LineKey(chat)))
+                        {
+                            identicalLines++; // the same phrase id and slots said twice in one meeting
+                        }
                     }
                 }
             }
@@ -138,9 +189,32 @@ namespace Uncycled.Train
             sb.Append(",\"dumps\":").Append(dumps.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"meetings\":").Append(meetings.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"chat_lines\":").Append(chatLines.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"identical_lines\":").Append(identicalLines.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"hedge_lines\":").Append(hedgeLines.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"accused_seats\":").Append(accusedSeats.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"accused_answered\":").Append(accusedAnswered.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"votes_cast\":").Append(votesCast.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"votes_missed\":").Append(votesMissed.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"match_time\":").Append(engine.MatchTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append(",\"active_time\":").Append(engine.ActiveTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append('}');
+            return sb.ToString();
+        }
+
+        /// <summary>A phrase line as one key: the id and its slots in order (and the speaker for not_me, i_was, with), so two lines are identical when the keys are equal.</summary>
+        private static string LineKey(ChatEvent chat)
+        {
+            var sb = new StringBuilder(chat.PhraseId);
+            if (chat.PhraseId == "not_me" || chat.PhraseId == "i_was" || chat.PhraseId == "with")
+            {
+                sb.Append("|by").Append(chat.Seat.ToString(CultureInfo.InvariantCulture)); // first-person lines are separate statements per speaker
+            }
+
+            foreach (ChatArg arg in chat.Args)
+            {
+                sb.Append('|').Append(arg.Kind == ChatArgKind.Seat ? "s" + arg.Seat.ToString(CultureInfo.InvariantCulture) : "z" + arg.Zone);
+            }
+
             return sb.ToString();
         }
 

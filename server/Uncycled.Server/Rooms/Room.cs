@@ -675,7 +675,14 @@ public sealed class Room
             return;
         }
 
-        _meeting = _brains.NewRoomMeeting(_content.Phrases, Code + "-" + (++_matchNo));
+        _meeting = _brains.NewRoomMeeting(_content.Phrases, Code + "-" + (++_matchNo), _content.Words);
+        if (_meeting != null)
+        {
+            // a typed line may name the seats that are still in the match, by their display names
+            MatchEngine engine = _engine!;
+            _meeting.Log.LivingNames = () => engine.Players.Where(p => p.IsActive).ToDictionary(p => p.Seat, p => p.Name);
+        }
+
         foreach (Seat s in added)
         {
             s.Brain = MakeBrain(s);

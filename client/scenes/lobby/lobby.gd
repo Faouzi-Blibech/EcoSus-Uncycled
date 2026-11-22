@@ -10,7 +10,6 @@ const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const Characters := preload("res://ui/widgets/characters.gd")
 const CharacterSprite := preload("res://ui/widgets/character_sprite.gd")
 const CharacterPicker := preload("res://ui/widgets/character_picker.gd")
-const ProfileScript := preload("res://autoload/profile.gd")
 
 const TOAST_BOTTOM_OFFSET_PX: float = -16.0
 const LEAF_PATH: String = "res://assets/ui/home/tasks.png"
@@ -200,7 +199,7 @@ static func skin_to_wear(saved: String, unlocked: Array[String], profile_loaded:
 		return ""
 	if not profile_loaded:
 		return null
-	return ProfileScript.effective_skin(saved, unlocked)
+	return saved if unlocked.has(saved) else ""
 
 
 ## Put the saved character on this seat if it differs from what the server shows.

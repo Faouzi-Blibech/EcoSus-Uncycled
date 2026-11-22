@@ -3,6 +3,7 @@ using Sim.Core;
 using Sim.Match;
 using Sim.Uncycled;
 using Sim.World;
+using Uncycled.Bots.Meeting;
 
 namespace Uncycled.Server.Content;
 
@@ -17,6 +18,7 @@ public sealed class ContentBundle
         MapData map,
         PhraseCatalogue? phrases = null,
         ChatFilter? filter = null,
+        ChatWords? words = null,
         IReadOnlySet<string>? skinIds = null)
     {
         Config = config;
@@ -26,6 +28,7 @@ public sealed class ContentBundle
         Map = map;
         Phrases = phrases;
         Filter = filter ?? ChatFilter.Empty;
+        Words = words ?? ChatWords.Empty;
         SkinIds = skinIds ?? new HashSet<string>();
     }
 
@@ -46,6 +49,9 @@ public sealed class ContentBundle
 
     /// <summary>Word filter from chat_filter.json; every engine applies it to typed chat (Empty: no words).</summary>
     public ChatFilter Filter { get; }
+
+    /// <summary>Words the bots look for in typed chat, from chat_words.json (Empty: the bots read no typed line).</summary>
+    public ChatWords Words { get; }
 
     /// <summary>Skin ids a seat may pick (content/skins.json; data, so the skins change without code).
     /// The empty id, the default character, is always allowed.</summary>
@@ -109,9 +115,11 @@ public static class ContentLoader
         MapData map = ReadMap(mapDoc.RootElement);
         PhraseCatalogue phrases = PhraseCatalogue.Parse(File.ReadAllText(Path.Combine(contentDir, "phrases.json")));
         ChatFilter filter = ChatFilter.Parse(File.ReadAllText(Path.Combine(contentDir, "chat_filter.json")));
+        string wordsPath = Path.Combine(contentDir, "chat_words.json");
+        ChatWords words = File.Exists(wordsPath) ? ChatWords.Parse(File.ReadAllText(wordsPath)).ForMap(map.Zones.Select(z => z.Id)) : ChatWords.Empty;
         string skinsPath = Path.Combine(contentDir, "skins.json");
         IReadOnlySet<string> skins = File.Exists(skinsPath) ? ReadSkinIds(File.ReadAllText(skinsPath)) : new HashSet<string>();
-        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter, skins);
+        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter, words, skins);
     }
 
     /// <summary>The "id" of every entry in skins.json's "skins" array.</summary>

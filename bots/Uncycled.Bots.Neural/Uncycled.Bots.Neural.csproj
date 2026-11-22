@@ -13,6 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- the brain tests read which action the executor runs -->
+    <InternalsVisibleTo Include="Uncycled.Bots.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Uncycled.Bots\Uncycled.Bots.csproj" />
   </ItemGroup>
 

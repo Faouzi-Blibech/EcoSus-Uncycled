@@ -1,59 +1,47 @@
+using System;
 using Sim.Core;
 using Sim.Match;
 using Uncycled.Bots;
+using Uncycled.Bots.Meeting;
 
 namespace Uncycled.Train
 {
     /// <summary>
-    /// Casts a seat's vote during the voting stage with the suspicion model (the learner's action is
-    /// only Stay in a meeting, so the host votes for it). One vote per meeting; a rejected vote
-    /// (target out) falls back to a skip.
+    /// A learner seat in a meeting (its action is only Stay there, so the host talks and votes for it): the same
+    /// MeetingTalker a scripted seat or a live bot gets, asking the meeting brain (the rule decider by default,
+    /// meeting.clef_for = none). Chat lines and one vote per meeting; the v2 network plays the round only.
     /// </summary>
     internal sealed class MeetingVoter : IAccuser
     {
-        private readonly SuspicionModel _suspicion = new SuspicionModel();
-        private const int MaxRejected = 3;
+        private readonly MeetingTalker _talker;
+        private readonly MeetingLog _log;
+        private byte? _vote;
 
-        private bool _voted;
-        private byte? _target;
+        public MeetingVoter(IMeetingDecider decider, MeetingFloor floor, MeetingLog log, Random rng)
+        {
+            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _talker = new MeetingTalker(decider, decider, floor, rng);
+        }
 
-        /// <summary>The seat voted for in this meeting (the learner's stand-in for a spoken accusation).</summary>
-        public byte? Accusation => _voted ? _target : null;
-        private int _rejected;
+        /// <summary>The seat voted for in this meeting (null for a skip or before the vote): the feed counts it as an accusation.</summary>
+        public byte? Accusation => _vote;
 
         public void Step(MatchEngine engine, byte seat, SeatView view, BotMemory memory)
         {
-            if (view.Phase != MatchPhase.Meeting || view.Meeting == null || view.Me.Status != PlayerStatus.Active)
+            if (view.Phase == MatchPhase.Playing)
             {
-                _voted = false;
-                _rejected = 0;
-                return;
+                _vote = null;
             }
 
-            if (_voted || view.Meeting.Stage != MeetingStage.Voting || view.Meeting.MyVoteCast)
+            _talker.Step(engine, seat, view, memory, _log, view.MatchTime, cmd =>
             {
-                return;
-            }
+                if (cmd is VoteCommand vote)
+                {
+                    _vote = vote.Target;
+                }
 
-            _suspicion.Update(memory, view);
-            byte? target = _suspicion.Vote(view, view.Me.Role, view.Me.Partners);
-            CommandResult r = engine.Apply(seat, new VoteCommand(target));
-            if (!r.IsOk && target != null && _rejected < MaxRejected)
-            {
-                // the target is out (an ejection or poison the seat never saw): remember it and vote the next suspect next tick
-                memory.MarkOut(target.Value);
-                _rejected++;
-                return;
-            }
-
-            if (!r.IsOk && target != null)
-            {
-                engine.Apply(seat, new VoteCommand(null));
-                target = null;
-            }
-
-            _target = target;
-            _voted = true;
+                engine.Apply(seat, cmd);
+            });
         }
     }
 }

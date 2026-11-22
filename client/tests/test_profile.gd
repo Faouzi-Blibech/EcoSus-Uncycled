@@ -1,71 +1,73 @@
 extends "res://tests/test_case.gd"
-## Profile (plan L2): the anonymous player id, parsing /profile replies, the skin to wear.
+## Profile (autoload): the player id kept on the device, the /profile fields, and how each platform
+## opens a scan link. No network: the parsing and the rules are tested directly.
 
-const ProfileScript := preload("res://autoload/profile.gd")
+const PROFILE_SCRIPT: String = "res://autoload/profile.gd"
 const TEST_PATH: String = "user://test_profile.cfg"
+const UUID_RE: String = "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 
 
-func test_player_id_is_created_once_and_reloaded_equal() -> bool:
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
-	var first: String = ProfileScript.load_or_create_id(TEST_PATH)
-	var again: String = ProfileScript.load_or_create_id(TEST_PATH)
-	assert_true(ProfileScript.is_uuid(first), "a version-4 UUID: " + first)
-	assert_eq(again, first, "same id after reloading")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+func _profile() -> Object:
+	return track(load(PROFILE_SCRIPT).new())
+
+
+func _cleanup() -> void:
+	if FileAccess.file_exists(TEST_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+
+
+func test_player_id_is_a_uuid_created_once_and_kept() -> bool:
+	_cleanup()
+	var first: String = _profile().load_or_create_id(TEST_PATH)
+	var regex: RegEx = RegEx.create_from_string(UUID_RE)
+	assert_true(regex.search(first) != null, "uuid v4: " + first)
+	var again: String = _profile().load_or_create_id(TEST_PATH)
+	assert_eq(again, first, "reloaded, not recreated")
+	_cleanup()
 	return true
 
 
-func test_a_broken_saved_id_is_replaced() -> bool:
-	var cfg: ConfigFile = ConfigFile.new()
-	cfg.set_value("profile", "player_id", "not-a-uuid")
-	cfg.save(TEST_PATH)
-	var id: String = ProfileScript.load_or_create_id(TEST_PATH)
-	assert_true(ProfileScript.is_uuid(id), "replaced with a valid id")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+func test_new_uuids_differ() -> bool:
+	var script: GDScript = load(PROFILE_SCRIPT)
+	assert_true(script.new_uuid() != script.new_uuid(), "random")
 	return true
 
 
-func test_uuid_layout() -> bool:
-	var zeros: PackedByteArray = PackedByteArray()
-	zeros.resize(16)
-	assert_eq(ProfileScript.make_uuid(zeros), "00000000-0000-4000-8000-000000000000", "version and variant bits")
-	assert_true(not ProfileScript.is_uuid("00000000-0000-1000-8000-000000000000"), "version 1 is not ours")
-	return true
-
-
-func test_profile_reply_sets_points_streak_and_skins() -> bool:
-	var p: Node = track(ProfileScript.new())
-	var fired: Array[bool] = [false]
-	p.changed.connect(func() -> void: fired[0] = true)
-	p.apply_profile({"points": 30, "streak": 2, "skins": ["robot", 7, "rabbit"], "best_streak": 4})
+func test_apply_profile_reads_points_streak_and_skins() -> bool:
+	var p: Object = _profile()
+	p.apply_profile({"points": 30, "streak": 2, "skins": ["eco_novice"], "scans_today": 1})
 	assert_eq(p.points, 30, "points")
 	assert_eq(p.streak, 2, "streak")
-	assert_eq(p.skins, ["robot", "rabbit"] as Array[String], "skin ids, non-strings dropped")
-	assert_true(p.loaded, "loaded")
-	assert_true(fired[0], "changed emitted")
+	assert_eq(p.skins, ["eco_novice"], "skins")
 	return true
 
 
-func test_missing_fields_read_as_zero() -> bool:
-	var p: Node = track(ProfileScript.new())
-	p.apply_profile({})
-	assert_eq(p.points, 0, "points")
-	assert_eq(p.skins, [] as Array[String], "no skins")
+func test_selected_skin_falls_back_when_not_unlocked() -> bool:
+	var p: Object = _profile()
+	p.skin = "planet_legend"
+	p.apply_profile({"points": 10, "streak": 1, "skins": ["eco_novice"]})
+	assert_eq(p.skin, "", "not unlocked: no skin")
+	p.skin = "eco_novice"
+	p.apply_profile({"points": 10, "streak": 1, "skins": ["eco_novice"]})
+	assert_eq(p.skin, "eco_novice", "unlocked: kept")
 	return true
 
 
-func test_skin_falls_back_to_default_when_not_unlocked() -> bool:
-	var unlocked: Array[String] = ["robot"]
-	assert_eq(ProfileScript.effective_skin("robot", unlocked), "robot", "unlocked")
-	assert_eq(ProfileScript.effective_skin("eagle", unlocked), "", "locked -> default")
-	assert_eq(ProfileScript.effective_skin("", unlocked), "", "default stays default")
+## Web: the same tab goes to the scan page (its Back button returns to the game). Android: the browser.
+## Desktop: a QR code for a phone.
+func test_open_mode_per_platform() -> bool:
+	var script: GDScript = load(PROFILE_SCRIPT)
+	assert_eq(script.open_mode(true, false), "same_tab", "web")
+	assert_eq(script.open_mode(true, true), "same_tab", "web on a phone")
+	assert_eq(script.open_mode(false, true), "browser", "android app")
+	assert_eq(script.open_mode(false, false), "qr", "windows")
 	return true
 
 
-func test_menu_shows_points_and_streak() -> bool:
-	var Menu: GDScript = load("res://scenes/menu/menu.gd")
-	var before: String = TranslationServer.get_locale()
-	TranslationServer.set_locale("en")
-	assert_eq(Menu.scan_stats_text(30, 2), "Points: 30   Streak: 2", "English line")
-	TranslationServer.set_locale(before)
+func test_scan_changed_when_points_or_streak_move() -> bool:
+	var script: GDScript = load(PROFILE_SCRIPT)
+	assert_true(not script.scan_counted({"points": 10, "streak": 1}, {"points": 10, "streak": 1}), "same")
+	assert_true(script.scan_counted({"points": 10, "streak": 1}, {"points": 20, "streak": 1}), "points up")
+	assert_true(script.scan_counted({"points": 30, "streak": 1}, {"points": 30, "streak": 2}), "streak up")
+	assert_true(script.scan_counted({"points": 30, "scans_today": 3}, {"points": 30, "scans_today": 4}), "a 4th scan scores no points but counts")
 	return true

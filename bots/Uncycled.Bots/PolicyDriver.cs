@@ -22,6 +22,17 @@ namespace Uncycled.Bots
         /// <summary>Call at every decision with the index the network picked (it must be allowed by PolicyActionsV2.Mask).</summary>
         public PolicyChoice Begin(int index, SeatView view, BotMemory mem, MapData map, ActionExecutor exec, float now)
         {
+            PolicyChoice choice = Prepare(index, view, mem, map, exec);
+            exec.Begin(choice.Action, view, map, now);
+            return choice;
+        }
+
+        /// <summary>
+        /// Begin without starting the executor: sets the executor's hints for the index (or clears them when the same
+        /// pick keeps its running target). For a brain whose base class begins the action itself right after.
+        /// </summary>
+        public PolicyChoice Prepare(int index, SeatView view, BotMemory mem, MapData map, ActionExecutor exec)
+        {
             if (exec == null)
             {
                 throw new ArgumentNullException(nameof(exec));
@@ -31,14 +42,12 @@ namespace Uncycled.Bots
             {
                 // same pick, still running it: clear the one-shot hints so the running target stays, and let Begin continue it
                 new PolicyChoice(_choice.Action).ApplyTo(exec);
-                exec.Begin(_choice.Action, view, map, now);
                 return _choice;
             }
 
             _choice = PolicyActionsV2.Resolve(index, view, mem, map);
             _index = index;
             _choice.ApplyTo(exec);
-            exec.Begin(_choice.Action, view, map, now);
             return _choice;
         }
     }

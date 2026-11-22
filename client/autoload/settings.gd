@@ -9,11 +9,11 @@ const RotateOverlay := preload("res://ui/widgets/rotate_overlay.gd")
 const SERVER_PORT: int = 5000
 const SERVER_PATH: String = "/ws"
 const DEFAULT_SERVER_URL: String = "ws://localhost:%d%s" % [SERVER_PORT, SERVER_PATH]
+## The photo service (ecoverify/, scan links and profiles). It runs on its own host, so it is not
+## derived from the page; set the hosted address here when it is online. 127.0.0.1, not localhost:
+## Godot tries IPv6 (::1) for localhost, and a service listening on IPv4 only refuses it.
+const SCAN_URL: String = "http://127.0.0.1:8000"
 const SETTINGS_PATH: String = "user://settings.cfg"
-## The photo-scan service (ecoverify, port 8000). It runs apart from the game server, so on an https
-## page it cannot be guessed from the page host: L5 sets the hosted address here.
-const SCAN_PORT: int = 8000
-const DEFAULT_SCAN_URL: String = "http://localhost:%d" % SCAN_PORT
 const LANGUAGES: Array[String] = ["en", "fr", "ar"]
 ## Godot's default font has no Arabic letters; this one is added behind it (see _add_font_fallbacks).
 const ARABIC_FONT_PATH: String = "res://assets/fonts/NotoSansArabic.ttf"
@@ -21,7 +21,7 @@ const ARABIC_FONT_PATH: String = "res://assets/fonts/NotoSansArabic.ttf"
 var player_name: String = ""
 var language: String = "en"
 var server_url: String = DEFAULT_SERVER_URL
-var scan_url: String = DEFAULT_SCAN_URL
+var scan_url: String = SCAN_URL
 
 
 func _ready() -> void:
@@ -56,23 +56,6 @@ static func server_url_for_page(protocol: String, hostname: String, host: String
 	return "ws://%s:%d%s" % [hostname, SERVER_PORT, SERVER_PATH]
 
 
-## The scan service address when nothing is saved: on a plain-http web page (a LAN test) the page's
-## own hostname on the scan port, so a phone opening the game from a PC also reaches its scan service;
-## otherwise the default.
-static func scan_url_for_page(protocol: String, hostname: String) -> String:
-	if protocol == "http:" and not hostname.is_empty():
-		return "http://%s:%d" % [hostname, SCAN_PORT]
-	return DEFAULT_SCAN_URL
-
-
-func default_scan_url() -> String:
-	if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
-		return scan_url_for_page(
-			str(JavaScriptBridge.eval("window.location.protocol")),
-			str(JavaScriptBridge.eval("window.location.hostname")))
-	return DEFAULT_SCAN_URL
-
-
 ## The saved address worth using, "" when there is none. On the web the old default
 ## (ws://localhost:5000/ws) counts as unset: an earlier build saved it on every name entry, and it
 ## would keep a phone dialling its own localhost instead of the page host.
@@ -84,7 +67,6 @@ static func saved_url_to_use(saved: String, is_web: bool) -> String:
 
 func load_settings() -> void:
 	server_url = default_server_url()
-	scan_url = default_scan_url()
 	var cfg: ConfigFile = ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) != OK:
 		return
@@ -94,8 +76,6 @@ func load_settings() -> void:
 		language = lang
 	var url: String = saved_url_to_use(str(cfg.get_value("settings", "server_url", "")), OS.has_feature("web"))
 	server_url = url if not url.is_empty() else default_server_url()
-	var scan: String = str(cfg.get_value("settings", "scan_url", ""))
-	scan_url = scan if not scan.is_empty() else default_scan_url()
 
 
 func save() -> void:
@@ -105,8 +85,6 @@ func save() -> void:
 	# The default is not a saved choice: on the web it follows the page the next time too.
 	if server_url != default_server_url():
 		cfg.set_value("settings", "server_url", server_url)
-	if scan_url != default_scan_url():
-		cfg.set_value("settings", "scan_url", scan_url)
 	var err: int = cfg.save(SETTINGS_PATH)
 	if err != OK:
 		push_warning("Settings: could not save %s (error %d)" % [SETTINGS_PATH, err])

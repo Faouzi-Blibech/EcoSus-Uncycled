@@ -23,6 +23,11 @@
     <!-- the untrained smoke network the bot tests load; tied to the observation schema hash -->
     <None Include="..\..\bots\Uncycled.Bots.Tests\fixtures\tiny.onnx" Link="fixtures\tiny.onnx" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\bots\Uncycled.Bots.Tests\fixtures\tiny.json" Link="fixtures\tiny.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- the v1 network and sidecar the refusal tests load -->
+    <None Include="..\..\bots\Uncycled.Bots.Tests\fixtures\tiny_v1.onnx" Link="fixtures\tiny_v1.onnx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\bots\Uncycled.Bots.Tests\fixtures\tiny_v1.json" Link="fixtures\tiny_v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- writes loader-test networks of a chosen shape and schema hash -->
+    <Compile Include="..\..\bots\Uncycled.Bots.Tests\SyntheticOnnx.cs" Link="SyntheticOnnx.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,8 @@
+{
+  "schema_hash": "d0d5d025986cd8715b9e48ca244261fd1db77cd7156710c398fff5ed5ab3a6dd",
+  "obs_size": 154,
+  "action_count": 30,
+  "run_id": "tiny-smoke",
+  "learner": "citizen",
+  "git_commit": "3d79c32f5110e5645a4cf89822a5429c644ef831"
+}

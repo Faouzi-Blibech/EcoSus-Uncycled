@@ -25,9 +25,11 @@ Training: see `train/` (added with the training host).
 
 ## Observation and actions
 
-`ObservationBuilder.SchemaHash` fingerprints the observation fields, their count, the `BotAction`
-names and the `SeatView` shape. A trained model stores it; a model with another hash is refused.
-`BotAction` is append-only once a model is trained.
+`SchemaV2.Hash` fingerprints the v2 network contract: the observation layout and constants
+(`ObservationBuilderV2`), the 35 policy actions (`PolicyActionsV2`, each a `BotAction` plus a hint resolved at
+decision time) and the `SeatView` shape. A trained model stores it; a model with another hash is refused.
+Networks trained on the v1 observation (`ObservationBuilder`, 30 actions) no longer load: that role plays
+the scripted brain. `BotAction` is append-only.
 
 ## Training host
 
@@ -46,7 +48,7 @@ The server reads `bots.json` and `models/` from `UNCYCLED_BOTS_DIR` (the image: 
 ships `"brain": "scripted"`. To play the trained networks, put `citizen.onnx`/`citizen.json` and
 `polluter.onnx`/`polluter.json` in `models/` (rebuild the image, or mount a folder over `/app/bots/models`)
 and set `UNCYCLED_BOTS_BRAIN=neural`, which overrides the file's `brain` without a rebuild. The models are
-loaded once when the server starts; a role whose model is missing, corrupt or of another schema plays the
+loaded once when the server starts; a role whose model is missing, corrupt, a v1 network or of another schema plays the
 scripted brain, and the reason is logged once at startup.
 
 ## Bots talk in meetings

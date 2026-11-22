@@ -42,11 +42,3 @@ func test_space_also_uses_and_the_hint_still_shows_e() -> bool:
 	assert_true(keys.has(KEY_SPACE), "Space is a second key for USE (the design lists WASD/E/Space)")
 	assert_eq(keys[0], int(KEY_E), "E stays the first key, so the hint says [E]")
 	return true
-
-
-func test_scan_service_address_follows_a_plain_http_page() -> bool:
-	assert_eq(Settings.scan_url_for_page("http:", "192.168.1.20"), "http://192.168.1.20:8000", "LAN test page")
-	assert_eq(Settings.scan_url_for_page("https:", "play.example.org"), Settings.DEFAULT_SCAN_URL, "https: hosted address comes from L5")
-	assert_eq(Settings.scan_url_for_page("", ""), Settings.DEFAULT_SCAN_URL, "no page")
-	assert_eq(Settings.default_scan_url(), "http://localhost:8000", "desktop default")
-	return true
