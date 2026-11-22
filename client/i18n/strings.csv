@@ -1,4 +1,9 @@
 keys,en,fr,ar
+MENU_SCAN_START,Scan an item,Scanner un objet,امسح غرضًا
+MENU_SCAN_STATS,Points: %d   Streak: %d,Points : %d   Série : %d,النقاط: %d   السلسلة: %d
+MENU_SCAN_OPENING,Opening the scan page…,Ouverture de la page de scan…,جارٍ فتح صفحة المسح…
+MENU_SCAN_OFFLINE,The scan service can't be reached right now. Try again later.,Le service de scan est injoignable pour l'instant. Réessaie plus tard.,تعذّر الوصول إلى خدمة المسح حاليًا. حاول لاحقًا.
+CHAR_LOCKED,That character is still locked. Keep your scan streak going!,Ce personnage est encore verrouillé. Continue ta série de scans !,هذه الشخصية ما زالت مقفلة. واصل سلسلة المسح!
 BOOT_TITLE,Uncycled,Uncycled,Uncycled
 BOOT_CONNECTING,Connecting to the server...,Connexion au serveur...,جارٍ الاتصال بالخادم...
 BOOT_OFFLINE,"Cannot reach the game server. Check the address in Settings.\n%s","Impossible de joindre le serveur de jeu. Vérifie l'adresse dans les Paramètres.\n%s",تعذّر الوصول إلى خادم اللعبة. تحقّق من العنوان في الإعدادات.\n%s
@@ -21,9 +26,9 @@ MENU_CREATE_GAME,Create Game,Créer,إنشاء لعبة
 MENU_JOIN_GAME,Join Game,Rejoindre,انضمام إلى لعبة
 MENU_JOIN_TITLE,Enter the room code,Entre le code de la salle,أدخل رمز الغرفة
 MENU_PROFILE,Profile,Profil,الملف الشخصي
-MENU_PROFILE_SKINS,Skins unlock with your daily scan streak. Coming soon.,Les skins se débloquent avec ta série de scans quotidiens. Bientôt disponible.,تُفتح الأزياء بسلسلة المسح اليومية. قريبًا.
+MENU_PROFILE_SKINS,Characters unlocked: %d. Pick yours in the lobby.,Personnages débloqués : %d. Choisis le tien dans le salon.,الشخصيات المفتوحة: %d. اختر شخصيتك في الردهة.
 MENU_SCAN,Scan & earn,Scanne et gagne,امسح واربح
-"MENU_SCAN_TEXT","Scan a real recyclable item with your camera to earn points, keep your daily streak and unlock skins. Coming soon.","Scanne un vrai objet recyclable avec ta caméra pour gagner des points, garder ta série quotidienne et débloquer des skins. Bientôt disponible.","امسح غرضًا حقيقيًا قابلًا لإعادة التدوير بالكاميرا لتربح نقاطًا وتحافظ على سلسلتك اليومية وتفتح أزياء جديدة. قريبًا."
+MENU_SCAN_TEXT,"Photograph a real recyclable item with your phone to earn points, keep your daily streak and unlock characters.","Photographie un vrai objet recyclable avec ton téléphone pour gagner des points, garder ta série quotidienne et débloquer des personnages.",صوّر غرضًا حقيقيًا قابلًا لإعادة التدوير بهاتفك لتربح نقاطًا وتحافظ على سلسلتك اليومية وتفتح شخصيات جديدة.
 MENU_CODE_PLACEHOLDER,Code,Code,الرمز
 MENU_JOIN,Join,Rejoindre,انضمام
 MENU_NAME_REQUIRED,Please enter a name.,Entre un nom d'abord.,أدخل اسمًا أولًا.

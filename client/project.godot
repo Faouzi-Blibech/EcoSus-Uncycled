@@ -21,6 +21,7 @@ Settings="*res://autoload/settings.gd"
 Assets="*res://autoload/assets.gd"
 Net="*res://autoload/net.gd"
 Session="*res://autoload/session.gd"
+Profile="*res://autoload/profile.gd"
 
 [display]
 

@@ -24,6 +24,8 @@ const POPUP_BG: Color = Color(0.13, 0.19, 0.15)
 const POPUP_BORDER: Color = Color(0.97, 0.94, 0.85)
 const POPUP_BORDER_PX: int = 2
 const POPUP_RADIUS_PX: int = 10
+## Touch target for the scan button (AGENTS.md: at least 48 px).
+const SCAN_BUTTON_HEIGHT: float = 48.0
 
 var _status: Label
 var _panel: SettingsPanel = null
@@ -32,6 +34,8 @@ var _panel: SettingsPanel = null
 var _popup: Control = null
 var _popup_error: Label = null
 var _name_edit: LineEdit = null
+## Points and streak line of the open scan popup.
+var _scan_stats: Label = null
 ## Run after the profile popup saves a name (Create or Join pressed with no name).
 var _after_name: Callable = Callable()
 
@@ -75,6 +79,8 @@ func _ready() -> void:
 		Session.pending_notice = ""
 
 	Net.disconnected.connect(_on_disconnected)
+	Profile.changed.connect(_on_profile_changed)
+	Profile.scan_failed.connect(_on_scan_failed)
 
 
 ## Big picture button with its handwritten caption underneath.
@@ -162,6 +168,7 @@ func _close_popup() -> void:
 	_popup = null
 	_popup_error = null
 	_name_edit = null
+	_scan_stats = null
 
 
 func _open_profile_popup() -> void:
@@ -170,7 +177,7 @@ func _open_profile_popup() -> void:
 	_name_edit = UIKit.make_line_edit(tr("MENU_NAME_PLACEHOLDER"), Settings.player_name, 16)
 	_name_edit.text_submitted.connect(func(_t: String) -> void: _on_profile_save())
 	box.add_child(_name_edit)
-	var skins: Label = UIKit.make_label(tr("MENU_PROFILE_SKINS"))
+	var skins: Label = UIKit.make_label(tr("MENU_PROFILE_SKINS") % Profile.skins.size())
 	skins.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(skins)
 	var row: HBoxContainer = _finish_popup(box, "COMMON_CANCEL")
@@ -182,12 +189,44 @@ func _open_profile_popup() -> void:
 	_name_edit.grab_focus()
 
 
+## Scan popup (plan L2): points and streak from the scan service, and the button that opens the
+## phone scan page (same tab on the web, the browser on Android and desktop).
 func _open_scan_popup() -> void:
+	Profile.refresh()
 	var box: VBoxContainer = _open_popup(tr("MENU_SCAN"))
 	var text: Label = UIKit.make_label(tr("MENU_SCAN_TEXT"))
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(text)
-	_finish_popup(box, "COMMON_CLOSE")
+	_scan_stats = UIKit.make_label(scan_stats_text(Profile.points, Profile.streak), 20)
+	box.add_child(_scan_stats)
+	# Same row as Close (like Save in the profile popup), so the popup fits the 360 px screen.
+	var row: HBoxContainer = _finish_popup(box, "COMMON_CLOSE")
+	var scan_btn: Button = UIKit.make_button(tr("MENU_SCAN_START"))
+	scan_btn.custom_minimum_size.y = SCAN_BUTTON_HEIGHT
+	scan_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scan_btn.pressed.connect(_on_scan_pressed)
+	row.add_child(scan_btn)
+	row.move_child(scan_btn, 0)
+
+
+static func scan_stats_text(points: int, streak: int) -> String:
+	return TranslationServer.translate("MENU_SCAN_STATS") % [points, streak]
+
+
+func _on_scan_pressed() -> void:
+	if _popup_error != null:
+		_popup_error.text = tr("MENU_SCAN_OPENING")
+	Profile.start_scan()
+
+
+func _on_scan_failed(reason_key: String) -> void:
+	if _popup_error != null:
+		_popup_error.text = tr(reason_key)
+
+
+func _on_profile_changed() -> void:
+	if is_instance_valid(_scan_stats):
+		_scan_stats.text = scan_stats_text(Profile.points, Profile.streak)
 
 
 ## Opens the profile popup with a hint; then runs next once a name is saved.

@@ -1,9 +1,12 @@
 extends Control
-## "Choose your character" overlay. The sprout is the default and takes the seat colour; the other
-## characters are locked for now (they unlock with the scan streak). Emits colour_picked when a free
-## colour is tapped and closed when dismissed. The owner calls refresh() on every lobby change.
+## "Choose your character" overlay. The sprout is the default and takes the seat colour; the others
+## are unlocked by the scan streak (the unlocked list comes from the scan service, see Profile).
+## Emits colour_picked when a free colour is tapped, skin_picked with the set_skin id ("" for the
+## default) when an unlocked character is tapped, and closed when dismissed. The owner calls
+## refresh() on every lobby or profile change.
 
 signal colour_picked(index: int)
+signal skin_picked(id: String)
 signal closed
 
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
@@ -36,6 +39,9 @@ const TAKEN_ALPHA: float = 0.3
 var _swatches: Array[Button] = []
 var _sprout: TextureRect = null
 var _hint: Label
+## Per character id: {"avatar": Control, "badge": TextureRect}.
+var _cards: Dictionary = {}
+var _unlocked: Array[String] = []
 
 
 func _ready() -> void:
@@ -83,20 +89,23 @@ func _ready() -> void:
 
 
 func _add_card(stage: Control, c: Dictionary, x: float) -> void:
-	var locked: bool = bool(c["locked"])
+	var id: String = str(c["id"])
 	var card: TextureRect = PaperKit.picture(PaperKit.tex("card_avatar.png"), Rect2(Vector2(x, CARD_TOP), CARD_SIZE))
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.gui_input.connect(_on_card_input.bind(id))
 	stage.add_child(card)
 	PaperKit.add_shadow(card, card.texture)
 
-	var avatar: Control = CharacterSprite.avatar(str(c["id"]), Color.WHITE, CARD_AVATAR)
+	var avatar: Control = CharacterSprite.avatar(id, Color.WHITE, CARD_AVATAR)
+	avatar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(avatar)
-	if locked:
-		avatar.modulate = LOCKED_SPRITE
-	if str(c["id"]) == Characters.DEFAULT_ID:
+	if id == Characters.DEFAULT_ID:
 		_sprout = avatar.get_child(0) as TextureRect
 
-	var badge_file: String = "icon_lock.png" if locked else "icon_confirm.png"
-	card.add_child(PaperKit.picture(PaperKit.tex(badge_file), Rect2(CARD_SIZE.x - BADGE_SIZE + 6.0, -8.0, BADGE_SIZE, BADGE_SIZE)))
+	var badge: TextureRect = PaperKit.picture(PaperKit.tex("icon_lock.png"), Rect2(CARD_SIZE.x - BADGE_SIZE + 6.0, -8.0, BADGE_SIZE, BADGE_SIZE))
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(badge)
+	_cards[id] = {"avatar": avatar, "badge": badge}
 
 	var name_label: Label = PaperKit.label(tr(str(c["name_key"])), NAME_FONT_SIZE)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -104,8 +113,17 @@ func _add_card(stage: Control, c: Dictionary, x: float) -> void:
 	card.add_child(name_label)
 
 
-## my_colour: the seat's colour index; taken: colours other seats use (the server refuses them).
-func refresh(my_colour: int, taken: Array[int]) -> void:
+## my_colour: the seat's colour index; taken: colours other seats use (the server refuses them);
+## my_skin: the character the seat wears; unlocked: the player's unlocked skin ids.
+func refresh(my_colour: int, taken: Array[int], my_skin: String = Characters.DEFAULT_ID, unlocked: Array[String] = []) -> void:
+	_unlocked = unlocked
+	for id in _cards:
+		var open: bool = Characters.is_unlocked(id, unlocked)
+		var parts: Dictionary = _cards[id]
+		(parts["avatar"] as Control).modulate = Color.WHITE if open else LOCKED_SPRITE
+		var badge: TextureRect = parts["badge"]
+		badge.visible = not open or id == my_skin
+		badge.texture = PaperKit.tex("icon_lock.png" if not open else "icon_confirm.png")
 	if _sprout != null:
 		_sprout.call("set_colour", Session.color_of(my_colour))
 	for i in range(_swatches.size()):
@@ -120,6 +138,16 @@ func refresh(my_colour: int, taken: Array[int]) -> void:
 		box.set_border_width_all(4 if i == my_colour else 2)
 		for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 			sw.add_theme_stylebox_override(state, box)
+
+
+func _on_card_input(event: InputEvent, id: String) -> void:
+	var tap: bool = event is InputEventMouseButton and (event as InputEventMouseButton).pressed 		and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT
+	if not (tap or (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)):
+		return
+	if Characters.is_unlocked(id, _unlocked):
+		skin_picked.emit(Characters.wire_id(id))
+	else:
+		_hint.text = tr("CHAR_LOCKED")
 
 
 func _close() -> void:

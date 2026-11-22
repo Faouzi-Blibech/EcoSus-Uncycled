@@ -10,6 +10,7 @@ const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const Characters := preload("res://ui/widgets/characters.gd")
 const CharacterSprite := preload("res://ui/widgets/character_sprite.gd")
 const CharacterPicker := preload("res://ui/widgets/character_picker.gd")
+const ProfileScript := preload("res://autoload/profile.gd")
 
 const TOAST_BOTTOM_OFFSET_PX: float = -16.0
 const LEAF_PATH: String = "res://assets/ui/home/tasks.png"
@@ -137,8 +138,11 @@ func _ready() -> void:
 	Net.error.connect(_on_error)
 	Net.match_started.connect(_on_match_started)
 	Net.disconnected.connect(_on_disconnected)
+	Profile.changed.connect(_on_profile_changed)
+	Profile.refresh()
 
 	_refresh()
+	_wear_saved_skin()
 
 
 func _refresh() -> void:
@@ -154,7 +158,7 @@ func _refresh() -> void:
 	_start_btn.visible = host
 	_wait_label.visible = not host
 	if _picker != null:
-		_picker.refresh(_my_colour(), taken_colors(Session.seats, Session.seat_id))
+		_picker.refresh(_my_colour(), taken_colors(Session.seats, Session.seat_id), _character_of(me), Profile.skins)
 
 
 func _seat_dicts() -> Array:
@@ -182,10 +186,36 @@ static func taken_colors(seats: Array, my_seat: int) -> Array[int]:
 	return taken
 
 
-## Seats carry no skin yet (the server has no set_skin), so everyone is the default sprout.
-func _character_of(d: Dictionary) -> String:
+## The character a seat shows: its skin from the server (which only accepts ids from
+## content/skins.json), or the default sprout when it has none or there is no art for it.
+static func _character_of(d: Dictionary) -> String:
 	var skin: String = str(d.get("skin", ""))
-	return skin if skin != "" and not bool(Characters.info(skin)["locked"]) else Characters.DEFAULT_ID
+	return skin if Characters.has(skin) else Characters.DEFAULT_ID
+
+
+## The skin to send when entering a room: the saved choice once the scan service confirms it is
+## unlocked; "" (default) when it is not; null while the profile has not answered yet.
+static func skin_to_wear(saved: String, unlocked: Array[String], profile_loaded: bool) -> Variant:
+	if saved == "" or saved == Characters.DEFAULT_ID:
+		return ""
+	if not profile_loaded:
+		return null
+	return ProfileScript.effective_skin(saved, unlocked)
+
+
+## Put the saved character on this seat if it differs from what the server shows.
+func _wear_saved_skin() -> void:
+	var wanted: Variant = skin_to_wear(Profile.skin, Profile.skins, Profile.loaded)
+	if wanted == null:
+		return
+	var current: String = str(Session.seat_info(Session.seat_id).get("skin", ""))
+	if str(wanted) != current:
+		Net.send("set_skin", {"skin": str(wanted)})
+
+
+func _on_profile_changed() -> void:
+	_wear_saved_skin()
+	_refresh()
 
 
 # --- Seat list ---------------------------------------------------------------------------------
@@ -260,9 +290,10 @@ func _open_picker() -> void:
 		return
 	_picker = CharacterPicker.new()
 	_picker.colour_picked.connect(_on_colour_picked)
+	_picker.skin_picked.connect(_on_skin_picked)
 	_picker.closed.connect(_close_picker)
 	add_child(_picker)
-	_picker.refresh(_my_colour(), taken_colors(Session.seats, Session.seat_id))
+	_refresh()
 
 
 func _close_picker() -> void:
@@ -273,6 +304,12 @@ func _close_picker() -> void:
 
 func _on_colour_picked(index: int) -> void:
 	Net.send("set_color", {"color": index})
+
+
+## id is "" for the default character. Saved so the next rooms start with it.
+func _on_skin_picked(id: String) -> void:
+	Net.send("set_skin", {"skin": id})
+	Profile.choose_skin(id)
 
 
 func _on_copy() -> void:
@@ -290,10 +327,13 @@ func _on_leave() -> void:
 	Router.go(get_tree(), Router.MENU)
 
 
-## A colour the server refused (taken a moment ago by someone else).
+## A colour the server refused (taken a moment ago by someone else), or a skin it does not know.
 func _on_action_rejected(data: Dictionary) -> void:
-	if str(data.get("action", "")) == "set_color":
+	var action: String = str(data.get("action", ""))
+	if action == "set_color":
 		_toast.show_text(tr("LOBBY_COLOR_TAKEN"))
+	elif action == "set_skin":
+		_toast.show_text(tr("CHAR_LOCKED"))
 
 
 func _on_error(data: Dictionary) -> void:
