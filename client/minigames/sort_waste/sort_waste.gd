@@ -1,9 +1,12 @@
 extends Minigame
 ## Drag each item into its bin; a wrong drop bounces back. The step is done when all are sorted.
 
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const ITEMS_PATH: String = "res://minigames/sort_waste/items.json"
 const ITEM_SIZE: Vector2 = Vector2(104, 52)
 const BIN_SIZE: Vector2 = Vector2(144, 64)
+## How much of the paper shows through a bin's dye (0 = full colour).
+const BIN_DYE_LIGHTEN: float = 0.1
 const ITEMS_Y: float = 90.0
 const BINS_Y: float = 250.0
 const BOUNCE_S: float = 0.25
@@ -60,6 +63,16 @@ func _label_in(p: Control, key: String) -> void:
 	p.add_child(l)
 
 
+## A bin card in its real recycling colour (items.json "color": yellow plastic and metal, blue
+## paper, green glass, brown organic): the paper card dyed that colour.
+func _paint_bin(p: Panel, hex: String) -> void:
+	if not Color.html_is_valid(hex):
+		return
+	var card: StyleBoxTexture = PaperKit.box("panel_paper.png", 12.0, Vector2(6.0, 6.0))
+	card.modulate_color = Color.html(hex).lerp(Color.WHITE, BIN_DYE_LIGHTEN)
+	p.add_theme_stylebox_override("panel", card)
+
+
 func _build_bins() -> void:
 	var gap: float = _gap(BIN_SIZE, _bins.size())
 	for i in _bins.size():
@@ -69,6 +82,7 @@ func _build_bins() -> void:
 		p.position = Vector2(gap + i * (BIN_SIZE.x + gap), BINS_Y)
 		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_label_in(p, str(b.get("name_key", "")))
+		_paint_bin(p, str(b.get("color", "")))
 		dress(p, "bin_" + str(b.get("id", "")))
 		add_child(p)
 		_bin_nodes[str(b.get("id", ""))] = p
