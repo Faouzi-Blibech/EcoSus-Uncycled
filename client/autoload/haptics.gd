@@ -1,6 +1,6 @@
 extends Node
-## Phone buzz on game events: a meeting is called (short), the local player is infected or caught
-## in gas (longer). Listens to Net.event, so each server message buzzes once; snapshots never do.
+## Phone buzz on game events: a meeting is called (short), the local player is infected, caught
+## in gas, or saved from it by a mask (longer). Listens to Net.event, so each server message buzzes once; snapshots never do.
 ## Input.vibrate_handheld works on Android (VIBRATE permission in the export preset) and on web
 ## where the browser allows it; elsewhere it does nothing.
 
@@ -17,12 +17,12 @@ func _ready() -> void:
 	Net.event.connect(handle_message)
 
 
-## One server message; buzzes for meeting_started, infected and you_are_out caused by gas.
+## One server message; buzzes for meeting_started, infected, mask_used and you_are_out caused by gas.
 func handle_message(msg: Dictionary) -> void:
 	match str(msg.get("t", "")):
 		"meeting_started":
 			_buzz(MEETING_MS)
-		"infected":
+		"infected", "mask_used":
 			_buzz(HIT_MS)
 		"you_are_out":
 			if str(msg.get("cause", "")) == "gas":

@@ -20,6 +20,9 @@ func test_meeting_infection_and_gas_each_buzz_once_with_their_length() -> bool:
 	h.handle_message({"t": "you_are_out", "cause": "gas"})
 	assert_eq(log.size(), 3, "gas")
 	assert_eq(log[2], HapticsScript.HIT_MS, "gas length")
+	h.handle_message({"t": "mask_used"})
+	assert_eq(log.size(), 4, "gas stopped by a mask")
+	assert_eq(log[3], HapticsScript.HIT_MS, "mask length")
 	assert_true(HapticsScript.HIT_MS > HapticsScript.MEETING_MS, "hit is longer than meeting")
 	return true
 
