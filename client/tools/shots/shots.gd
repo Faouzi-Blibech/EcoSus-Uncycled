@@ -62,7 +62,7 @@ func _tour() -> void:
 		["results_lose", func() -> Node: _game_over("polluters", "deadline"); return _scene("res://scenes/results/results.tscn")],
 		["meeting_discussion", func() -> Node: _meeting("discussion"); return _scene("res://scenes/meeting/meeting.tscn")],
 		["meeting_voting", func() -> Node: _meeting("voting"); return _scene("res://scenes/meeting/meeting.tscn")],
-		["meeting_results", func() -> Node: _meeting("results"); return _scene("res://scenes/meeting/meeting.tscn")],
+		["meeting_results", func() -> Node: _meeting("results"); Session.meeting["votes"] = {"0": 1, "2": 1, "1": 0, "3": "skip"}; var m: Node = _scene("res://scenes/meeting/meeting.tscn"); m.set("_result", {"votes": Session.meeting["votes"], "ejected": 1, "tie": false}); return m],
 		["meeting_ejection", func() -> Node: _meeting("results"); Session.phase = "ejection"; var m: Node = _scene("res://scenes/meeting/meeting.tscn"); m.set("_ejection", {"seat": 1, "was_polluter": true}); return m],
 		["report_splash", func() -> Node: return _splash()],
 		["role_cleaner", func() -> Node: return _reveal("citizen", "")],
