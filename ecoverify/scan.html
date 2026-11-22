@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Uncycled Scan</title>
+  <style>
+    :root {
+      --bg: #f4f7f2; --card: #ffffff; --text: #15251a; --muted: #5b6b60; --line: #dfe7dc;
+      --ok: #1f9d55; --ok-soft: #e3f5ea; --bad: #c0392b; --bad-soft: #fbe7e4; --accent: #1f9d55; --on-accent: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f1712; --card: #18231c; --text: #e8f1ea; --muted: #9db0a3; --line: #2a3a30;
+        --ok: #3ccf7a; --ok-soft: #173826; --bad: #ff7a6b; --bad-soft: #3a1c19; --accent: #3ccf7a; --on-accent: #0b1a10;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0f1712; --card: #18231c; --text: #e8f1ea; --muted: #9db0a3; --line: #2a3a30;
+      --ok: #3ccf7a; --ok-soft: #173826; --bad: #ff7a6b; --bad-soft: #3a1c19; --accent: #3ccf7a; --on-accent: #0b1a10;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+      display: flex; justify-content: center;
+    }
+    main { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 14px; }
+    h1 { font-size: 22px; margin: 4px 0 0; }
+    .sub { color: var(--muted); margin: 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+      min-height: 56px; border-radius: 14px; border: 0; font: 600 18px/1 inherit; cursor: pointer;
+      background: var(--accent); color: var(--on-accent); text-decoration: none;
+    }
+    .btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+    .btn[disabled] { opacity: .55; cursor: default; }
+    canvas { width: 100%; height: auto; border-radius: 12px; display: none; background: #000; }
+    .result { border-radius: 14px; padding: 14px 16px; display: none; }
+    .result.ok { background: var(--ok-soft); border: 1px solid var(--ok); }
+    .result.bad { background: var(--bad-soft); border: 1px solid var(--bad); }
+    .result h2 { margin: 0 0 4px; font-size: 18px; }
+    .result.ok h2 { color: var(--ok); }
+    .result.bad h2 { color: var(--bad); }
+    .result p { margin: 4px 0; }
+    .stats { display: flex; gap: 10px; margin-top: 10px; }
+    .stat { flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
+    .stat b { display: block; font-size: 22px; }
+    .stat span { color: var(--muted); font-size: 13px; }
+    .unlock { margin-top: 10px; font-weight: 600; }
+    .hint { color: var(--muted); font-size: 14px; text-align: center; margin: 0; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>♻️ Scan a recyclable item</h1>
+    <p class="sub" id="lead">Take a photo of something you are recycling today. Fill the frame with it, in good light.</p>
+  </div>
+
+  <canvas id="shot" aria-label="Your photo with the detected item outlined"></canvas>
+
+  <div class="result" id="result" role="status" aria-live="polite">
+    <h2 id="resultTitle"></h2>
+    <p id="resultMsg"></p>
+    <p id="resultTip" class="hint" style="text-align:left"></p>
+    <div class="stats hidden" id="stats">
+      <div class="stat"><b id="points">0</b><span>points</span></div>
+      <div class="stat"><b id="streak">0</b><span>day streak</span></div>
+    </div>
+    <p class="unlock hidden" id="unlock"></p>
+  </div>
+
+  <label class="btn" id="takeBtn" for="cam">📸 Take a photo</label>
+  <input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
+  <button class="btn secondary" id="backBtn" type="button">← Back to game</button>
+  <p class="hint" id="closeHint"></p>
+</main>
+
+<script>
+  const STATE = /*__STATE__*/null;
+  const $ = id => document.getElementById(id);
+  const MAX_SIDE = 1600;   // shrink before upload: faster on mobile data, plenty for detection
+
+  function show(el, on) { el.classList.toggle('hidden', !on); }
+
+  function linkGone() {
+    $('lead').textContent = STATE.gone_message;
+    show($('takeBtn'), false);
+    $('backBtn').className = 'btn';
+  }
+  if (!STATE || !STATE.valid) linkGone();
+
+  $('backBtn').onclick = () => {
+    if (history.length > 1) { history.back(); return; }
+    window.close();
+    $('closeHint').textContent = 'You can close this tab and go back to the game.';
+  };
+
+  async function loadImage(file) {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    await img.decode();   // browsers apply the photo's EXIF orientation here
+    return img;
+  }
+
+  function draw(img, contour, ok) {
+    const c = $('shot');
+    const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    c.width = Math.round(img.naturalWidth * scale);
+    c.height = Math.round(img.naturalHeight * scale);
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.style.display = 'block';
+    if (contour && contour.length > 2) {
+      const colour = getComputedStyle(document.documentElement).getPropertyValue(ok ? '--ok' : '--bad').trim();
+      ctx.beginPath();
+      contour.forEach(([x, y], i) => i ? ctx.lineTo(x * c.width, y * c.height) : ctx.moveTo(x * c.width, y * c.height));
+      ctx.closePath();
+      ctx.globalAlpha = 0.22; ctx.fillStyle = colour; ctx.fill();
+      ctx.globalAlpha = 1; ctx.lineWidth = Math.max(3, c.width / 160); ctx.strokeStyle = colour; ctx.stroke();
+    }
+    return c;
+  }
+
+  function showResult(ok, title, msg, tip) {
+    const r = $('result');
+    r.className = 'result ' + (ok ? 'ok' : 'bad');
+    r.style.display = 'block';
+    $('resultTitle').textContent = title;
+    $('resultMsg').textContent = msg || '';
+    $('resultTip').textContent = tip || '';
+  }
+
+  function showProfile(p) {
+    if (!p) return;
+    $('points').textContent = p.points;
+    $('streak').textContent = p.streak;
+    show($('stats'), true);
+    const fresh = p.new_unlocks || [];
+    $('unlock').textContent = fresh.length ? '🎉 New skin: ' + fresh.map(s => s.emoji + ' ' + s.name).join(', ') : '';
+    show($('unlock'), fresh.length > 0);
+  }
+
+  $('cam').onchange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const take = $('takeBtn');
+    take.textContent = '⏳ Checking…';
+    take.setAttribute('disabled', ''); $('cam').disabled = true;
+    let img;
+    try { img = await loadImage(file); } catch (err) {
+      showResult(false, 'Could not open that photo', 'Try taking it again.');
+      take.textContent = '📸 Try again'; take.removeAttribute('disabled'); $('cam').disabled = false;
+      return;
+    }
+    const canvas = draw(img, null, false);
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.9));
+    const form = new FormData();
+    form.append('token', STATE.token);
+    form.append('file', blob, 'scan.jpg');
+    try {
+      const resp = await fetch('/scan/upload', { method: 'POST', body: form });
+      const data = await resp.json();
+      if (resp.status === 410) {
+        showResult(false, 'Link expired', data.detail);
+        linkGone();
+        return;
+      }
+      if (!resp.ok) throw new Error(data.detail || ('HTTP ' + resp.status));
+      draw(img, data.contour, data.verified);
+      if (data.verified) {
+        const co2 = data.co2_saved_grams ? ` You saved ~${data.co2_saved_grams} g of CO₂.` : '';
+        showResult(true, '✅ ' + (data.detected_item || 'Recycled!'), (data.bin ? 'Bin: ' + data.bin + '.' : '') + co2, data.disposal_tip);
+        showProfile(data.profile);
+        show(take, false);
+        $('backBtn').className = 'btn';
+      } else {
+        showResult(false, 'Not accepted', data.message);
+        showProfile(data.profile);
+        take.textContent = '📸 Try again';
+        take.removeAttribute('disabled'); $('cam').disabled = false;
+      }
+    } catch (err) {
+      showResult(false, 'Could not reach the server', err.message + '. Check your connection and try again.');
+      take.textContent = '📸 Try again';
+      take.removeAttribute('disabled'); $('cam').disabled = false;
+    }
+  };
+</script>
+</body>
+</html>

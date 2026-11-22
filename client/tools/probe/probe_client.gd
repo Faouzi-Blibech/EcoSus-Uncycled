@@ -4,7 +4,7 @@ extends RefCounted
 ## autoloads. Every call polls the socket itself, so no scene tree or frames are needed.
 
 ## The wire protocol version of the hello (Net.PROTOCOL_VERSION; a test keeps the two equal).
-const PROTOCOL_VERSION: int = 2
+const PROTOCOL_VERSION: int = 3
 const MOVE_HZ: float = 10.0
 const MAX_SPEED_TILES_PER_S: float = 2.4
 const ARRIVE_EPS: float = 0.01

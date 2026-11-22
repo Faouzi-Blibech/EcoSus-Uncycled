@@ -12,23 +12,22 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
   ScrollView,
   SafeAreaView,
   StatusBar,
 } from "react-native";
 import SkinUnlockOverlay from "./SkinUnlockOverlay";
+import DetectionOverlay from "./DetectionOverlay";
 
 export default function ResultScreen({
   photoUri,
-  result,          // API response: { verified, detected_item, confidence_score, bbox, co2_saved_grams, co2_equivalence, message }
-  streakInfo,      // { streak, newUnlocks, totalCo2Grams, totalItemsRecycled }
-  streakState,     // { currentStreak, totalCo2Grams, totalCo2Kg, totalItemsRecycled, nextSkin, ... }
+  result,          // API response, see services/api.js
   onScanAgain,     // Reset back to camera
 }) {
   const isVerified = result?.verified === true;
-  const isAntiCheat = result?.message?.includes("Anti-cheat");
-  const isExifFail = result?.message?.includes("Live-capture");
+  const isAntiCheat = result?.reason === "duplicate";
+  const isExifFail = result?.reason === "exif";
+  const player = result?.player; // server-owned streak, totals and skins
 
   return (
     <SafeAreaView
@@ -59,20 +58,20 @@ export default function ResultScreen({
               ? "Duplicate Detected"
               : isExifFail
               ? "Live Photo Required"
+              : result?.reason === "not_waste"
+              ? "Not Waste"
+              : result?.reason === "low_confidence"
+              ? "Not Sure — Try Again"
               : "Not Recognized"}
           </Text>
           <Text style={styles.resultMessage}>{result?.message}</Text>
         </View>
 
-        {/* ── Captured Photo Preview ─────────────────────────── */}
-        {photoUri && (
-          <View style={styles.photoContainer}>
-            <Image source={{ uri: photoUri }} style={styles.photo} />
-          </View>
-        )}
+        {/* ── Photo with the detected item's outline ────────── */}
+        <DetectionOverlay photoUri={photoUri} result={result} />
 
         {/* ── CO₂ Impact Card (on success) ───────────────────── */}
-        {isVerified && result?.co2_saved_grams && (
+        {isVerified && (
           <View style={styles.co2Card}>
             <Text style={styles.co2Title}>🌍 Environmental Impact</Text>
             <Text style={styles.co2Number}>-{result.co2_saved_grams}g</Text>
@@ -80,15 +79,24 @@ export default function ResultScreen({
             {result.co2_equivalence && (
               <Text style={styles.co2Equivalence}>{result.co2_equivalence}</Text>
             )}
-            {streakState?.totalCo2Grams > 0 && (
+            {result.co2_note && (
+              <Text style={styles.co2Note}>{result.co2_note}</Text>
+            )}
+            {result.bin && (
+              <Text style={styles.binText}>
+                🗑️ {result.bin}
+                {result.disposal_tip ? `\n💡 ${result.disposal_tip}` : ""}
+              </Text>
+            )}
+            {player?.total_co2_grams > 0 && (
               <View style={styles.co2Lifetime}>
                 <Text style={styles.co2LifetimeLabel}>Your lifetime impact:</Text>
                 <Text style={styles.co2LifetimeValue}>
-                  {streakState.totalCo2Grams >= 1000
-                    ? `${streakState.totalCo2Kg} kg`
-                    : `${streakState.totalCo2Grams}g`}{" "}
-                  CO₂ saved across {streakState.totalItemsRecycled} item
-                  {streakState.totalItemsRecycled !== 1 ? "s" : ""}
+                  {player.total_co2_grams >= 1000
+                    ? `${player.total_co2_kg} kg`
+                    : `${player.total_co2_grams}g`}{" "}
+                  CO₂ saved across {player.total_items} item
+                  {player.total_items !== 1 ? "s" : ""}
                 </Text>
               </View>
             )}
@@ -96,12 +104,14 @@ export default function ResultScreen({
         )}
 
         {/* ── Detection Details ──────────────────────────────── */}
-        {result?.detected_item && (
+        {(result?.detected_item || result?.detected_class) && (
           <View style={styles.detailsCard}>
             <Text style={styles.detailsTitle}>AI Detection</Text>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Item:</Text>
-              <Text style={styles.detailValue}>{result.detected_item}</Text>
+              <Text style={styles.detailValue}>
+                {result.detected_item || result.detected_class}
+              </Text>
             </View>
             {result.confidence_score != null && (
               <View style={styles.detailRow}>
@@ -131,17 +141,17 @@ export default function ResultScreen({
         )}
 
         {/* ── Streak Info (on success) ───────────────────────── */}
-        {isVerified && streakState && (
+        {isVerified && player && (
           <View style={styles.streakCard}>
             <Text style={styles.streakTitle}>🔥 Eco-Streak</Text>
-            <Text style={styles.streakNumber}>{streakState.currentStreak}</Text>
+            <Text style={styles.streakNumber}>{player.streak}</Text>
             <Text style={styles.streakDays}>
-              day{streakState.currentStreak !== 1 ? "s" : ""} in a row
+              day{player.streak !== 1 ? "s" : ""} in a row
             </Text>
-            {streakState.nextSkin && (
+            {player.next_skin && (
               <Text style={styles.nextSkinText}>
-                Next unlock: {streakState.nextSkin.emoji}{" "}
-                {streakState.nextSkin.name} at {streakState.nextSkin.requiredStreak}-day streak
+                Next unlock: {player.next_skin.emoji}{" "}
+                {player.next_skin.name} at {player.next_skin.required_streak}-day streak
               </Text>
             )}
           </View>
@@ -152,9 +162,9 @@ export default function ResultScreen({
           <View style={styles.antiCheatCard}>
             <Text style={styles.antiCheatTitle}>⚠️ What happened?</Text>
             <Text style={styles.antiCheatText}>
-              Our perceptual hash engine detected that this item is visually
-              identical to something you've already submitted. Each physical
-              item can only count once — go find a new one to recycle! ♻️
+              This item matches one you already scanned (same photo, or the same
+              item from another angle today). Each physical item can only count
+              once — go find a new one to recycle! ♻️
             </Text>
           </View>
         )}
@@ -187,8 +197,8 @@ export default function ResultScreen({
       </ScrollView>
 
       {/* ── Skin Unlock Celebration Overlay ───────────────────── */}
-      {streakInfo?.newUnlocks?.length > 0 && (
-        <SkinUnlockOverlay skins={streakInfo.newUnlocks} />
+      {player?.new_unlocks?.length > 0 && (
+        <SkinUnlockOverlay skins={player.new_unlocks} />
       )}
     </SafeAreaView>
   );
@@ -220,18 +230,6 @@ const styles = StyleSheet.create({
     color: "#ccc",
     fontSize: 16,
     textAlign: "center",
-  },
-  photoContainer: {
-    borderRadius: 16,
-    overflow: "hidden",
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  photo: {
-    width: 280,
-    height: 280,
-    borderRadius: 14,
   },
   // CO₂ Impact Card
   co2Card: {
@@ -265,6 +263,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "italic",
     textAlign: "center",
+    marginBottom: 12,
+  },
+  co2Note: {
+    color: "#F5B041",
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  binText: {
+    color: "#ddd",
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 20,
     marginBottom: 12,
   },
   co2Lifetime: {

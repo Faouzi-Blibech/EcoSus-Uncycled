@@ -137,9 +137,9 @@ namespace Uncycled.Train
             }
 
             int frameSize = runners[0].FrameSize;
-            PipeProtocol.WriteHandshake(stdout, ObservationBuilder.Size, ActionCatalogue.Count, agents, ObservationBuilder.SchemaHash);
-            Console.Error.WriteLine("host ready: " + runners.Length + " matches, " + agents + " agents, obs " + ObservationBuilder.Size
-                + ", actions " + ActionCatalogue.Count + ", threads " + options.Threads + ", learner " + options.Learner
+            MatchRunner.WriteHandshake(stdout, agents);
+            Console.Error.WriteLine("host ready: " + runners.Length + " matches, " + agents + " agents, obs " + ObservationBuilderV2.Size
+                + ", actions " + PolicyActionsV2.Count + ", threads " + options.Threads + ", learner " + options.Learner
                 + ", map " + runners[0].MapId + ", seats " + runners[0].Seats);
 
             var frames = new byte[agents * frameSize];
@@ -220,6 +220,7 @@ namespace Uncycled.Train
             }
 
             Console.Error.WriteLine("bench: " + options.Learner + " learner, " + runners.Length + " matches, " + threads + " threads, "
+                + "obs " + ObservationBuilderV2.Size + ", actions " + PolicyActionsV2.Count + ", "
                 + elapsed.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " s");
             Console.Error.WriteLine("bench: " + (decisions - forced) + " real decisions of " + decisions + " (" + forced + " forced Stay), "
                 + ((decisions - forced) / elapsed).ToString("F0", System.Globalization.CultureInfo.InvariantCulture) + " real decisions per second (" + (decisions / elapsed).ToString("F0", System.Globalization.CultureInfo.InvariantCulture) + " frames per second)");

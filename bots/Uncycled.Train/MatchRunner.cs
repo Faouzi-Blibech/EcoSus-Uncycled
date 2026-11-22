@@ -22,6 +22,9 @@ namespace Uncycled.Train
 
         private const int MaxMeetingTicks = 20000;
 
+        /// <summary>Policy index 0 is Stay (PolicyActionsV2.Names[0]).</summary>
+        private const int StayIndex = 0;
+
         private readonly HostOptions _options;
         private readonly ContentBundle _content;
         private readonly Func<Role, IRandom, IBotBrain> _brains;
@@ -29,12 +32,15 @@ namespace Uncycled.Train
         private readonly int _slot;
         private readonly int _ticksPerDecision;
         private readonly BotsSettings _settings;
-        private readonly float[] _obsBuf = new float[ObservationBuilder.Size];
+        private readonly float[] _obsBuf = new float[ObservationBuilderV2.Size];
 
         private MatchEngine _engine = null!;
         private IRandom _rng = null!;
         private Agent[] _agents = Array.Empty<Agent>();
         private IBotBrain?[] _brainBySeat = Array.Empty<IBotBrain?>();
+
+        /// <summary>The scripted seats' brains with meeting talk added (the brain itself when it keeps no memory for a talker); what Think calls.</summary>
+        private IBotBrain?[] _talkBySeat = Array.Empty<IBotBrain?>();
         private Action<ICommand>[] _brainSend = Array.Empty<Action<ICommand>>();
         private int[] _agentOfSeat = Array.Empty<int>();
         private float[][] _obs = Array.Empty<float[]>();
@@ -64,10 +70,16 @@ namespace Uncycled.Train
             _nextSeed = options.Seed + (ulong)slot;
             StartMatch();
             AgentCount = _agents.Length;
-            FrameSize = PipeProtocol.FrameSize(ObservationBuilder.Size, ActionCatalogue.Count);
-            MaskOffset = ObservationBuilder.Size * 4;
-            RewardOffset = MaskOffset + ActionCatalogue.Count;
+            FrameSize = PipeProtocol.FrameSize(ObservationBuilderV2.Size, PolicyActionsV2.Count);
+            MaskOffset = ObservationBuilderV2.Size * 4;
+            RewardOffset = MaskOffset + PolicyActionsV2.Count;
             DoneOffset = RewardOffset + 4;
+        }
+
+        /// <summary>The first bytes of the pipe: observation size, action count, agent count and schema hash the trainer checks.</summary>
+        public static void WriteHandshake(System.IO.Stream stdout, int agents)
+        {
+            PipeProtocol.WriteHandshake(stdout, ObservationBuilderV2.Size, PolicyActionsV2.Count, agents, SchemaV2.Hash);
         }
 
         public int AgentCount { get; }
@@ -111,6 +123,9 @@ namespace Uncycled.Train
         /// <summary>Decisions where Stay was the only valid action (out seats, mostly).</summary>
         public long ForcedDecisions { get; private set; }
 
+        /// <summary>The engine of the match running now (it is replaced when a match ends): lets a test stage a situation.</summary>
+        public MatchEngine Engine => _engine;
+
         public MatchPhase Phase => _engine.Phase;
 
         public float MatchTime => _engine.MatchTime;
@@ -130,6 +145,8 @@ namespace Uncycled.Train
         public byte AgentSeat(int agent) => _agents[agent].Seat;
 
         public BotMemory AgentMemory(int agent) => _agents[agent].Memory;
+
+        public ActionExecutor AgentExecutor(int agent) => _agents[agent].Executor;
 
         /// <summary>Writes the current frame of every agent (AgentCount * FrameSize bytes).</summary>
         public void WriteFrames(Span<byte> dest)
@@ -173,15 +190,18 @@ namespace Uncycled.Train
                     ForcedDecisions++;
                 }
 
-                if (action < 0 || action >= ActionCatalogue.Count || !_masks[a][action])
+                if (action < 0 || action >= PolicyActionsV2.Count || !_masks[a][action])
                 {
                     InvalidActions++;
                     Console.Error.WriteLine("invalid action " + action + " for agent " + a + " (match slot " + _slot + ")");
-                    action = (int)BotAction.Stay;
+                    action = StayIndex;
                 }
 
                 Agent agent = _agents[a];
-                agent.Executor.Begin((BotAction)action, _engine.ViewFor(agent.Seat), _engine.Map, _engine.MatchTime);
+                SeatView view = _engine.ViewFor(agent.Seat);
+                // the policy index becomes a BotAction plus the executor hints (spot, upgrade, ability, room, zone) for this view;
+                // the same index while its action still runs keeps its target (see PolicyDriver)
+                agent.Policy.Begin(action, view, agent.Memory, _engine.Map, agent.Executor, _engine.MatchTime);
             }
 
             Decisions += asked;
@@ -223,7 +243,7 @@ namespace Uncycled.Train
         {
             for (int i = 0; i < mask.Length; i++)
             {
-                if (mask[i] && i != (int)BotAction.Stay)
+                if (mask[i] && i != StayIndex)
                 {
                     return false;
                 }
@@ -259,11 +279,11 @@ namespace Uncycled.Train
         {
             Prepare();
             var actions = new int[AgentCount];
-            var valid = new int[ActionCatalogue.Count];
+            var valid = new int[PolicyActionsV2.Count];
             for (int a = 0; a < AgentCount; a++)
             {
                 int n = 0;
-                for (int i = 0; i < ActionCatalogue.Count; i++)
+                for (int i = 0; i < PolicyActionsV2.Count; i++)
                 {
                     if (_masks[a][i])
                     {
@@ -304,7 +324,7 @@ namespace Uncycled.Train
                 seats.Add(new SeatSetup((byte)i, "bot" + i, (byte)i));
             }
 
-            _engine = new MatchEngine(cfg, _content.Map, seats, _content.Tasks, _rng);
+            _engine = new MatchEngine(cfg, _content.Map, seats, _content.Tasks, _rng, _content.Phrases);
             while (_engine.Phase == MatchPhase.Intro)
             {
                 _engine.Tick(TickDt);
@@ -344,11 +364,17 @@ namespace Uncycled.Train
                 _feed.Add(agent.Seat, agent.Memory, agent.Voter);
             }
 
+            var floor = new MeetingFloor();
+            _talkBySeat = new IBotBrain?[_brainBySeat.Length];
             for (int s = 0; s < _brainBySeat.Length; s++)
             {
-                if (_brainBySeat[s] is IMeetingObserver observer)
+                IBotBrain? scripted = _brainBySeat[s];
+                // the scripted seats talk in the meetings like in the live room (rule decider, no model call)
+                IBotBrain? talking = scripted == null ? null : OfflineTalk.Wrap(scripted, _feed, floor, (byte)s, Seed);
+                _talkBySeat[s] = talking;
+                if (talking is IMeetingObserver observer)
                 {
-                    _feed.Add((byte)s, observer, _brainBySeat[s] as IAccuser);
+                    _feed.Add((byte)s, observer, talking as IAccuser);
                 }
             }
 
@@ -358,8 +384,8 @@ namespace Uncycled.Train
                 _masks = new bool[_agents.Length][];
                 for (int a = 0; a < _agents.Length; a++)
                 {
-                    _obs[a] = new float[ObservationBuilder.Size];
-                    _masks[a] = new bool[ActionCatalogue.Count];
+                    _obs[a] = new float[ObservationBuilderV2.Size];
+                    _masks[a] = new bool[PolicyActionsV2.Count];
                 }
 
                 _reward = new float[_agents.Length];
@@ -395,7 +421,7 @@ namespace Uncycled.Train
             float now = _engine.MatchTime;
             for (int s = 0; s < _brainBySeat.Length; s++)
             {
-                IBotBrain? brain = _brainBySeat[s];
+                IBotBrain? brain = _talkBySeat[s];
                 if (brain != null)
                 {
                     byte seat = (byte)s;
@@ -495,14 +521,14 @@ namespace Uncycled.Train
             {
                 Agent agent = _agents[a];
                 SeatView view = _engine.ViewFor(agent.Seat);
-                ObservationBuilder.Build(view, agent.Memory, _engine.Map, _engine.Config, now, _obsBuf);
+                ObservationBuilderV2.Build(view, agent.Memory, _engine.Map, _engine.Config, now, _obsBuf);
                 Array.Copy(_obsBuf, _obs[a], _obsBuf.Length);
-                bool[] mask = ActionCatalogue.Mask(view, agent.Memory, _engine.Map);
+                bool[] mask = PolicyActionsV2.Mask(view, agent.Memory, _engine.Map);
                 Array.Copy(mask, _masks[a], mask.Length);
                 if (agent.Executor.Committed)
                 {
                     Array.Clear(_masks[a], 0, _masks[a].Length);
-                    _masks[a][(int)BotAction.Stay] = true;
+                    _masks[a][StayIndex] = true;
                 }
             }
 
@@ -543,6 +569,8 @@ namespace Uncycled.Train
             public BotMemory Memory { get; }
 
             public ActionExecutor Executor { get; }
+
+            public PolicyDriver Policy { get; } = new PolicyDriver();
 
             public MeetingVoter Voter { get; }
 

@@ -1,6 +1,11 @@
-fastapi
-uvicorn
-python-multipart
-ultralytics
-Pillow
-imagehash
+# Versions match the team venv (Python 3.14). Docker installs CPU torch separately.
+fastapi==0.163.1
+uvicorn==0.54.0
+python-multipart==0.0.34
+ultralytics==8.4.215
+Pillow==13.0.0
+ImageHash==4.3.2
+numpy==2.5.5
+opencv-python==5.1.0.95
+transformers==5.23.0
+qrcode==8.2

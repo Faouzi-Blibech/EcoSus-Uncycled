@@ -40,17 +40,19 @@ namespace Uncycled.Train
                 seats.Add(new SeatSetup((byte)i, "bot" + i, (byte)i));
             }
 
-            var engine = new MatchEngine(cfg, content.Map, seats, content.Tasks, rng);
+            var engine = new MatchEngine(cfg, content.Map, seats, content.Tasks, rng, content.Phrases);
             var brainBySeat = new IBotBrain[cfg.Seats];
             var send = new Action<ICommand>[cfg.Seats];
+            var feed = new MeetingFeed(new MeetingLog(content.Phrases ?? throw new InvalidOperationException("the content has no phrase catalogue")));
+            var floor = new MeetingFloor();
             for (int s = 0; s < cfg.Seats; s++)
             {
                 byte seat = (byte)s;
-                brainBySeat[s] = brains(engine.ViewFor(seat).Me.Role, rng);
+                // the bots talk in the meetings like in the live room (rule decider, no model call)
+                brainBySeat[s] = OfflineTalk.Wrap(brains(engine.ViewFor(seat).Me.Role, rng), feed, floor, seat, seed);
                 send[s] = cmd => engine.Apply(seat, cmd);
             }
 
-            var feed = new MeetingFeed(new MeetingLog(content.Phrases ?? throw new InvalidOperationException("the content has no phrase catalogue")));
             for (int s = 0; s < brainBySeat.Length; s++)
             {
                 if (brainBySeat[s] is IMeetingObserver observer)
@@ -63,6 +65,7 @@ namespace Uncycled.Train
             int hits = 0;
             int dumps = 0;
             int meetings = 0;
+            int chatLines = 0;
             int wrongEjections = 0;
             int deliveries = 0;
             int repollutes = 0;
@@ -111,6 +114,10 @@ namespace Uncycled.Train
                     {
                         meetings++;
                     }
+                    else if (e is ChatEvent chat && !chat.Ghost)
+                    {
+                        chatLines++;
+                    }
                 }
             }
 
@@ -130,6 +137,7 @@ namespace Uncycled.Train
             sb.Append(",\"hits\":").Append(hits.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"dumps\":").Append(dumps.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"meetings\":").Append(meetings.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"chat_lines\":").Append(chatLines.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"match_time\":").Append(engine.MatchTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append(",\"active_time\":").Append(engine.ActiveTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append('}');

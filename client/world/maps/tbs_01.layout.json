@@ -1,0 +1,151 @@
+{
+	"_doc": "TBS campus, stitched from the designers' room close-ups (Figma 'Maps'). Read by world/maps/layout_map.gd. Room-local numbers are tiles of that room (1 tile = 32 screen px = 64 art px at art_scale 0.5). Room cells: the outer ring is wall except the listed doors; 'walls' adds wall cells (block sight), 'blocked' adds obstacles (block walking, not sight). Occluders are parts of the art drawn in front of a player standing above their 'base' line: [x0, y0, x1, y1] in room tiles, shape ellipse (foliage) or rect.",
+	"id": "tbs_01",
+	"size": [64, 40],
+	"art_scale": 0.5,
+	"rooms": [
+		{
+			"id": "office", "image": "res://assets/maps/tbs/office.jpg", "origin": [0, 0], "size": [12, 23],
+			"doors": {"right": [19]},
+			"walls": [],
+			"blocked": [[1, 1, 9, 2], [7, 3, 1, 1], [1, 4, 4, 16], [9, 5, 2, 8], [8, 13, 3, 2], [9, 15, 1, 1], [1, 20, 1, 2]],
+			"occluders": [
+				{"rect": [0.9, 0.8, 9.9, 3.5], "base": 3.4, "shape": "rect"},
+				{"rect": [8.6, 4.6, 10.6, 12.9], "base": 12.8, "shape": "rect"},
+				{"rect": [8.3, 12.3, 10.2, 14.8], "base": 14.7, "shape": "rect"},
+				{"rect": [0.5, 19.4, 1.9, 22.0], "base": 21.9, "shape": "rect"}
+			]
+		},
+		{
+			"id": "club", "image": "res://assets/maps/tbs/club.jpg", "origin": [13, 1], "size": [16, 16],
+			"doors": {"bottom": [6, 7, 8, 9]},
+			"walls": [[1, 1, 14, 2], [1, 14, 1, 1], [14, 14, 1, 1]],
+			"blocked": [[1, 3, 6, 2], [3, 5, 2, 1], [12, 3, 1, 1], [14, 3, 1, 1], [1, 7, 2, 4], [5, 7, 5, 4], [4, 8, 1, 1], [10, 8, 1, 1], [7, 11, 2, 1], [12, 8, 3, 4], [13, 13, 2, 1]],
+			"occluders": [
+				{"rect": [1.0, 1.5, 6.9, 5.6], "base": 5.5, "shape": "rect"},
+				{"rect": [1.0, 6.9, 3.0, 10.9], "base": 10.8, "shape": "rect"},
+				{"rect": [5.2, 6.9, 10.4, 11.1], "base": 11.0, "shape": "rect"},
+				{"rect": [11.8, 8.0, 14.9, 12.4], "base": 12.3, "shape": "rect"},
+				{"rect": [13.6, 2.9, 14.7, 4.5], "base": 4.4, "shape": "rect"},
+				{"rect": [12.5, 12.3, 14.7, 14.7], "base": 14.6, "shape": "ellipse"}
+			]
+		},
+		{
+			"id": "amphi", "image": "res://assets/maps/tbs/amphi.jpg", "origin": [32, 1], "size": [16, 16],
+			"doors": {"bottom": [7, 8], "right": [8, 9]},
+			"walls": [[1, 1, 5, 1], [8, 1, 7, 1], [1, 14, 1, 1], [14, 14, 1, 1]],
+			"blocked": [[2, 2, 1, 2], [3, 2, 1, 2], [7, 2, 2, 2], [11, 2, 2, 1], [13, 2, 1, 2], [1, 5, 6, 1], [9, 5, 6, 1], [1, 7, 6, 1], [9, 7, 6, 1], [1, 9, 6, 1], [9, 9, 6, 1], [1, 11, 6, 1], [9, 11, 6, 1], [14, 13, 1, 1]],
+			"occluders": [
+				{"rect": [1.6, 2.3, 2.7, 3.7], "base": 3.6, "shape": "rect"},
+				{"rect": [13.3, 2.3, 14.3, 3.7], "base": 3.6, "shape": "rect"},
+				{"rect": [7.2, 2.5, 8.6, 4.0], "base": 3.95, "shape": "rect"},
+				{"rect": [1.2, 4.7, 7.4, 5.9], "base": 5.85, "shape": "rect"},
+				{"rect": [8.8, 4.7, 14.9, 5.9], "base": 5.85, "shape": "rect"},
+				{"rect": [1.2, 6.7, 7.4, 7.9], "base": 7.85, "shape": "rect"},
+				{"rect": [8.8, 6.7, 14.9, 7.9], "base": 7.85, "shape": "rect"},
+				{"rect": [1.2, 8.7, 7.4, 9.9], "base": 9.85, "shape": "rect"},
+				{"rect": [8.8, 8.7, 14.9, 9.9], "base": 9.85, "shape": "rect"},
+				{"rect": [1.2, 10.7, 7.4, 11.9], "base": 11.85, "shape": "rect"},
+				{"rect": [8.8, 10.7, 14.9, 11.9], "base": 11.85, "shape": "rect"}
+			]
+		},
+		{
+			"id": "lounge", "image": "res://assets/maps/tbs/lounge.jpg", "origin": [13, 21], "size": [16, 16],
+			"doors": {"top": [5, 6], "bottom": [6, 7, 8], "right": [7, 8, 9]},
+			"walls": [[1, 1, 1, 1], [14, 1, 1, 1], [1, 14, 1, 1], [14, 14, 1, 1]],
+			"blocked": [[2, 1, 1, 2], [1, 3, 1, 1], [1, 4, 1, 5], [1, 9, 1, 1], [1, 11, 1, 1], [1, 12, 2, 2], [9, 1, 2, 1], [12, 1, 1, 1], [13, 2, 2, 2], [10, 2, 1, 1], [14, 4, 1, 2], [4, 3, 8, 6], [3, 5, 1, 2], [12, 5, 1, 2], [5, 10, 7, 4], [14, 10, 1, 2], [13, 13, 2, 1]],
+			"occluders": [
+				{"rect": [1.9, 0.9, 3.3, 2.7], "base": 2.6, "shape": "rect"},
+				{"rect": [13.5, 1.4, 14.8, 2.6], "base": 2.5, "shape": "rect"},
+				{"rect": [0.7, 11.1, 1.9, 12.6], "base": 12.5, "shape": "ellipse"},
+				{"rect": [12.4, 12.9, 14.8, 14.5], "base": 14.4, "shape": "ellipse"}
+			]
+		},
+		{
+			"id": "garden", "image": "res://assets/maps/tbs/garden.jpg", "origin": [32, 21], "size": [16, 16],
+			"doors": {"top": [11], "left": [4, 11], "right": [8, 9], "bottom": [7, 8]},
+			"walls": [],
+			"blocked": [[2, 2, 2, 2], [1, 5, 1, 1], [6, 2, 1, 1], [7, 1, 1, 1], [6, 3, 2, 2], [4, 6, 1, 1], [6, 6, 1, 1], [1, 7, 1, 1], [3, 9, 2, 1], [2, 11, 1, 1], [1, 13, 2, 1], [1, 14, 1, 1], [14, 2, 1, 1], [14, 4, 1, 1], [11, 5, 1, 2], [12, 7, 1, 2], [13, 9, 1, 1], [9, 9, 1, 1], [11, 9, 1, 1], [11, 10, 3, 3], [8, 11, 2, 1], [10, 12, 1, 1], [9, 13, 2, 2], [8, 14, 1, 1], [13, 14, 2, 1]],
+			"occluders": [
+				{"rect": [5.4, 0.9, 7.0, 2.8], "base": 2.8, "shape": "ellipse"},
+				{"rect": [4.0, 5.2, 5.6, 6.7], "base": 6.6, "shape": "ellipse"},
+				{"rect": [1.1, 6.7, 2.7, 8.2], "base": 8.1, "shape": "ellipse"},
+				{"rect": [0.9, 10.8, 2.9, 12.2], "base": 12.1, "shape": "ellipse"},
+				{"rect": [0.6, 13.8, 2.1, 15.1], "base": 15.0, "shape": "ellipse"},
+				{"rect": [12.9, 0.2, 15.7, 3.0], "base": 2.9, "shape": "ellipse"},
+				{"rect": [13.5, 3.1, 14.9, 4.6], "base": 4.5, "shape": "ellipse"},
+				{"rect": [12.0, 6.9, 13.5, 8.5], "base": 8.4, "shape": "ellipse"},
+				{"rect": [9.2, 12.5, 11.1, 14.6], "base": 14.5, "shape": "ellipse"},
+				{"rect": [13.1, 12.9, 14.7, 14.5], "base": 14.4, "shape": "ellipse"},
+				{"rect": [6.2, 3.2, 7.7, 5.4], "base": 5.3, "shape": "ellipse"},
+				{"rect": [10.8, 4.7, 12.3, 7.0], "base": 6.9, "shape": "ellipse"},
+				{"rect": [3.1, 8.5, 5.0, 9.7], "base": 9.6, "shape": "ellipse"},
+				{"rect": [10.7, 8.9, 12.3, 9.9], "base": 9.8, "shape": "ellipse"},
+				{"rect": [8.3, 10.4, 9.8, 12.2], "base": 12.1, "shape": "ellipse"}
+			]
+		},
+		{
+			"id": "parking", "image": "res://assets/maps/tbs/parking.jpg", "origin": [50, 10], "size": [14, 20],
+			"doors": {"top": [5, 6], "bottom": [6]},
+			"walls": [[1, 1, 1, 1], [12, 1, 1, 1], [1, 18, 1, 1], [12, 18, 1, 1]],
+			"blocked": [[1, 1, 2, 18], [6, 1, 4, 17], [10, 1, 3, 1], [10, 3, 1, 2], [11, 7, 2, 2], [11, 11, 2, 1], [12, 12, 1, 2], [10, 15, 2, 2]],
+			"occluders": [
+				{"rect": [10.3, 0.9, 12.3, 2.5], "base": 2.4, "shape": "rect"},
+				{"rect": [10.8, 5.8, 12.8, 8.9], "base": 8.8, "shape": "ellipse"},
+				{"rect": [10.7, 10.1, 12.8, 12.6], "base": 12.5, "shape": "ellipse"}
+			]
+		}
+	],
+	"corridors": [
+		[11, 18, 39, 2],
+		[19, 17, 4, 1],
+		[39, 17, 2, 1],
+		[18, 20, 2, 1],
+		[43, 20, 1, 1],
+		[29, 28, 1, 3],
+		[30, 25, 2, 8],
+		[48, 8, 9, 2],
+		[48, 10, 2, 8],
+		[48, 29, 9, 2],
+		[19, 37, 27, 2]
+	],
+	"markers": [
+		{"id": "sp01", "kind": "spawn", "pos": [26.5, 18.5]},
+		{"id": "sp02", "kind": "spawn", "pos": [27.5, 18.5]},
+		{"id": "sp03", "kind": "spawn", "pos": [28.5, 18.5]},
+		{"id": "sp04", "kind": "spawn", "pos": [29.5, 18.5]},
+		{"id": "sp05", "kind": "spawn", "pos": [30.5, 18.5]},
+		{"id": "sp06", "kind": "spawn", "pos": [26.5, 19.5]},
+		{"id": "sp07", "kind": "spawn", "pos": [27.5, 19.5]},
+		{"id": "sp08", "kind": "spawn", "pos": [28.5, 19.5]},
+		{"id": "sp09", "kind": "spawn", "pos": [29.5, 19.5]},
+		{"id": "sp10", "kind": "spawn", "pos": [30.5, 19.5]},
+		{"id": "market_bins", "kind": "task", "pos": [35.5, 34.5]},
+		{"id": "depot_bins", "kind": "task", "pos": [40.5, 34.5]},
+		{"id": "garden_compost", "kind": "task", "pos": [36.5, 22.5]},
+		{"id": "garden_tap", "kind": "task", "pos": [42.5, 32.5]},
+		{"id": "depot_meter", "kind": "task", "pos": [16.5, 9.5]},
+		{"id": "market_cans", "kind": "task", "pos": [26.5, 32.5]},
+		{"id": "garden_cans", "kind": "task", "pos": [58.5, 28.5]},
+		{"id": "depot_sink", "kind": "task", "pos": [2.5, 20.5]},
+		{"id": "market_sink", "kind": "task", "pos": [16.5, 23.5]},
+		{"id": "depot_glass", "kind": "task", "pos": [45.5, 15.5]},
+		{"id": "market_bottle_bank", "kind": "task", "pos": [8.5, 15.5]},
+		{"id": "meeting_button", "kind": "emergency", "pos": [39.5, 5.5]},
+		{"id": "smog_panel", "kind": "smog_fix", "pos": [25.5, 5.5]},
+		{"id": "machine", "kind": "machine", "pos": [32.5, 38.5]},
+		{"id": "office", "kind": "zone", "rect": [0, 0, 12, 23], "name_key": "zone_office"},
+		{"id": "club", "kind": "zone", "rect": [13, 1, 16, 16], "name_key": "zone_club"},
+		{"id": "amphi", "kind": "zone", "rect": [32, 1, 16, 16], "name_key": "zone_amphi"},
+		{"id": "hallway", "kind": "zone", "rect": [12, 17, 38, 4], "name_key": "zone_hallway"},
+		{"id": "lounge", "kind": "zone", "rect": [13, 21, 16, 16], "name_key": "zone_lounge"},
+		{"id": "garden", "kind": "zone", "rect": [32, 21, 16, 16], "name_key": "zone_garden"},
+		{"id": "parking", "kind": "zone", "rect": [50, 10, 14, 20], "name_key": "zone_parking"},
+		{"id": "dark_amphi", "kind": "dark", "rect": [32, 1, 16, 16]},
+		{"id": "dark_parking", "kind": "dark", "rect": [50, 10, 14, 20]},
+		{"id": "gas_club", "kind": "gas_room", "rect": [13, 1, 16, 16]},
+		{"id": "gas_amphi", "kind": "gas_room", "rect": [32, 1, 16, 16]},
+		{"id": "gas_lounge", "kind": "gas_room", "rect": [13, 21, 16, 16]},
+		{"id": "gas_office", "kind": "gas_room", "rect": [0, 0, 12, 23]}
+	]
+}

@@ -11,9 +11,10 @@ client in the same PR, and bump `PROTOCOL_VERSION` on any breaking change.
 - Max message: 4 KB client -> server (whole message, all frames). Rate limit: 30 msg/s, burst 60.
 - Coordinates must be finite numbers; NaN/Infinity closes the connection.
 
-`PROTOCOL_VERSION = 2`
+`PROTOCOL_VERSION = 3`
 
 Changelog:
+- 3: dash for every seat (`dash`, `dash_ok`, `me.dash`); spots get littered again `tuning.spots.relitter_s` after their last clean (they simply turn `dirty` in `snapshot.spots`).
 - 2: Cleaners vs Trashers rules (spots, bags, Recycling Machine, upgrades, re-pollute, virus, gas, machine jam), room size 6/8/10 and seat ids 0-9, skins, `net_report`. Code names stay `citizen`/`polluter` on the wire.
 - 1: typed chat `chat_text`, `chat` event `text` and `ghost`, `my_text`, `ghost_chat`, reasons `too_long`, `text_limit`, `phrase_limit`.
 
@@ -121,6 +122,8 @@ follows on the next tick.
 | S->C | `action_rejected` | `action`, `reason` | sender only |
 | C->S | `repollute` | `spot` | Trasher, clean spot in range, off cooldown |
 | S->C | `repollute_ok` | `cooldown`, `count` | sender; `count` = re-pollutes so far |
+| C->S | `dash` | `dir: [x, y]` | any active seat, `me.dash` = 0; the server moves the seat up to `tuning.dash.tiles` along `dir` (normalised), stopping before a wall. Else `on_cooldown`, `target_invalid` (zero or non-finite `dir`), `wrong_phase` |
+| S->C | `dash_ok` | `pos`, `cooldown` | sender only: where the dash ended. The client puts its avatar there and sends its next `move` from `pos`. The dash is ready again after `cooldown` s, or at once after `tuning.dash.cleans_refill` spots cleaned (first dash `tuning.dash.cooldown_s` after the match start) |
 | S->C | `ability_unlocked` | `choices` (`["virus", "gas"]`) | the Trasher, at `trasher.unlock_after` (3) re-pollutes |
 | C->S | `pick_ability` | `ability` ("virus"/"gas") | only after `ability_unlocked`, once per match, else `not_unlocked` |
 | S->C | `ability_ok` | `ability` | sender |
@@ -132,7 +135,7 @@ follows on the next tick.
 | S->C | `mask_used` | - | the masked seat |
 | C->S | `gas` | `room` | Trasher with `gas`, room id from the map `gas_rooms`, off cooldown |
 | S->C | `gas_warning` | `room`, `in_s` | everyone |
-| S->C | `gas_done` | `room` | everyone |
+| S->C | `gas_done` | `room` | everyone; a meeting cancels a running warning: gas_done is sent and the Trasher's gas cooldown is refunded |
 
 ### 4.1 `snapshot`
 
@@ -172,6 +175,8 @@ v2 hidden fields, and who receives each:
 vision **and** line of sight (a seat that just left sight keeps its last visible position for
 0.3 s, never updated). Spectators (out) receive snapshots **without** `players` and `piles`.
 `sabotage` is `null` when none (the object describes smog; a machine jam is reported by `machine.jammed` and by `sabotage_started`/`sabotage_ended` with kind "machine").
+
+`me.dash` (every seat, both shapes, snapshot only; not in the rejoin `welcome.state`): seconds until the dash is ready, 0 = ready.
 
 `me` above is the Cleaner shape (`infected_s` only while infected). The Trasher shape has no `bags`, `cap`, `tool`, `heals`, `masks`, `infected_s`; it has instead:
 

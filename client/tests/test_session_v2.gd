@@ -42,8 +42,8 @@ func _trasher_snapshot() -> Dictionary:
 	}
 
 
-func test_client_speaks_protocol_2() -> bool:
-	assert_eq(Net.PROTOCOL_VERSION, 2, "protocol version sent in hello")
+func test_client_speaks_protocol_3() -> bool:
+	assert_eq(Net.PROTOCOL_VERSION, 3, "protocol version sent in hello")
 	return true
 
 
@@ -126,5 +126,112 @@ func test_new_match_resets_v2_fields() -> bool:
 	assert_eq(s.machine_jammed, false, "machine")
 	assert_eq(s.gas_room, "", "gas")
 	assert_near(s.infected_s, -1.0, 0.001, "infection")
+	_cleanup_save()
+	return true
+
+
+func test_spot_cleaned_updates_bags_and_the_spot_at_once() -> bool:
+	var s: Object = _session()
+	s._on_snapshot(_cleaner_snapshot())
+	s._on_event({"t": "spot_cleaned", "spot": "market_bins", "bags": 1})
+	assert_eq(s.spots.get("market_bins"), "clean", "spot clean before the next snapshot")
+	assert_eq(s.bags, 1, "bag count from the event")
+	return true
+
+
+func test_delivery_offer_and_jam_events() -> bool:
+	var s: Object = _session()
+	s._on_snapshot(_cleaner_snapshot())
+	s._on_event({"t": "delivered", "bags": 1, "meter": 40.0})
+	assert_eq(s.bags, 0, "bags handed in")
+	assert_near(s.meter, 40.0, 0.001, "meter from the event")
+	s._on_event({"t": "upgrade_offer", "items": ["heal", "mask"]})
+	assert_eq(s.upgrade_offer, ["heal", "mask"], "offer kept for the picker")
+	s._on_event({"t": "sabotage_started", "kind": "machine"})
+	assert_true(s.machine_jammed, "jam shows before the next snapshot")
+	assert_true(s.sabotage.is_empty(), "a jam is not the smog object")
+	s._on_event({"t": "sabotage_ended", "kind": "machine", "result": "fixed"})
+	assert_true(not s.machine_jammed, "fixed")
+	s._on_match_started({"role": "citizen", "spawn": Vector2.ZERO})
+	assert_eq(s.upgrade_offer, [], "a new match has no open offer")
+	_cleanup_save()
+	return true
+
+
+func test_machine_repair_time_only_while_counting() -> bool:
+	var s: Object = _session()
+	var snap: Dictionary = _cleaner_snapshot()
+	snap["machine"] = {"jammed": true, "repair_t": 1.5}
+	s._on_snapshot(snap)
+	assert_near(s.machine_repair_t, 1.5, 0.001, "counted")
+	snap["machine"] = {"jammed": true}
+	s._on_snapshot(snap)
+	assert_near(s.machine_repair_t, -1.0, 0.001, "not counting")
+	return true
+
+
+func test_trasher_events() -> bool:
+	var s: Object = _session()
+	s._on_match_started({"role": "polluter", "spawn": Vector2.ZERO})
+	s._on_event({"t": "repollute_ok", "cooldown": 20.0, "count": 3})
+	assert_eq(s.repollutes, 3, "count")
+	assert_near(float(s.cooldowns.get("repollute", -1.0)), 20.0, 0.001, "cooldown from the event")
+	s._on_event({"t": "ability_unlocked", "choices": ["virus", "gas"]})
+	assert_eq(s.ability_choices, ["virus", "gas"], "choice offered")
+	s._on_event({"t": "ability_ok", "ability": "gas"})
+	assert_eq(s.ability, "gas", "ability")
+	assert_eq(s.ability_choices, [], "choice closed")
+	_cleanup_save()
+	return true
+
+
+## The server does not re-send ability_unlocked after a rejoin: the snapshot (no ability, enough
+## re-pollutes) brings the choice back, unless a pick is already on its way.
+func test_rejoined_trasher_gets_the_ability_choice_back() -> bool:
+	var s: Object = _session()
+	s.tuning = {"trasher": {"unlock_after": 3}}
+	s.role = "polluter"
+	var snap: Dictionary = _trasher_snapshot()
+	snap["me"]["ability"] = null
+	snap["me"]["repollutes"] = 3
+	s._on_snapshot(snap)
+	assert_eq(s.ability_choices, ["virus", "gas"], "unlocked but not picked: offer again")
+	s.ability_choices = []
+	s.ability_pick_sent = true
+	s._on_snapshot(snap)
+	assert_eq(s.ability_choices, [], "a pick is on its way: no second offer")
+	return true
+
+
+func test_infection_heal_mask_and_gas_events() -> bool:
+	var s: Object = _session()
+	s._on_snapshot(_cleaner_snapshot())
+	s.alert_used = true
+	s._on_event({"t": "infected", "countdown": 35.0})
+	assert_near(s.infected_s, 35.0, 0.001, "countdown at once")
+	assert_true(not s.alert_used, "a new infection gives a new alert")
+	s._on_event({"t": "healed", "by": 3})
+	assert_near(s.infected_s, -1.0, 0.001, "cured")
+	s.masks = 1
+	s._on_event({"t": "mask_used"})
+	assert_eq(s.masks, 0, "the mask is used up")
+	s._on_event({"t": "gas_warning", "room": "gas_depot", "in_s": 3.0})
+	assert_eq(s.gas_room, "gas_depot", "warning room")
+	assert_near(s.gas_in_s, 3.0, 0.001, "warning time")
+	s._on_event({"t": "gas_done", "room": "gas_depot"})
+	assert_eq(s.gas_room, "", "gas over")
+	return true
+
+
+## me.dash is the dash timer for every role; dash_ok restarts it; unknown (-1) until a snapshot says.
+func test_dash_timer_from_snapshot_and_dash_ok() -> bool:
+	var s: Object = _session()
+	assert_near(s.dash_s, -1.0, 0.001, "unknown before any snapshot")
+	var snap: Dictionary = _cleaner_snapshot()
+	(snap["me"] as Dictionary)["dash"] = 7.5
+	s._on_snapshot(snap)
+	assert_near(s.dash_s, 7.5, 0.001, "from me.dash")
+	s._on_event({"t": "dash_ok", "pos": Vector2(64, 64), "cooldown": 20.0})
+	assert_near(s.dash_s, 20.0, 0.001, "dash_ok restarts it")
 	_cleanup_save()
 	return true

@@ -76,7 +76,7 @@ The v2 plan and schedule: `docs/team/README.md`.
 | Default language FR / EN | Open |
 | Server host (needs `wss://`) and web host | Open (Louay proposes in L5) |
 | **v2 design: Cleaners vs Trashers** (spots via mini-games, bags, machine, upgrades, re-pollute, virus, gas). Replaces the poison, dump, per-player task and 8-seat rows above | Decided 2026-11-21 |
-| Room sizes 6/8/10 with 1/2/2 Trashers, host picks | Decided 2026-11-21 |
+| Room sizes 6/8/10 with 1/2/2 Trashers, host picks | Replaced 2026-11-21 evening: **locked at 8 seats, 2 Trashers** (server keeps 6/10 support, unused) |
 | Platforms: Android APK, web (also for iPhone), Windows; Windows scans through a QR code on a phone | Decided 2026-11-21 |
 | Camera scan gives points and a daily streak that unlocks skins | Decided 2026-11-21 |
 | Benchmark networks: Ooredoo, Tunisie Telecom 5G, Tunisie Telecom 5G SA (Wi-Fi as reference) | Decided 2026-11-21 |

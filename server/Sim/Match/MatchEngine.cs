@@ -126,6 +126,7 @@ namespace Sim.Match
                 p.HitReadyAt = config.StartCooldownS;
                 p.DumpReadyAt = config.StartCooldownS;
                 p.RepolluteReadyAt = config.TrasherStartCooldownS;
+                p.DashReadyAt = config.DashCooldownS;
                 p.MoveBudget = config.MoveBudgetCap;
                 p.BagCap = p.IsCitizen ? config.BagCap : 0;
             }
@@ -311,6 +312,7 @@ namespace Sim.Match
                 case ChatTextCommand c: return ApplyChatText(p, c);
                 case PlantVirusCommand c: return ApplyPlantVirus(p, c);
                 case HealCommand c: return ApplyHeal(p, c);
+                case DashCommand c: return ApplyDash(p, c);
                 default: return CommandResult.Rejected(RejectReason.NotAllowed);
             }
         }
@@ -387,6 +389,7 @@ namespace Sim.Match
             TickGas(dt);
             TickFire(dt);
             TickCleaning(dt);
+            TickLitter();
             TickInfections();
             UpdateSightMemory();
             TryEndMatch();

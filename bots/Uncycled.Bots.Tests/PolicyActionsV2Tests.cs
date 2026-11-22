@@ -44,6 +44,10 @@ namespace Uncycled.Bots.Tests
             new SeatView(v.Seat, v.Phase, v.PhaseTimeLeft, v.MatchTime, v.DeadlineS, v.DeadlineClock, v.DeadlineClockValue, v.Meter, v.EmergenciesLeft,
                 me ?? v.Me, players, v.Piles, v.Sabotage, v.Meeting, v.GameOver, v.GhostChat, v.Spots, v.MachineJammed);
 
+        private static SeatView WithPiles(SeatView v, IReadOnlyList<PileView> piles) =>
+            new SeatView(v.Seat, v.Phase, v.PhaseTimeLeft, v.MatchTime, v.DeadlineS, v.DeadlineClock, v.DeadlineClockValue, v.Meter, v.EmergenciesLeft,
+                v.Me, v.Players, piles, v.Sabotage, v.Meeting, v.GameOver, v.GhostChat, v.Spots, v.MachineJammed);
+
         private static MyView AsGasTrasher(MyView me, Vec2? position = null) =>
             new MyView(me.Seat, me.Role, me.Partners, me.Signature, me.Status, position ?? me.Position, me.Vision, me.Poison,
                 new CooldownView(0f, 0f, 0f), me.Tasks, me.Bags, me.BagCap, me.HasTool, 5, TrasherAbility.Gas);
@@ -108,19 +112,24 @@ namespace Uncycled.Bots.Tests
                             continue;
                         }
 
-                        SeatView view = m.Engine.ViewFor(seat);
-                        bool[] mask = PolicyActionsV2.Mask(view, mem, m.Map);
-                        bool[] full = ActionCatalogue.FullMask(view, mem, m.Map);
-                        for (int p = 0; p < mask.Length; p++)
+                        SeatView real = m.Engine.ViewFor(seat);
+                        // Cleaners flee gas, so scripted matches rarely leave a reportable body near a bot: also check each sample with a fresh body staged beside the seat.
+                        var staged = new List<PileView>(real.Piles) { new PileView(9999, real.Me.Position, PileKind.Body, PileState.Fresh) };
+                        foreach (SeatView view in new[] { real, WithPiles(real, staged) })
                         {
-                            if (!mask[p])
+                            bool[] mask = PolicyActionsV2.Mask(view, mem, m.Map);
+                            bool[] full = ActionCatalogue.FullMask(view, mem, m.Map);
+                            for (int p = 0; p < mask.Length; p++)
                             {
-                                continue;
-                            }
+                                if (!mask[p])
+                                {
+                                    continue;
+                                }
 
-                            seen.Add(p);
-                            BotAction action = PolicyActionsV2.Resolve(p, view, mem, m.Map).Action;
-                            Assert.True(full[(int)action], "seed " + seed + " seat " + seat + " t=" + m.Engine.MatchTime.ToString("0.0") + ": policy " + PolicyActionsV2.Names[p] + " -> " + action + " is not valid in FullMask");
+                                seen.Add(p);
+                                BotAction action = PolicyActionsV2.Resolve(p, view, mem, m.Map).Action;
+                                Assert.True(full[(int)action], "seed " + seed + " seat " + seat + " t=" + m.Engine.MatchTime.ToString("0.0") + ": policy " + PolicyActionsV2.Names[p] + " -> " + action + " is not valid in FullMask");
+                            }
                         }
                     }
                 }
@@ -313,7 +322,7 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
-        public void GoZoneNear_ResolvesToTheNearestZonesMapIndex()
+        public void GoZoneNear_ResolvesToTheNearestZonesId()
         {
             TestMatch m = TestMatch.Create(2);
             SeatView view = m.Engine.ViewFor(0);
@@ -329,7 +338,9 @@ namespace Uncycled.Bots.Tests
             for (int k = 0; k < 3; k++)
             {
                 Assert.True(mask[1 + k]);
-                Assert.Equal(BotAction.GoZone0 + ranked[k], PolicyActionsV2.Resolve(1 + k, view, mem, m.Map).Action);
+                PolicyChoice choice = PolicyActionsV2.Resolve(1 + k, view, mem, m.Map);
+                Assert.Equal(BotAction.GoZoneAt, choice.Action);
+                Assert.Equal(m.Map.Zones[ranked[k]].Id, choice.Zone);
             }
         }
 
@@ -455,7 +466,7 @@ namespace Uncycled.Bots.Tests
         /// list or a view (for example a suspicion weight) changes the hash: update this value in the same commit and
         /// train again; the message prints the new one.
         /// </summary>
-        private const string FrozenHash = "12e77159effddb87ef842b12844d9fd121e4af9e9e1e858ef6785e925c7de607";
+        private const string FrozenHash = "e4aa0cb05099abb1a055b200c3bc163028f07841648bc82f8798176b914730fa";
 
         [Fact]
         public void SchemaV2_Hash_IsFrozen()

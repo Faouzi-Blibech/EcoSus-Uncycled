@@ -191,9 +191,9 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
-        public void Protocol_VersionIsTwo()
+        public void Protocol_VersionIsThree()
         {
-            Assert.Equal(2, Codec.ProtocolVersion);
+            Assert.Equal(3, Codec.ProtocolVersion);
         }
 
         // ---------- ghost leak through a real room ----------
@@ -273,6 +273,7 @@ namespace Uncycled.Server.Tests
             Assert.Empty(alive.Socket.Sent("chat"));
 
             // a rejoin: the living seat's welcome carries no ghost data, the out seat's carries the line
+            Assert.True(WaitUntil(() => alive.Socket.Sent("welcome").Count == 1 && dead.Socket.Sent("welcome").Count == 1));
             var aliveBack = new Human();
             rig.Room.Post(new JoinInput(aliveBack.Conn, "Alive", alive.Token, false));
             rig.Step();

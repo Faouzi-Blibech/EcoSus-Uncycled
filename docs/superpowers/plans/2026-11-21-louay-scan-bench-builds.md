@@ -47,6 +47,18 @@ Docker (`server/Dockerfile`).
 
 ### Task L1: scan links, scan page, profiles (1 h 30)
 
+**Status: done (branch `scan/service`).** Built inside `ecoverify/` (merged in #22) instead of a separate
+`scan_profile.py` with JSON files: tokens, points and profiles live in its SQLite store
+(`ecoverify/store.py`, `rules.py`), tests in `ecoverify/tests/test_scan.py` (unittest; `pytest` runs them too).
+Differences from the interfaces above:
+- Skin ids are `eco_novice`, `recycled_scout`, `waste_warrior`, `green_guardian`, `planet_legend` (streak 1/3/7/14/30),
+  in `content/skins.json` with `"streak"` as planned. Use these ids for `SKIN_<ID>` strings and L3.
+- `GET /profile/{id}` (alias of `/players/{id}`) returns `points, streak, best_streak, skins, new_skins, scans_today`
+  plus CO2 totals and full skin objects.
+- A photo that is not accepted gives the link back, so the player can retry within the 120 s.
+- The Tunis day changes at 23:00 UTC (UTC+1): 22:59 UTC on 21 Nov is still 21 Nov.
+- Links use `ECO_PUBLIC_URL` or the tunnel's forwarded host/scheme.
+
 **Files:**
 - Create: `scan_profile.py` (no model import), `tests/test_scan_profile.py`, `content/skins.json`
 - Modify: `app.py` (endpoints below; reuse the existing YOLOE + duplicate-hash code path), `requirements.txt`
@@ -71,7 +83,7 @@ Docker (`server/Dockerfile`).
   {"id": "ocean_guardian", "streak": 7}, {"id": "earth_champion", "streak": 14}, {"id": "recycling_god", "streak": 30}]}`
   (ids from `mobile/services/streakManager.js`; display names go in `strings.csv` as `SKIN_<ID>`).
 
-- [ ] **Step 1: Write the failing tests** in `tests/test_scan_profile.py`:
+- [x] **Step 1: Write the failing tests** in `tests/test_scan_profile.py`:
 
 ```python
 def test_token_is_single_use():
@@ -89,11 +101,11 @@ def test_token_expires_after_ttl():
   - `test_same_day_scans_keep_streak_add_points_until_cap`: 4 scans in a day -> 30 points, streak 1.
   - `test_first_scan_unlocks_seedling`: `new_skins == ["seedling"]`.
   - `test_tunis_day_crosses_midnight`: 22:59 UTC on 21 Nov is 22 Nov in Tunis (UTC+1).
-- [ ] **Step 2:** Run `pytest -q -x tests/test_scan_profile.py`. Expected: FAIL (module missing).
-- [ ] **Step 3:** Implement `scan_profile.py` (JSON files like the existing hash store), then the endpoints in
+- [x] **Step 2:** Run `pytest -q -x tests/test_scan_profile.py`. Expected: FAIL (module missing).
+- [x] **Step 3:** Implement `scan_profile.py` (JSON files like the existing hash store), then the endpoints in
   `app.py`. `/scan/upload` replaces the EXIF time check with `redeem_token` (keep `check_exif_timestamp` for the
   old `/verify-daily-photo` route only). Only a verified item calls `record_scan`.
-- [ ] **Step 4:** Run `pytest -q tests/test_scan_profile.py`. Expected: PASS. Then by hand: `uvicorn app:app`,
+- [x] **Step 4:** Run `pytest -q tests/test_scan_profile.py`. Expected: PASS. Then by hand: `uvicorn app:app`,
   open `/scan?t=<token from /scan/start>` on a phone, photograph a bottle, see points and streak. Commit on
   `scan/service`.
 
@@ -125,7 +137,10 @@ def test_token_expires_after_ttl():
 - [ ] **Step 4:** Run the test runner. Then by hand on Windows (QR flow) and on a phone web build (same-tab
   flow). Commit on `scan/client`.
 
-### Task L3: lobby size picker and skins (1 h)
+### Task L3: lobby skins (45 min)
+
+Seats are locked at 8 with 2 Trashers (team decision, Sat 21 Nov evening): no size picker. Skip every
+`set_size` / `size` / `sizes` item below; build the skin picker only.
 
 **Files:**
 - Modify: `client/scenes/lobby/lobby.gd` (host: 6/8/10 picker sends `set_size`; everyone: skin picker sends

@@ -361,6 +361,109 @@ namespace Uncycled.Bots
             return n;
         }
 
+        /// <summary>
+        /// The gas room whose warning runs (the public gas warning) when this Cleaner stands in it without a
+        /// mask; null otherwise. A mask holder may stay: the mask takes the gas.
+        /// </summary>
+        public static ZoneDef? WarnedGasRoomHere(SeatView view, BotMemory mem, MapData map)
+        {
+            ZoneDef? room = WarnedRoomToAvoid(view, mem, map);
+            return room != null && room.Contains(view.Me.Position) ? room : null;
+        }
+
+        /// <summary>
+        /// The gas room whose warning runs, for a Cleaner without a mask (wherever it stands): its spots, consoles and
+        /// walk goals are unavailable until the gas has fired, so a Cleaner that left does not walk back in. Null
+        /// for a mask holder, a Trasher, or when no warning runs.
+        /// </summary>
+        public static ZoneDef? WarnedRoomToAvoid(SeatView view, BotMemory mem, MapData map)
+        {
+            if (mem.GasWarnedRoom == null || view.Me.Role != Role.Citizen || view.Me.Masks > 0)
+            {
+                return null;
+            }
+
+            foreach (ZoneDef room in map.GasRooms)
+            {
+                if (room.Id == mem.GasWarnedRoom)
+                {
+                    return room;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>The walkable cell just outside a room that is the shortest walk from a position; null when none is reachable.</summary>
+        public static Vec2? NearestCellOutside(MapData map, ZoneDef room, Vec2 from)
+        {
+            MapDistances dist = MapDistances.For(map);
+            Vec2? best = null;
+            int bestPath = int.MaxValue;
+            int x0 = (int)System.Math.Floor(room.X) - 1;
+            int y0 = (int)System.Math.Floor(room.Y) - 1;
+            int x1 = (int)System.Math.Ceiling(room.X + room.Width);
+            int y1 = (int)System.Math.Ceiling(room.Y + room.Height);
+            for (int y = y0; y <= y1; y++)
+            {
+                for (int x = x0; x <= x1; x++)
+                {
+                    var c = new Vec2(x + 0.5f, y + 0.5f);
+                    if (room.Contains(c) || !map.Walk.IsWalkableCell(x, y))
+                    {
+                        continue;
+                    }
+
+                    int d = dist.Path(from, c);
+                    if (d != MapDistances.Unreachable && d < bestPath)
+                    {
+                        bestPath = d;
+                        best = c;
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>How much a Cleaner wants an upgrade: a backpack or a tool pays most, a heal or a mask is insurance.</summary>
+        public static float UpgradeWeight(UpgradeKind kind)
+        {
+            switch (kind)
+            {
+                case UpgradeKind.Backpack: return 4f;
+                case UpgradeKind.Tool: return 3f;
+                default: return 2f;
+            }
+        }
+
+        /// <summary>
+        /// The upgrade a seat takes from an offer when no brain hint says which: by rule, the heaviest
+        /// (UpgradeWeight), the first offered on a tie. A policy has one PickUpgrade action and no per-item ones,
+        /// so the item is chosen by this rule, not by the network.
+        /// </summary>
+        public static UpgradeKind UpgradeByRule(IReadOnlyList<UpgradeKind> offer)
+        {
+            UpgradeKind best = offer[0];
+            for (int i = 1; i < offer.Count; i++)
+            {
+                if (UpgradeWeight(offer[i]) > UpgradeWeight(best))
+                {
+                    best = offer[i];
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// The ability a Trasher takes at its unlock when no brain hint says which: by rule, gas when a gas room
+        /// holds someone to gas right now, else the virus (it works anywhere). A policy has one PickAbility action,
+        /// so the ability is chosen by this rule, not by the network.
+        /// </summary>
+        public static TrasherAbility AbilityByRule(SeatView view, MapData map) =>
+            GasRoomWithPlayers(view, map, out _) != null ? TrasherAbility.Gas : TrasherAbility.Virus;
+
         /// <summary>The gas room (map gas_rooms) holding the most visible non-partner players, or null when none holds one.</summary>
         public static ZoneDef? GasRoomWithPlayers(SeatView view, MapData map, out int count)
         {

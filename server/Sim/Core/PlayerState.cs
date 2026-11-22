@@ -69,6 +69,12 @@ namespace Sim.Core
 
         /// <summary>ActiveTime at which this Trasher may use the Toxic Gas again.</summary>
         public float GasReadyAt { get; internal set; }
+
+        /// <summary>ActiveTime at which this seat may dash again (every seat).</summary>
+        public float DashReadyAt { get; internal set; }
+
+        /// <summary>Spots cleaned since the last dash refill (dash.cleans_refill refills it).</summary>
+        public int CleansSinceDash { get; internal set; }
         /// <summary>True once the seat owns the Backpack (bag capacity BackpackCap).</summary>
         public bool HasBackpack { get; internal set; }
 

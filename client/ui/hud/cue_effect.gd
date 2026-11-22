@@ -39,7 +39,7 @@ func _draw() -> void:
 			var a: float = TAU * float(i) / float(PUFF_BLOBS)
 			var c: Vector2 = Vector2.from_angle(a) * SPREAD_PX * progress + Vector2(0.0, -PUFF_RISE_PX * progress)
 			draw_circle(c, BLOB_RADIUS_PX * (0.6 + progress), Color(PUFF_COLOR, 0.7 * fade))
-	elif kind == "dump":
+	elif kind == "dump" or kind == "repollute":
 		for i in SPLAT_BLOBS:
 			var a: float = TAU * float(i) / float(SPLAT_BLOBS) + 0.4 * float(i % 3)
 			var reach: float = SPREAD_PX * (0.5 + 0.5 * float(i % 3)) * minf(progress * 4.0, 1.0)

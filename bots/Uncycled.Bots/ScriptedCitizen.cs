@@ -9,7 +9,7 @@ using Sim.World;
 namespace Uncycled.Bots
 {
     /// <summary>
-    /// Scripted Cleaner (v2): heal yourself or call the free meeting when infected, pick from an open
+    /// Scripted Cleaner (v2): leave a gas-warned room, heal yourself or call the free meeting when infected, pick from an open
     /// upgrade offer, fix a jammed machine, repair smog, report a fresh body, bring a full bag to the
     /// machine, clean the nearest dirty spot, wander when every spot is clean. Votes by suspicion.
     /// </summary>
@@ -17,6 +17,7 @@ namespace Uncycled.Bots
     {
         private const int FixMaxPathTiles = 6;
         private const float TakenRadius = 2.5f;
+        private const float TakenGraceS = 2f;
         private const int SmogMaxPathTiles = 25;
         private const float WanderStayChance = 0.3f;
         private const float EarlyDeliverChance = 0.2f;
@@ -34,6 +35,19 @@ namespace Uncycled.Bots
             MapData map = Mem.Map;
             Vec2 me = view.Me.Position;
             MapDistances dist = MapDistances.For(map);
+
+            // 0. the gas warning of the room I stand in (public to everyone): walk out, before anything else
+            if (mask[(int)BotAction.LeaveGas])
+            {
+                return Same(BotAction.LeaveGas, true);
+            }
+
+            // 0b. a gas warning runs: do not walk into the warned room (drop a walk that goes there)
+            ZoneDef? warned = ActionQuery.WarnedRoomToAvoid(view, Mem, map);
+            if (warned != null && Exec.WalksInto(warned))
+            {
+                return Choice.Now(BotAction.Stay);
+            }
 
             // 1. infected: heal yourself, else call the one free meeting
             if (mask[(int)BotAction.HealSelf])
@@ -61,8 +75,11 @@ namespace Uncycled.Bots
                     return Choice.Keep;
                 }
 
-                // someone already stands at the machine: they are fixing it (one repairer at a time), leave it to them
-                bool taken = ActionQuery.SomeoneNear(view, machine.Position, TakenRadius) && Vec2.Distance(me, machine.Position) > TakenRadius;
+                // someone already stands at the machine: they are fixing it (one repairer at a time), leave it to them,
+                // but only for a repair's time (fix_s + 2 s from the first sighting of the jam): after that the
+                // one standing there is a bystander, and the jam has no end of its own
+                bool inGrace = Mem.MachineJamSeenAt != null && view.MatchTime - Mem.MachineJamSeenAt.Value <= Mem.Config.MachineFixS + TakenGraceS;
+                bool taken = inGrace && ActionQuery.SomeoneNear(view, machine.Position, TakenRadius) && Vec2.Distance(me, machine.Position) > TakenRadius;
                 int d = dist.Path(me, machine.Position);
                 if (!taken && d != MapDistances.Unreachable && (d <= FixMaxPathTiles || view.Me.Bags > 0))
                 {
@@ -145,15 +162,7 @@ namespace Uncycled.Bots
         /// <summary>A weighted draw from the offer: a backpack or a tool pays most, a heal or a mask is insurance.</summary>
         private UpgradeKind PickUpgrade(IReadOnlyList<UpgradeKind> offer)
         {
-            float Weight(UpgradeKind k)
-            {
-                switch (k)
-                {
-                    case UpgradeKind.Backpack: return 4f;
-                    case UpgradeKind.Tool: return 3f;
-                    default: return 2f;
-                }
-            }
+            float Weight(UpgradeKind k) => ActionQuery.UpgradeWeight(k);
 
             float total = offer.Sum(Weight);
             float roll = Rng.NextFloat() * total;

@@ -323,6 +323,24 @@ namespace Sim.Match
         public Vec2 Position { get; }
     }
 
+    /// <summary>dash_ok {pos, cooldown}. To the dasher only: where the dash ended (walls stop it) and the next cooldown.</summary>
+    public sealed class DashOkEvent : GameEvent
+    {
+        public DashOkEvent(byte seat, Vec2 position, float cooldown)
+            : base(Only(seat))
+        {
+            Seat = seat;
+            Position = position;
+            Cooldown = cooldown;
+        }
+
+        public byte Seat { get; }
+
+        public Vec2 Position { get; }
+
+        public float Cooldown { get; }
+    }
+
     /// <summary>repollute_ok {cooldown, count}. To the Trasher: Count is the re-pollutes so far.</summary>
     public sealed class RepolluteOkEvent : GameEvent
     {

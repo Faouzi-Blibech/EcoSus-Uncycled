@@ -39,6 +39,9 @@ var seat_id: int = -1
 var room_code: String = ""
 var reconnect_token: String = ""
 var host_seat: int = -1
+## Seats in the room (lobby "size") and the sizes the host may pick ("sizes").
+var room_size: int = 0
+var room_sizes: Array = []
 var map_id: String = ""
 var phase: String = "lobby"
 var tuning: Dictionary = {}
@@ -50,7 +53,7 @@ var map_version: String = ""
 ## task type id -> definition ({category, steps, min_s, consoles}) from welcome.tasks.tasks.
 var task_types: Dictionary = {}
 var poison: int = 0
-## "hit", "dump", "sabotage" -> seconds left.
+## "repollute", "virus", "gas", "sabotage" -> seconds left (Trashers only).
 var cooldowns: Dictionary = {}
 ## The running sabotage: {} or {kind ("fire"/"smog"), countdown (fire), held (fire console ids)}.
 var sabotage: Dictionary = {}
@@ -97,6 +100,16 @@ var meter: float = 0.0
 ## v2 (protocol 2). Spot id -> "dirty" or "clean", from every snapshot.
 var spots: Dictionary = {}
 var machine_jammed: bool = false
+## Seconds of my machine fix the server has counted (snapshot machine.repair_t); -1 when not counting.
+var machine_repair_t: float = -1.0
+## The open upgrade offer after a delivery (items), [] when none. Cleared by a pick or a new match.
+var upgrade_offer: Array = []
+## The Trasher's open ability choice (["virus", "gas"]), [] when none; ability_pick_sent stops a
+## second offer while the pick is on its way.
+var ability_choices: Array = []
+var ability_pick_sent: bool = false
+## True once ALERT called a meeting during the current infection (the server allows one).
+var alert_used: bool = false
 ## The room a toxic gas warning runs in ("" when none) and the seconds before it lands.
 var gas_room: String = ""
 var gas_in_s: float = 0.0
@@ -111,6 +124,8 @@ var infected_s: float = -1.0
 ## Trasher-only: re-pollutes so far and the unlocked ability ("", "virus" or "gas").
 var repollutes: int = 0
 var ability: String = ""
+## Seconds until my dash is ready (0 = ready, every role); -1 until a snapshot says.
+var dash_s: float = -1.0
 var match_t: float = 0.0
 var me_pos: Vector2 = Vector2.ZERO
 var has_me_pos: bool = false
@@ -207,6 +222,12 @@ func my_task_at_console(console_id: String) -> Dictionary:
 
 func min_s_for(task_type: String) -> float:
 	return float(Net.as_dict(task_types.get(task_type)).get("min_s", 0.0))
+
+
+## The seconds the server wants before spot_done: min_s, times spots.tool_time_mult with the Cleaning Tool.
+func clean_min_s(task_type: String) -> float:
+	var mult: float = float(Net.as_dict(tuning.get("spots")).get("tool_time_mult", 1.0)) if has_tool else 1.0
+	return min_s_for(task_type) * mult
 
 
 ## consoles[step % size], "" when the type is unknown.
@@ -316,6 +337,8 @@ func clear_room() -> void:
 	room_code = ""
 	reconnect_token = ""
 	host_seat = -1
+	room_size = 0
+	room_sizes = []
 	phase = "lobby"
 	seats = []
 	my_tasks = []
@@ -417,6 +440,11 @@ func _reset_match_state() -> void:
 	last_game_over = {}
 	spots = {}
 	machine_jammed = false
+	machine_repair_t = -1.0
+	upgrade_offer = []
+	ability_choices = []
+	ability_pick_sent = false
+	alert_used = false
 	gas_room = ""
 	gas_in_s = 0.0
 	_read_private({})
@@ -439,6 +467,7 @@ func _on_welcome(data: Dictionary) -> void:
 	room_code = str(data.get("room", ""))
 	reconnect_token = str(data.get("token", ""))
 	host_seat = int(data.get("host_seat", -1))
+	_read_room_size(data)
 	map_id = str(data.get("map_id", ""))
 	tuning = Net.as_dict(data.get("tuning"))
 	speed_px_per_s = float(tuning.get("speed_px_per_s", Net.tiles_to_px(Net.DEFAULT_SPEED_TILES_PER_S)))
@@ -507,9 +536,16 @@ func _on_welcome(data: Dictionary) -> void:
 	_save_saved()
 
 
+func _read_room_size(data: Dictionary) -> void:
+	room_size = int(data.get("size", room_size))
+	if data.has("sizes"):
+		room_sizes = Net.as_array(data.get("sizes"))
+
+
 func _on_lobby(data: Dictionary) -> void:
 	seats = Net.as_array(data.get("seats"))
 	host_seat = int(data.get("host_seat", host_seat))
+	_read_room_size(data)
 	_mark_out_from_seats()
 	phase = "lobby"
 	_save_saved()
@@ -556,13 +592,16 @@ func _on_snapshot(data: Dictionary) -> void:
 		cooldowns = Net.as_dict(me["cd"]).duplicate()
 	if data.has("me"):
 		_read_private(me)
+		_offer_ability_after_rejoin()
 	if data.has("spots"):
 		spots = {}
 		for e in Net.as_array(data["spots"]):
 			var spot: Dictionary = Net.as_dict(e)
 			if spot.has("id"):
 				spots[str(spot["id"])] = str(spot.get("state", "dirty"))
-	machine_jammed = Net.as_dict(data.get("machine")).get("jammed") == true
+	var machine: Dictionary = Net.as_dict(data.get("machine"))
+	machine_jammed = machine.get("jammed") == true
+	machine_repair_t = _num(machine.get("repair_t"), -1.0)
 	var gas: Dictionary = Net.as_dict(data.get("gas"))
 	gas_room = str(gas.get("room", ""))
 	gas_in_s = _num(gas.get("in_s"), 0.0)
@@ -588,7 +627,20 @@ func _read_private(me: Dictionary) -> void:
 	masks = int(_num(me.get("masks"), 0.0))
 	infected_s = _num(me.get("infected_s"), -1.0)
 	repollutes = int(_num(me.get("repollutes"), 0.0))
+	dash_s = _num(me.get("dash"), -1.0)
 	ability = str(me["ability"]) if me.get("ability") is String else ""
+
+
+## The server sends ability_unlocked once and not again after a rejoin: a Trasher with enough
+## re-pollutes and no ability yet gets the choice back, unless a pick is on its way.
+func _offer_ability_after_rejoin() -> void:
+	if not ability.is_empty():
+		ability_choices = []
+		ability_pick_sent = false
+		return
+	var unlock_after: int = int(_num(Net.as_dict(tuning.get("trasher")).get("unlock_after"), 3.0))
+	if role == "polluter" and ability_choices.is_empty() and not ability_pick_sent and repollutes >= unlock_after:
+		ability_choices = ["virus", "gas"]
 
 
 static func _num(v: Variant, fallback: float) -> float:
@@ -612,20 +664,58 @@ func _on_event(data: Dictionary) -> void:
 				my_tasks.append(added)
 		"poisoned":
 			poison = int(data.get("level", poison))
-		"hit_ok":
-			cooldowns["hit"] = float(data.get("cooldown", 0.0))
-		"dump_ok":
-			cooldowns["dump"] = float(data.get("cooldown", 0.0))
+		"delivered":
+			bags = 0
+			meter = _num(data.get("meter"), meter)
+		"upgrade_offer":
+			upgrade_offer = Net.as_array(data.get("items")).duplicate()
+		"spot_cleaned":
+			bags = int(_num(data.get("bags"), bags))
+			var cleaned: String = str(data.get("spot", ""))
+			if not cleaned.is_empty():
+				spots[cleaned] = "clean"
+		"infected":
+			infected_s = _num(data.get("countdown"), infected_s)
+			alert_used = false
+		"healed":
+			infected_s = -1.0
+		"mask_used":
+			masks = maxi(masks - 1, 0)
+		"gas_warning":
+			gas_room = str(data.get("room", ""))
+			gas_in_s = _num(data.get("in_s"), 0.0)
+		"gas_done":
+			gas_room = ""
+			gas_in_s = 0.0
+		"dash_ok":
+			dash_s = _num(data.get("cooldown"), 0.0)
+		"repollute_ok":
+			cooldowns["repollute"] = _num(data.get("cooldown"), 0.0)
+			repollutes = int(_num(data.get("count"), repollutes))
+		"ability_unlocked":
+			ability_choices = Net.as_array(data.get("choices")).duplicate()
+		"ability_ok":
+			ability = str(data.get("ability", ""))
+			ability_choices = []
+			ability_pick_sent = false
 		"you_are_out":
 			is_out = true
 			out_cause = str(data.get("cause", ""))
 			_mark_out(seat_id)
 		"sabotage_started":
-			sabotage = {"kind": str(data.get("kind", "")), "held": []}
-			if data.has("countdown"):
-				sabotage["countdown"] = float(data["countdown"])
+			# A machine jam is not the smog/fire object: snapshots report it as machine.jammed.
+			if str(data.get("kind", "")) == "machine":
+				machine_jammed = true
+			else:
+				sabotage = {"kind": str(data.get("kind", "")), "held": []}
+				if data.has("countdown"):
+					sabotage["countdown"] = float(data["countdown"])
 		"sabotage_ended":
-			sabotage = {}
+			if str(data.get("kind", "")) == "machine":
+				machine_jammed = false
+				machine_repair_t = -1.0
+			else:
+				sabotage = {}
 		"meeting_started":
 			phase = "meeting"
 			phrases_used = 0

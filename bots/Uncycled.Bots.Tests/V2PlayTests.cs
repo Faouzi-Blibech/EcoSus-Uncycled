@@ -170,6 +170,28 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
+        public void CleanerBot_RepairsTheJam_EvenWhenABystanderStandsNextToTheMachine()
+        {
+            TestMatch m = TestMatch.Create(2);
+            byte cit = m.FirstSeatOf(Role.Citizen);
+            byte pol = m.FirstSeatOf(Role.Polluter);
+            m.TickFor(m.Config.TrasherStartCooldownS + 1f);
+            Assert.True(m.Engine.Apply(pol, new SabotageCommand(SabotageKind.Machine)).IsOk);
+            Vec2 machine = m.Map.ConsolesOfKind(ConsoleKind.Machine)[0].Position;
+            m.Engine.TestTeleport(pol, new MapDistances_Helper(m).WalkableNear(machine, 1.5f)); // stands there, never fixes
+            m.Engine.TestTeleport(cit, new MapDistances_Helper(m).WalkableNear(machine, 4f));
+            BrainRig rig = OneSeat(m, cit);
+
+            rig.RunUntil(() => false, 3f);
+            Assert.True(m.Engine.Machine.Jammed);
+            Assert.DoesNotContain(rig.Sent, c => c.Command is FixCommand f && f.Holding); // first the Cleaner leaves it to the one standing there
+
+            rig.RunUntil(() => !m.Engine.Machine.Jammed, m.Config.MachineFixS + 2f + 12f);
+
+            Assert.False(m.Engine.Machine.Jammed, "a bystander blocked the repair for good");
+        }
+
+        [Fact]
         public void CleanerBot_DeliversItsBagAtTheMachine()
         {
             TestMatch m = TestMatch.Create(2);
@@ -281,7 +303,151 @@ namespace Uncycled.Bots.Tests
             var suspicion = new SuspicionModel();
             suspicion.Update(bot.Memory, bot.View());
             Assert.Equal(SuspicionModel.FakeCleanWeight, suspicion.Score(3));
-            Assert.True(SuspicionModel.FakeCleanWeight >= SuspicionModel.VoteThreshold);
+            // one tell is a cue, not a vote: it needs a second one
+            Assert.True(SuspicionModel.FakeCleanWeight <= 25f);
+            Assert.True(SuspicionModel.FakeCleanWeight < SuspicionModel.VoteThreshold);
+            Assert.Null(suspicion.Vote(bot.View(), Role.Citizen, new byte[0]));
+        }
+
+        [Fact]
+        public void FakeClean_ASabotageThatStartsMidClean_InterruptsAnHonestCleaner_NoRecord()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f, (b, spot) =>
+            {
+                if (b.MatchTime >= 104f)
+                {
+                    b.Sabotage = new SabotageView(SabotageKind.Smog, null, new List<string>(), 1f);
+                }
+            });
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_AGasWarningThatStartsMidClean_InterruptsAnHonestCleaner_NoRecord()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f, (b, spot) =>
+            {
+                b.Memory.GasWarnedRoom = b.MatchTime >= 104f ? "gas_market" : null;
+            });
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_AJamThatStartsMidClean_InterruptsAnHonestCleaner_NoRecord()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f, (b, spot) =>
+            {
+                b.MachineJammed = b.MatchTime >= 104f;
+            });
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_ALeaverSeenNextAtTheSmogPanel_IsDropped()
+        {
+            TestMatch m = TestMatch.Create();
+            // the smog runs while the leaver stands at the spot and leaves it dirty
+            (SyntheticBot bot, Sim.World.ConsoleDef spot) = WatchSeat3(m, 6f, (b, sp) =>
+            {
+                b.Sabotage = new SabotageView(SabotageKind.Smog, null, new List<string>(), 1f);
+            });
+            Assert.Single(bot.Memory.Inferred); // a leave after the alarm began is still a tell
+
+            Sim.World.ConsoleDef panel = m.Map.ConsolesOfKind(ConsoleKind.SmogFix)[0];
+            bot.MatchTime += 8f;
+            bot.Players.Clear();
+            bot.Players.Add(SyntheticBot.Player(3, panel.Position.X, panel.Position.Y));
+            bot.Observe();
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_ALeaverSeenNextAtTheJammedMachine_IsDropped()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f, (b, sp) =>
+            {
+                b.MachineJammed = true;
+            });
+            Assert.Single(bot.Memory.Inferred);
+
+            Sim.World.ConsoleDef machine = m.Map.ConsolesOfKind(ConsoleKind.Machine)[0];
+            bot.MatchTime += 8f;
+            bot.Players.Clear();
+            bot.Players.Add(SyntheticBot.Player(3, machine.Position.X, machine.Position.Y));
+            bot.Observe();
+
+            Assert.Empty(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_ARecordMadeBeforeTheAlarm_IsNotWipedByStandingAtTheRepairConsole()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f); // the leave happens with no alarm running
+            Assert.Single(bot.Memory.Inferred);
+
+            // then the leaver jams the machine (or a partner starts smog) and stands at the console
+            bot.MachineJammed = true;
+            Sim.World.ConsoleDef machine = m.Map.ConsolesOfKind(ConsoleKind.Machine)[0];
+            bot.MatchTime += 3f;
+            bot.Players.Clear();
+            bot.Players.Add(SyntheticBot.Player(3, machine.Position.X, machine.Position.Y));
+            bot.Observe();
+
+            Assert.Single(bot.Memory.Inferred);
+        }
+
+        [Fact]
+        public void FakeClean_IsSpokenAsAVagueLine_NeverAsAnEyewitnessLine_SoAListenerAddsHearsay()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, _) = WatchSeat3(m, 6f);
+            Assert.Single(bot.Memory.Inferred);
+            var log = new MeetingLog(m.Content.Phrases!);
+            log.Add(new ChatEvent(5, "sus", new[] { ChatArg.ForSeat(3) }, null, false, null), 5f); // 25 + 15 = 40: the bot accuses
+            bot.Phase = MatchPhase.Meeting;
+            bot.Meeting = new MeetingView(MeetingStage.Discussion, 30f, 0, MeetingCause.Emergency, new List<ClueInfo>(), new List<byte>(), false, null, 0f, 0, new byte[] { 0, 3, 5 });
+
+            MeetingState state = MeetingStateBuilder.Build(bot.View(), bot.Memory, log, new SuspicionModel(), null);
+            MeetingDecision said = RuleDecider.Decide(state);
+
+            Assert.Equal("sus", said.PhraseId); // not saw_dump with a zone
+            Assert.Equal((byte?)3, said.Seat);
+            Assert.Null(said.Zone);
+
+            // a listener that saw nothing itself adds the hearsay weight, not a vote
+            SeatView live = m.Engine.ViewFor(0);
+            var listenerMem = new BotMemory(m.Map, m.Config);
+            listenerMem.Observe(live, 100f, new List<WitnessRecord>());
+            var listener = new SuspicionModel();
+            listener.Update(listenerMem, live);
+            var heard = new MeetingLog(m.Content.Phrases!);
+            heard.Add(new ChatEvent(1, said.PhraseId, new[] { ChatArg.ForSeat(said.Seat!.Value) }, null, false, null), 6f);
+            listener.ApplyChat(heard, listenerMem, 0);
+            Assert.Equal(SuspicionModel.HearsayWeight, listener.Score(3));
+        }
+
+        [Fact]
+        public void FakeClean_ALeaverSeenElsewhereKeepsTheRecord()
+        {
+            TestMatch m = TestMatch.Create();
+            (SyntheticBot bot, Sim.World.ConsoleDef spot) = WatchSeat3(m, 6f);
+
+            bot.Sabotage = new SabotageView(SabotageKind.Smog, null, new List<string>(), 1f);
+            bot.MatchTime += 8f;
+            bot.Players.Clear();
+            bot.Players.Add(SyntheticBot.Player(3, spot.Position.X + 5f, spot.Position.Y));
+            bot.Observe();
+
+            Assert.Single(bot.Memory.Inferred);
         }
 
         [Fact]
@@ -309,6 +475,124 @@ namespace Uncycled.Bots.Tests
             Assert.Empty(bot.Memory.Inferred);
         }
 
+
+        // ---------- the gas warning ----------
+
+        /// <summary>
+        /// Two Cleaners stand in gas_market (one cleaning market_bins, one idle); a Trasher gasses it. Only
+        /// these two Cleaners think. Returns (match, the two seats).
+        /// </summary>
+        private static (TestMatch M, BrainRig Rig, byte A, byte B) GasMarketSetup(int masksForA, ulong seed = 2)
+        {
+            TestMatch m = TestMatch.Create(seed);
+            byte pol = m.FirstSeatOf(Role.Polluter);
+            var cits = m.Engine.Players.Where(p => p.Role == Role.Citizen).Select(p => p.Seat).Take(2).ToArray();
+            byte a = cits[0];
+            byte b = cits[1];
+            m.TickFor(m.Config.TrasherStartCooldownS + 1f);
+            m.Engine.Find(pol)!.Ability = TrasherAbility.Gas;
+            m.Engine.Find(a)!.Masks = masksForA;
+            Sim.World.ConsoleDef bins = m.Map.FindConsole("market_bins")!;
+            m.Engine.Spots.Find(bins.Id)!.State = SpotState.Dirty;
+            m.Engine.TestTeleport(a, bins.Position);
+            m.Engine.TestTeleport(b, new Vec2(7.5f, 3.5f));
+            var rig = new BrainRig(m, seed + 5);
+            for (byte s = 0; s < m.Config.Seats; s++)
+            {
+                if (s != a && s != b)
+                {
+                    rig.Skip.Add(s);
+                }
+            }
+
+            rig.RunUntil(() => false, 2.5f); // A starts its clean and is committed to it
+            Assert.Equal(MatchPhase.Playing, m.Engine.Phase);
+            Assert.True(m.Engine.Apply(pol, new GasCommand("gas_market")).IsOk);
+            return (m, rig, a, b);
+        }
+
+        [Fact]
+        public void CleanersInAWarnedRoom_LeaveItBeforeTheGasFires_EvenWhileCleaning()
+        {
+            (TestMatch m, BrainRig rig, byte a, byte b) = GasMarketSetup(0);
+
+            rig.RunUntil(() => m.Events.Any(e => e is GasDoneEvent), m.Config.GasWarningS + 1f);
+
+            Assert.Contains(m.Events, e => e is GasDoneEvent);
+            Assert.True(m.Engine.Find(a)!.IsActive, "the Cleaner who was cleaning was gassed");
+            Assert.True(m.Engine.Find(b)!.IsActive, "the idle Cleaner was gassed");
+            Assert.DoesNotContain(m.Events, e => e is YouAreOutEvent o && o.Cause == OutCause.Gas);
+        }
+
+        [Fact]
+        public void CleanersWhoLeftAWarnedRoom_StayOutUntilTheGasFires_OverTenSeeds()
+        {
+            for (ulong seed = 1; seed <= 10; seed++)
+            {
+                (TestMatch m, BrainRig rig, byte a, byte b) = GasMarketSetup(0, seed);
+                Sim.World.ZoneDef room = m.Map.GasRooms.First(z => z.Id == "gas_market");
+                var left = new HashSet<byte>();
+                int max = (int)((m.Config.GasWarningS + 1f) / TestMatch.Dt);
+                for (int i = 0; i < max && !m.Events.Any(e => e is GasDoneEvent); i++)
+                {
+                    rig.Step();
+                    foreach (byte c in new[] { a, b })
+                    {
+                        bool inside = room.Contains(m.Engine.Find(c)!.Position);
+                        Assert.False(inside && left.Contains(c), "seed " + seed + ": Cleaner " + c + " walked back into the warned room");
+                        if (!inside)
+                        {
+                            left.Add(c);
+                        }
+                    }
+                }
+
+                Assert.DoesNotContain(m.Events, e => e is YouAreOutEvent o && o.Cause == OutCause.Gas);
+            }
+        }
+
+        [Fact]
+        public void ACleanerOutsideAWarnedRoom_NeverEntersIt_EvenForTheOnlyDirtySpot_OverTenSeeds()
+        {
+            for (ulong seed = 1; seed <= 10; seed++)
+            {
+                TestMatch m = TestMatch.Create(seed);
+                byte pol = m.FirstSeatOf(Role.Polluter);
+                byte cit = m.FirstSeatOf(Role.Citizen);
+                m.TickFor(m.Config.TrasherStartCooldownS + 1f);
+                m.Engine.Find(pol)!.Ability = TrasherAbility.Gas;
+                foreach (Sim.World.ConsoleDef c in m.Map.ConsolesOfKind(ConsoleKind.Task))
+                {
+                    m.Engine.Spots.Find(c.Id)!.State = SpotState.Clean;
+                }
+
+                BrainRig rig = OneSeat(m, cit, seed + 5);
+                Sim.World.ZoneDef room = m.Map.GasRooms.First(z => z.Id == "gas_market");
+                rig.RunUntil(() => false, 1f);
+                m.Engine.TestTeleport(cit, MapDistances.For(m.Map).NearestWalkable(new Vec2(10.5f, 4.5f)));
+                Assert.False(room.Contains(m.Engine.Find(cit)!.Position));
+                m.Engine.Spots.Find("market_bins")!.State = SpotState.Dirty; // the only dirty spot is inside the room that is warned now
+                Assert.True(m.Engine.Apply(pol, new GasCommand("gas_market")).IsOk);
+
+                int max = (int)(m.Config.GasWarningS / TestMatch.Dt);
+                for (int i = 0; i < max; i++)
+                {
+                    rig.Step();
+                    Assert.False(room.Contains(m.Engine.Find(cit)!.Position), "seed " + seed + ": the Cleaner entered the warned room");
+                }
+            }
+        }
+
+        [Fact]
+        public void CleanerWithAMask_MayStayInAWarnedRoom()
+        {
+            (TestMatch m, BrainRig rig, byte a, _) = GasMarketSetup(1);
+
+            rig.RunUntil(() => m.Events.Any(e => e is GasDoneEvent), m.Config.GasWarningS + 1f);
+
+            Assert.Contains(m.Events, e => e is MaskUsedEvent u && u.Seat == a);
+            Assert.True(m.Engine.Find(a)!.IsActive);
+        }
         // ---------- the observation ----------
 
         [Fact]
@@ -340,12 +624,36 @@ namespace Uncycled.Bots.Tests
             {
                 using (System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(line))
                 {
-                    foreach (string key in new[] { "deliveries", "repollutes", "abilities_used", "wrong_ejections", "correct_ejections", "meter" })
+                    foreach (string key in new[] { "deliveries", "repollutes", "abilities_used", "wrong_ejections", "correct_ejections", "meter", "chat_lines" })
                     {
                         Assert.True(doc.RootElement.TryGetProperty(key, out _), key + " missing in " + line);
                     }
                 }
             }
+        }
+
+        [Fact]
+        public void Eval_MeetingsHaveChat_LikeTheLiveRoom()
+        {
+            string dir = Uncycled.Server.Content.ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));
+            Uncycled.Server.Content.ContentBundle content = Uncycled.Server.Content.ContentLoader.Load(dir);
+            var options = Uncycled.Train.HostOptions.Parse(new[] { "--eval", "--content", dir, "--seeds", "1-6", "--threads", "2" });
+
+            IReadOnlyList<string> lines = Uncycled.Train.EvalRunner.Run(options, content, Uncycled.Train.HostBrains.Scripted(new BotsSettings(), content));
+
+            int meetings = 0;
+            int chat = 0;
+            foreach (string line in lines)
+            {
+                using (System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(line))
+                {
+                    meetings += doc.RootElement.GetProperty("meetings").GetInt32();
+                    chat += doc.RootElement.GetProperty("chat_lines").GetInt32();
+                }
+            }
+
+            Assert.True(meetings > 0, "no meeting in 6 matches: the test checks nothing");
+            Assert.True(chat > 0, "the eval meetings had no chat line in " + meetings + " meetings");
         }
 
         [Fact]

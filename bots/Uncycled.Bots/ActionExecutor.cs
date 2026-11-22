@@ -56,6 +56,8 @@ namespace Uncycled.Bots
         private bool _citizenStep;
         private bool _prevFire;
         private bool _prevSmog;
+        private bool _prevInfected;
+        private bool _watchedWait;
         private int _prevPoison;
         private bool _sessionOpen;
         private bool _holdingMachine;
@@ -64,6 +66,8 @@ namespace Uncycled.Bots
         private UpgradeKind? _upgrade;
         private TrasherAbility? _ability;
         private string? _room;
+        private string? _zoneId;
+        private string? _startSpotHint;
 
         private byte? _targetSeat;
         private int _targetPile = -1;
@@ -114,6 +118,12 @@ namespace Uncycled.Bots
 
         public string? RoomHint { get; set; }
 
+        /// <summary>GoZoneAt: the id of the zone to walk to.</summary>
+        public string? ZoneHint { get; set; }
+
+        /// <summary>Seconds a machine fix hold stays committed (the brain is not asked) before it is asked again.</summary>
+        public float MaxFixHoldS { get; set; } = 8f;
+
         /// <summary>Re-pollute and plant: seconds to wait at the spot while someone watches, before acting anyway.</summary>
         public float ActPatienceS { get; set; } = 3f;
 
@@ -127,11 +137,15 @@ namespace Uncycled.Bots
 
         public bool Busy { get; private set; }
         /// <summary>
-        /// True while a citizen works a task step it has opened (the session is open at the console).
+        /// True while a citizen works a task step it has opened (the session is open at the console), holds the
+        /// machine fix (for at most MaxFixHoldS), or a Trasher waits at a spot while watched (Repollute, PlantVirus).
         /// It is not asked for decisions then: Begin is ignored, and only a phase change out of Playing,
-        /// a sabotage alarm that starts, or an own hit (poison rising) stops it.
+        /// a sabotage alarm that starts, an own hit (poison rising), the gas warning of the room it stands in
+        /// or the start of its infection stops it.
         /// </summary>
-        public bool Committed => Busy && ((_citizenStep && _action == BotAction.UseHere && _stage >= 1) || _sessionOpen);
+        public bool Committed => Busy && ((_citizenStep && _action == BotAction.UseHere && _stage >= 1) || _sessionOpen || HoldingFix || _watchedWait);
+
+        private bool HoldingFix => _action == BotAction.FixMachine && _holdingMachine && _stage >= 1 && _timer < MaxFixHoldS;
 
         /// <summary>Task steps that failed by chance (pace task_fail_chance) and were worked again.</summary>
         public int StepFailures { get; private set; }
@@ -149,8 +163,11 @@ namespace Uncycled.Bots
                 return;
             }
 
-            if (Busy && action == _action && ActionQuery.Playing(view))
+            if (Busy && action == _action && ActionQuery.Playing(view) && !HintRestarts())
             {
+                // the same action keeps running; a hint that names the target it already has is spent
+                SpotHint = null;
+                ZoneHint = null;
                 return;
             }
 
@@ -177,14 +194,18 @@ namespace Uncycled.Bots
             }
 
             string? spotHint = SpotHint;
+            _startSpotHint = spotHint;
             _upgrade = UpgradeChoice;
             _ability = AbilityChoice;
             _room = RoomHint;
+            _zoneId = ZoneHint;
+            ZoneHint = null;
             SpotHint = null;
             UpgradeChoice = null;
             AbilityChoice = null;
             RoomHint = null;
             _sessionOpen = false;
+            _watchedWait = false;
             _infectedCall = false;
             _waited = 0f;
             _nav.Clear();
@@ -268,6 +289,13 @@ namespace Uncycled.Bots
                     break;
                 }
 
+                case BotAction.GoZoneAt:
+                {
+                    int z = ZoneIndex(map, _zoneId);
+                    StartWalk(me, z >= 0 ? ActionQuery.ZoneCentre(map, z) : (Vec2?)null, map, now);
+                    break;
+                }
+
                 case BotAction.GoEmergency:
                     StartWalk(me, ActionQuery.NthOfKind(map, ConsoleKind.Emergency, 0)?.Position, map, now);
                     break;
@@ -280,6 +308,12 @@ namespace Uncycled.Bots
                 case BotAction.GoSmogPanel:
                     StartWalk(me, ActionQuery.NthOfKind(map, ConsoleKind.SmogFix, 0)?.Position, map, now);
                     break;
+                case BotAction.LeaveGas:
+                {
+                    ZoneDef? warned = Memory != null ? ActionQuery.WarnedGasRoomHere(view, Memory, map) : null;
+                    StartWalk(me, warned != null ? ActionQuery.NearestCellOutside(map, warned, me) : (Vec2?)null, map, now);
+                    break;
+                }
 
                 case BotAction.GoDirtySpot:
                 case BotAction.FinishSpot:
@@ -424,11 +458,22 @@ namespace Uncycled.Bots
                 _pendingCancelPile = -1;
             }
 
-            if (Committed && StopTriggered(view))
+            if (!Committed)
             {
-                // the step is lost: the session stays open at the server and is never finished
+                NoteAlarms(view);
+            }
+            else if (StopTriggered(view))
+            {
+                // the step is lost: the session stays open at the server and is never finished; a machine hold is let go
                 Busy = false;
                 _stage = 0;
+                _watchedWait = false;
+                if (_holdingMachine)
+                {
+                    _pendingRelease = _consoleId;
+                    _holdingMachine = false;
+                }
+
                 return;
             }
 
@@ -451,10 +496,12 @@ namespace Uncycled.Bots
                 case BotAction.GoZone0:
                 case BotAction.GoZone1:
                 case BotAction.GoZone2:
+                case BotAction.GoZoneAt:
                 case BotAction.GoEmergency:
                 case BotAction.GoFireA:
                 case BotAction.GoFireB:
                 case BotAction.GoSmogPanel:
+                case BotAction.LeaveGas:
                     WalkStep(view, dt, now, send);
                     break;
 
@@ -507,12 +554,12 @@ namespace Uncycled.Bots
                     Busy = false;
                     if (_upgrade != null || (Memory?.UpgradeOffer != null && Memory.UpgradeOffer.Count > 0))
                     {
-                        send(new PickUpgradeCommand(_upgrade ?? Memory!.UpgradeOffer![0]));
+                        send(new PickUpgradeCommand(_upgrade ?? ActionQuery.UpgradeByRule(Memory!.UpgradeOffer!)));
                     }
 
                     break;
                 case BotAction.PickAbility:
-                    send(new PickAbilityCommand(_ability ?? TrasherAbility.Virus));
+                    send(new PickAbilityCommand(_ability ?? ActionQuery.AbilityByRule(view, _map ?? Memory!.Map)));
                     Busy = false;
                     break;
                 case BotAction.HealSelf:
@@ -521,9 +568,11 @@ namespace Uncycled.Bots
                     break;
                 case BotAction.GasRoom:
                     Busy = false;
-                    if (_room != null)
+                    // no brain hint (a policy): the gas room holding the most players, as the scripted brain picks it
+                    string? gasRoom = _room ?? ActionQuery.GasRoomWithPlayers(view, _map ?? Memory!.Map, out _)?.Id;
+                    if (gasRoom != null)
                     {
-                        send(new GasCommand(_room));
+                        send(new GasCommand(gasRoom));
                     }
 
                     break;
@@ -1006,6 +1055,7 @@ namespace Uncycled.Bots
                 case BotAction.GoZone0:
                 case BotAction.GoZone1:
                 case BotAction.GoZone2:
+                case BotAction.GoZoneAt:
                 case BotAction.FollowSlot0:
                 case BotAction.FollowSlot1:
                 case BotAction.FollowSlot2:
@@ -1129,22 +1179,71 @@ namespace Uncycled.Bots
         }
 
         /// <summary>
-        /// A committed step ends when an alarm starts (fire or smog turns active) or the bot is hit (own
-        /// poison rises). Only the own SeatView is read; a meeting is handled by Step (not Playing).
+        /// A committed step ends when an alarm starts (fire or smog turns active), the room it stands in is
+        /// warned of gas (no mask), the bot is hit (own poison rises) or gets infected. Only the own SeatView is read;
+        /// a meeting is handled by Step (not Playing).
         /// </summary>
         private bool StopTriggered(SeatView view)
         {
             bool fire = ActionQuery.FireActive(view);
             bool smog = ActionQuery.SmogActive(view);
             int poison = view.Me.Poison ?? 0;
-            bool stop = (fire && !_prevFire) || (smog && !_prevSmog) || poison > _prevPoison;
-            _prevFire = fire;
-            _prevSmog = smog;
-            _prevPoison = poison;
+            bool infected = ActionQuery.Infected(view);
+            bool stop = (fire && !_prevFire) || (smog && !_prevSmog) || poison > _prevPoison || (infected && !_prevInfected) || GasWarnedHere(view);
+            NoteAlarms(view);
             return stop;
         }
 
+        /// <summary>What a committed step compares against: the alarms as they were at the last decision tick.</summary>
+        private void NoteAlarms(SeatView view)
+        {
+            _prevFire = ActionQuery.FireActive(view);
+            _prevSmog = ActionQuery.SmogActive(view);
+            _prevPoison = view.Me.Poison ?? 0;
+            _prevInfected = ActionQuery.Infected(view);
+        }
+
+        /// <summary>
+        /// The gas warning of the room this Cleaner stands in (no mask): the public warning in the view, or the one the
+        /// brain keeps in memory. A Trasher and a mask holder may stay.
+        /// </summary>
+        private bool GasWarnedHere(SeatView view)
+        {
+            MapData? map = _map ?? Memory?.Map;
+            if (map == null || view.Me.Role != Role.Citizen || view.Me.Masks > 0)
+            {
+                return false;
+            }
+
+            string? warned = view.Gas?.Room ?? Memory?.GasWarnedRoom;
+            foreach (ZoneDef room in map.GasRooms)
+            {
+                if (room.Id == warned && room.Contains(view.Me.Position))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         // ---------- v2: spots, machine ----------
+
+        private static int ZoneIndex(MapData map, string? id)
+        {
+            for (int z = 0; id != null && z < map.Zones.Count; z++)
+            {
+                if (map.Zones[z].Id == id)
+                {
+                    return z;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>A pending spot or zone hint that differs from the one the running action started with (not from the target it ended up on: the executor may refuse a hint) (Begin of the same action restarts it).</summary>
+        private bool HintRestarts() => (SpotHint != null && SpotHint != _startSpotHint) || (ZoneHint != null && ZoneHint != _zoneId);
 
         private static bool SpotIs(SeatView view, string id, SpotState state)
         {
@@ -1166,10 +1265,12 @@ namespace Uncycled.Bots
         /// </summary>
         private ConsoleDef? ChooseSpot(SeatView view, MapData map, SpotState state, bool inRangeOnly, bool polluter, string? hint)
         {
+            // a Cleaner without a mask keeps out of the room whose gas warning runs
+            ZoneDef? avoid = !polluter && Memory != null ? ActionQuery.WarnedRoomToAvoid(view, Memory, map) : null;
             if (hint != null)
             {
                 ConsoleDef? hinted = map.FindConsole(hint);
-                if (hinted != null && SpotIs(view, hint, state))
+                if (hinted != null && SpotIs(view, hint, state) && (avoid == null || !avoid.Contains(hinted.Position)))
                 {
                     return hinted;
                 }
@@ -1177,10 +1278,16 @@ namespace Uncycled.Bots
 
             if (inRangeOnly)
             {
-                return ActionQuery.SpotInRange(view, map, state);
+                ConsoleDef? inRange = ActionQuery.SpotInRange(view, map, state);
+                return inRange != null && avoid != null && avoid.Contains(inRange.Position) ? null : inRange;
             }
 
             List<ConsoleDef> spots = ActionQuery.SpotsNearestFirst(view, map, state);
+            if (avoid != null)
+            {
+                spots = spots.FindAll(c => !avoid.Contains(c.Position));
+            }
+
             foreach (ConsoleDef c in spots)
             {
                 if (polluter || !ActionQuery.SomeoneNear(view, c.Position, SpotCrowdRadius))
@@ -1191,6 +1298,9 @@ namespace Uncycled.Bots
 
             return spots.Count > 0 ? spots[0] : null;
         }
+
+        /// <summary>True while a walk is under way whose goal lies inside the zone (a Cleaner heading into a warned gas room).</summary>
+        public bool WalksInto(ZoneDef zone) => Busy && _nav.HasGoal && zone.Contains(_nav.Goal);
 
         private void BeginSpotAction(ConsoleDef? spot, SeatView view, MapData map, float now)
         {
@@ -1333,11 +1443,13 @@ namespace Uncycled.Bots
                 return;
             }
 
+            _watchedWait = false;
             if (ActionQuery.Watchers(view, Cfg, _map) > 0)
             {
                 _waited += dt;
                 if (_waited < ActPatienceS)
                 {
+                    _watchedWait = true; // committed: the Trasher holds still while watched
                     return;
                 }
 
@@ -1434,6 +1546,7 @@ namespace Uncycled.Bots
             _pendingCancelPile = -1;
             _sessionOpen = false;
             _holdingMachine = false;
+            _watchedWait = false;
             _infectedCall = false;
             _action = BotAction.Stay;
             if (Memory != null)

@@ -309,8 +309,8 @@ func _build_discussion() -> void:
 	if str(Session.meeting.get("cause", "")) == "emergency":
 		cause_key = "MEETING_CAUSE_EMERGENCY"
 	_left.add_child(UIKit.make_label(tr(cause_key) % _name_of(by), 14))
-	var bar: float = float(Session.meeting.get("task_bar", 0.0)) * 100.0
-	_left.add_child(UIKit.make_label(tr("MEETING_TASK_BAR") % bar, 12, MUTED))
+	# v2: the cleanliness meter (the v1 task bar is out of play).
+	_left.add_child(UIKit.make_label(tr("HUD_METER") % Session.meter, 12, MUTED))
 	_left.add_child(UIKit.make_label(tr("MEETING_CLUES"), 12, MUTED))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -414,12 +414,12 @@ func _seat_card(seat: int, has_voted: bool, enabled: bool) -> Button:
 	btn.custom_minimum_size = CARD_SIZE
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.toggle_mode = true
-	btn.icon = Assets.texture(ICON_PATH % int(Session.seat_info(seat).get("color", 0)))
+	var tint: Color = Session.seat_color(seat)
+	btn.icon = Assets.texture(ICON_PATH % int(Session.seat_info(seat).get("color", 0)), tint)
 	btn.expand_icon = true
 	btn.add_theme_constant_override("icon_max_width", ICON_SIZE)
 	btn.text = _seat_text(seat, has_voted)
 	btn.clip_text = true
-	var tint: Color = Session.seat_color(seat)
 	btn.add_theme_color_override("font_color", tint)
 	btn.add_theme_color_override("font_disabled_color", tint)
 	btn.disabled = not enabled
