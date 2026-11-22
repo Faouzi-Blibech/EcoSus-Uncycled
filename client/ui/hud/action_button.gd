@@ -10,8 +10,11 @@ extends Button
 signal hold_started()
 signal hold_ended()
 
-## A 64 px disc with its label pill underneath (PILL_GAP + PILL_H), never over the art.
+## A special ability (the role's own actions): a 64 px disc with its label pill underneath
+## (PILL_GAP + PILL_H), never over the art.
 const BUTTON_SIZE: Vector2 = Vector2(64.0, 78.0)
+## A basic action every player has (Use, Report, Dash, Fix): a smaller 52 px disc, same pill.
+const BASIC_SIZE: Vector2 = Vector2(52.0, 66.0)
 const RING_WIDTH: float = 4.0
 const RING_COLOR: Color = Color(1.0, 0.85, 0.3, 0.95)
 const RING_TRACK_COLOR: Color = Color(0.0, 0.0, 0.0, 0.45)

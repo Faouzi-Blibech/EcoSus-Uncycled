@@ -14,7 +14,10 @@ extends RefCounted
 ## "repollute": {visible, ready, cooldown},
 ## "ability": {visible, ready, cooldown, kind ("virus", "gas" or "")}, "heal": bool, "alert": bool,
 ## "sabotage": {...}, "fix": {visible, kind ("fire", "smog", "machine" or "")}, "clean": bool,
-## "dash": {visible, ready, cooldown}}.
+## "dash": {visible, ready, cooldown}, "use_look": {kind, count}}.
+## use_look says what USE will do at the console in reach, so the button can show it: "clean" (a spot,
+## also for a Trasher's fake clean), "recycle" (the machine; count = bags carried), "meeting" (the
+## emergency table) or "use" (anything else).
 ## The server still validates every action; these rules only decide what the player is offered.
 
 
@@ -22,6 +25,7 @@ static func button_states(ctx: Dictionary) -> Dictionary:
 	var states: Dictionary = {
 		"use": false, "use_wait": 0.0, "report": false, "repollute": _hidden(), "ability": _hidden_ability(), "sabotage": _hidden(),
 		"fix": {"visible": false, "kind": ""}, "clean": false, "heal": false, "alert": false, "dash": _hidden(),
+		"use_look": {"kind": "use", "count": 0},
 	}
 	if str(ctx.get("phase", "")) != "playing" or bool(ctx.get("is_out", false)):
 		return states
@@ -38,10 +42,12 @@ static func button_states(ctx: Dictionary) -> Dictionary:
 			# Trasher fakes the clean on the same dirty spots (faking on a clean one would give them away).
 			var dirty: bool = str(ctx.get("near_spot_state", "")) == "dirty"
 			states["use"] = dirty and (polluter or not bool(ctx.get("bags_full", false)))
+			states["use_look"] = {"kind": "clean", "count": 0}
 		"emergency":
 			# The server takes a call only emergency_min_since_meeting_s after the start or the last
 			# meeting: the button shows with a ring until then instead of being refused.
 			states["use"] = int(ctx.get("emergencies_left", 0)) > 0
+			states["use_look"] = {"kind": "meeting", "count": 0}
 			if bool(states["use"]):
 				states["use_wait"] = maxf(0.0, float(ctx.get("emergency_wait", 0.0)))
 		"machine":
@@ -51,6 +57,7 @@ static func button_states(ctx: Dictionary) -> Dictionary:
 					states["fix"] = {"visible": true, "kind": "machine"}
 				else:
 					states["use"] = int(ctx.get("bags", 0)) > 0
+					states["use_look"] = {"kind": "recycle", "count": int(ctx.get("bags", 0))}
 		"fire_fix", "smog_fix":
 			# Only an active citizen fixes (the server rejects a polluter), and only the kind that runs.
 			var running: String = str((ctx.get("sabotage", {}) as Dictionary).get("kind", ""))

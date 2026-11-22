@@ -8,7 +8,7 @@ const STEP_S: float = 1.0 / 60.0
 ## A ready avatar in the tree (its body and tag exist), standing at `pos`.
 func _avatar(pos: Vector2 = Vector2.ZERO) -> Avatar:
 	var a: Avatar = load("res://world/player/avatar.tscn").instantiate() as Avatar
-	a.setup(1, "Tester", Color.RED, 1)
+	a.setup(1, "Tester", Color.RED)
 	a.position = pos
 	(Engine.get_main_loop() as SceneTree).root.add_child(a)
 	track(a)
@@ -30,7 +30,6 @@ func _assert_at_rest(a: Avatar, scale: Vector2, pos: Vector2, why: String) -> vo
 	assert_true(a._body.position.is_equal_approx(pos), why + ": body back in place")
 	assert_eq(a._body.modulate, Color.WHITE, why + ": no flash, alpha 1")
 	assert_near(a._label.modulate.a, 1.0, 0.001, why + ": name shown")
-	assert_near(a._icon.modulate.a, 1.0, 0.001, why + ": icon shown")
 
 
 func test_dash_look_squishes_travels_pops_and_ends_at_rest() -> bool:

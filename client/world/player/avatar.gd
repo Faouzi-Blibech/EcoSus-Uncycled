@@ -1,20 +1,17 @@
 class_name Avatar
 extends Node2D
 ## One player as seen in the world: the seat's character (its lobby skin, the sprout by default)
-## playing its walk cycle while it moves, standing on a seat-coloured shadow, with the seat icon
-## and the name above it (so colour is never the only cue). Used for the local player and the
-## remote ones. The node's origin is the player's position; the feet stand just below it.
+## playing its walk cycle while it moves, standing on a seat-coloured shadow, with the name above
+## it (the name and the character, not colour alone, tell players apart). Used for the local player
+## and the remote ones. The node's origin is the player's position; the feet stand just below it.
 
 const Characters := preload("res://ui/widgets/characters.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const TINT_SHADER: Shader = preload("res://ui/widgets/sprout_tint.gdshader")
-const ICON_PATH: String = "res://assets/player/icons/icon_%02d.png"
 ## Collision radius (the body is a circle for walls and range checks, whatever its art).
 const RADIUS_TILES: float = 0.3
 ## How tall a character is drawn, in tiles (the art is scaled uniformly to this height).
 const HEIGHT_TILES: float = 1.4
-const ICON_PX: float = 10.0
-const ICON_GAP_PX: float = 2.0
 const NAME_GAP_PX: float = 1.0
 const OUT_ALPHA: float = 0.45
 const OUT_DARKEN: float = 0.5
@@ -96,7 +93,6 @@ var _color: Color = Color.WHITE
 var _out: bool = false
 var _poison: int = 0
 var _name: String = ""
-var _icon_index: int = 0
 var _skin: String = Characters.DEFAULT_ID
 var _faces_right: bool = true
 var _radius_px: float = 0.0
@@ -122,7 +118,6 @@ var _fx_trail: PackedVector2Array = PackedVector2Array()
 var _fx_trail_t: PackedFloat32Array = PackedFloat32Array()
 
 @onready var _body: Sprite2D = $Body
-@onready var _icon: Sprite2D = $Icon
 @onready var _label: Label = $NameLabel
 
 
@@ -143,11 +138,10 @@ func set_display_name(display_name: String) -> void:
 
 
 ## skin: the seat's lobby skin id ("" or an unknown id draws the default character).
-func setup(seat_id: int, display_name: String, color: Color, icon_index: int, skin: String = "") -> void:
+func setup(seat_id: int, display_name: String, color: Color, skin: String = "") -> void:
 	seat = seat_id
 	_name = display_name
 	_color = color
-	_icon_index = icon_index
 	_skin = skin if Characters.has(skin) else Characters.DEFAULT_ID
 	if is_node_ready():
 		_apply()
@@ -281,7 +275,6 @@ func _along(v: Vector2) -> Vector2:
 
 func _set_tag_alpha(a: float) -> void:
 	_label.modulate.a = a
-	_icon.modulate.a = a
 
 
 ## The dash start point in this node's space.
@@ -339,22 +332,14 @@ func _apply() -> void:
 	_tint_body()
 
 	_label.text = _name
-	var tex: Texture2D = Assets.texture(ICON_PATH % _icon_index, _color)
-	_icon.texture = tex
-	var biggest: float = maxf(tex.get_width(), tex.get_height())
-	_icon.scale = Vector2.ONE * (ICON_PX / biggest)
 	_place_tag()
 	queue_redraw()
 
 
-## Name above the head, the seat icon just left of the name's text.
+## Name above the head.
 func _place_tag() -> void:
 	var head_y: float = _radius_px - Net.tiles_to_px(HEIGHT_TILES)
 	_label.position.y = head_y - _label.custom_minimum_size.y - NAME_GAP_PX
-	var font: Font = _label.get_theme_font("font")
-	var size: int = _label.get_theme_font_size("font_size")
-	var text_w: float = font.get_string_size(_name, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x if font != null else 0.0
-	_icon.position = Vector2(-text_w / 2.0 - ICON_GAP_PX - ICON_PX / 2.0, _label.position.y + _label.custom_minimum_size.y / 2.0)
 
 
 func _tint_body() -> void:

@@ -200,6 +200,8 @@ HUD_TASK_DONE,done,fait,تمت
 HUD_TIMER,%d:%02d,%d:%02d,%d:%02d
 ACT_USE,Use,Agir,استخدم
 ACT_REPORT,Report,Signaler,أبلغ
+ACT_RECYCLE,Recycle (%d),Recycler (%d),أعد التدوير (%d)
+ACT_MEETING,Meeting,Réunion,اجتماع
 TASK_SORT_WASTE,Sort waste,Trier les déchets,فرز النفايات
 TASK_SORT_WASTE_DEPOT,Sort waste,Trier les déchets,فرز النفايات
 TASK_TURN_COMPOST,Turn the compost,Retourner le compost,تقليب السماد العضوي

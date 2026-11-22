@@ -50,11 +50,21 @@ const ACTION_LABEL: Dictionary = {
 	"use": "ACT_USE", "report": "ACT_REPORT", "repollute": "ACT_REPOLLUTE", "ability": "ACT_VIRUS", "sabotage": "ACT_SABOTAGE",
 }
 const SABOTAGE_KINDS: Array[String] = ["machine", "smog"]
-const CHOICE_SIZE: Vector2 = Vector2(52.0, 66.0)
+## The Machine / Smog sabotage choices are basic-size buttons.
+const CHOICE_SIZE: Vector2 = ActionButton.BASIC_SIZE
+## Basic actions (every player) get the smaller button; the role abilities keep the big one. FIX
+## shares the USE slot, so it is basic too; CLEAN, HEAL and ALERT share special slots.
+const BASIC_ACTIONS: Array[String] = ["report", "use"]
 ## The painted button of each grid action (assets/ui/hud/btn_<art>.png); the ability slot follows
 ## the unlocked ability (virus or gas).
 const ACTION_ART: Dictionary = {
 	"use": "use", "report": "report", "repollute": "repollute", "ability": "virus", "sabotage": "sabotage",
+}
+## What the USE button looks like for each ActionRules use_look kind: [art, label key]. ACT_RECYCLE
+## takes the bag count. The meeting borrows the alert bell until it has its own art.
+const USE_LOOK: Dictionary = {
+	"use": ["use", "ACT_USE"], "clean": ["clean", "ACT_CLEAN"], "recycle": ["recycle", "ACT_RECYCLE"],
+	"meeting": ["alert", "ACT_MEETING"],
 }
 const BANNER_WIDTH_PX: float = 220.0
 ## Width of the button grid (two 64 px slots and the gap), used to put the choices beside it.
@@ -101,6 +111,8 @@ var _clean_button: ActionButton
 var _choices: HBoxContainer
 var _banner: SabotageBanner
 var _states: Dictionary = {}
+## The use_look the USE button shows now ({kind, count}), so it is only redrawn on a change.
+var _use_look: Dictionary = {}
 var _fire_total: int = -1
 var _toast: Toast
 var _reveal: RoleReveal
@@ -389,11 +401,13 @@ func _build_buttons() -> void:
 	var slots: Dictionary = {}
 	for action in ACTIONS:
 		var slot: Control = Control.new()
-		slot.custom_minimum_size = ActionButton.BUTTON_SIZE
+		var button_size: Vector2 = button_size_for(action)
+		slot.custom_minimum_size = button_size
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		grid.add_child(slot)
 		slots[action] = slot
 		var b: ActionButton = ActionButton.new()
+		b.custom_minimum_size = button_size
 		b.text = action_text(tr(ACTION_LABEL[action]), _key_text(str(ACTION_INPUT[action])), DisplayServer.is_touchscreen_available())
 		b.visible = false
 		b.pressed.connect(_on_action_pressed.bind(action))
@@ -430,15 +444,23 @@ func _build_buttons() -> void:
 	_dash_button.anchor_top = 1.0
 	_dash_button.anchor_bottom = 1.0
 	_dash_button.offset_right = -(MARGIN_PX + GRID_WIDTH_PX + 6.0)
-	_dash_button.offset_left = _dash_button.offset_right - ActionButton.BUTTON_SIZE.x
+	# Dash is basic: the small button, left of the grid, level with the row above the bottom one.
+	_dash_button.custom_minimum_size = ActionButton.BASIC_SIZE
+	_dash_button.offset_left = _dash_button.offset_right - ActionButton.BASIC_SIZE.x
 	_dash_button.offset_bottom = -(MARGIN_PX + ActionButton.BUTTON_SIZE.y + 6.0)
-	_dash_button.offset_top = _dash_button.offset_bottom - ActionButton.BUTTON_SIZE.y
+	_dash_button.offset_top = _dash_button.offset_bottom - ActionButton.BASIC_SIZE.y
 	_root.add_child(_dash_button)
+
+
+## The button size of a grid action: basic (every player) or special (the role's ability).
+static func button_size_for(action: String) -> Vector2:
+	return ActionButton.BASIC_SIZE if BASIC_ACTIONS.has(action) else ActionButton.BUTTON_SIZE
 
 
 ## A tap button that fills `slot`, hidden until the rules show it; pressing it runs `action`.
 func _make_tap_button(slot: Control, label_key: String, input_action: String, action: String) -> ActionButton:
 	var b: ActionButton = ActionButton.new()
+	b.custom_minimum_size = slot.custom_minimum_size
 	b.text = action_text(tr(label_key), _key_text(input_action), DisplayServer.is_touchscreen_available())
 	b.visible = false
 	b.pressed.connect(_on_action_pressed.bind(action))
@@ -450,6 +472,7 @@ func _make_tap_button(slot: Control, label_key: String, input_action: String, ac
 ## A hold button (see ActionButton.hold_mode) that fills `slot`, hidden until the rules show it.
 func _make_hold_button(slot: Control, label_key: String, input_action: String) -> ActionButton:
 	var b: ActionButton = ActionButton.new()
+	b.custom_minimum_size = slot.custom_minimum_size
 	b.hold_mode = true
 	b.text = action_text(tr(label_key), _key_text(input_action), DisplayServer.is_touchscreen_available())
 	b.visible = false
@@ -693,6 +716,7 @@ func _update_buttons() -> void:
 	var use_wait: float = float(states.get("use_wait", 0.0))
 	var use_b: ActionButton = _buttons["use"] as ActionButton
 	use_b.disabled = use_wait > 0.0
+	_apply_use_look(use_b, Net.as_dict(states.get("use_look")))
 	use_b.set_ring(use_wait, float(Net.as_dict(Session.tuning.get("meeting")).get("emergency_min_since_meeting_s", Session.EMERGENCY_MIN_SINCE_FALLBACK_S)))
 	_set_simple(states, "report")
 	_pulse_report()
@@ -711,6 +735,26 @@ func _update_buttons() -> void:
 	_sabotage_spare.visible = _sabotage_slot.visible
 	_update_clean(bool(states["clean"]))
 	_choices.visible = _choices.visible and bool(Net.as_dict(states["sabotage"]).get("ready", false))
+
+
+## USE takes the art and label of what it will do here (clean, recycle n bags, call a meeting).
+func _apply_use_look(use_b: ActionButton, look: Dictionary) -> void:
+	if look == _use_look:
+		return
+	_use_look = look
+	var face: Array = use_look_face(look)
+	use_b.set_art(str(face[0]))
+	use_b.text = action_text(str(face[1]), _key_text("act_use"), DisplayServer.is_touchscreen_available())
+
+
+## [art, translated label] of the USE button for an ActionRules use_look; unknown kinds look like USE.
+static func use_look_face(look: Dictionary) -> Array:
+	var kind: String = str(look.get("kind", "use"))
+	var entry: Array = USE_LOOK.get(kind, USE_LOOK["use"]) as Array
+	var label: String = TranslationServer.translate(StringName(str(entry[1])))
+	if kind == "recycle":
+		label = label % int(look.get("count", 0))
+	return [str(entry[0]), label]
 
 
 ## FIX: a hold button for the fire and the jammed machine ("Hold"), a tap for the smog panel ("Fix").

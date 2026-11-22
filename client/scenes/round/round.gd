@@ -159,7 +159,7 @@ func _ready() -> void:
 	add_child(_fx_holder)
 
 	_player = LocalPlayerScene.instantiate() as LocalPlayer
-	_player.avatar.setup(Session.seat_id, _own_name(), Session.seat_color(Session.seat_id), maxi(Session.seat_id, 0), _skin_of(Session.seat_id))
+	_player.avatar.setup(Session.seat_id, _own_name(), Session.seat_color(Session.seat_id), _skin_of(Session.seat_id))
 	_depth.add_child(_player)
 	_build_machine()
 	_camera = CameraScript.new() as FollowCamera
@@ -380,7 +380,7 @@ func _update_remote(remote: Dictionary) -> void:
 		var a: Avatar = _avatars.get(seat) as Avatar
 		if a == null:
 			a = AvatarScene.instantiate() as Avatar
-			a.setup(int(seat), Session.seat_name(int(seat)), Session.color_of(int(info["color"])), int(seat), _skin_of(int(seat)))
+			a.setup(int(seat), Session.seat_name(int(seat)), Session.color_of(int(info["color"])), _skin_of(int(seat)))
 			_avatars_holder.add_child(a)
 			_avatars[seat] = a
 		a.set_display_name(Session.seat_name(int(seat)))
