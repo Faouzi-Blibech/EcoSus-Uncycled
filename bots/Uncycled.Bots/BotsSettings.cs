@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
+using Sim.Core;
 
 namespace Uncycled.Bots
 {
@@ -37,8 +38,33 @@ namespace Uncycled.Bots
         /// <summary>Human pace (bots.json "pace" block).</summary>
         public PaceSettings Pace { get; } = new PaceSettings();
 
-        /// <summary>"scripted" or "neural".</summary>
+        /// <summary>"scripted", "neural" (both roles), "neural_polluter" (Trasher network only) or "neural_citizen" (Cleaner network only). Case does not matter; any other value plays scripted.</summary>
         public string Brain { get; set; } = "scripted";
+
+        /// <summary>True when this role plays its network under the Brain setting. The one answer used by the factory and the server.</summary>
+        public bool UsesNetwork(Role role)
+        {
+            if (string.Equals(Brain, "neural", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return string.Equals(Brain, role == Role.Polluter ? "neural_polluter" : "neural_citizen", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>A message when Brain is not one of the accepted values (it then plays scripted), else null.</summary>
+        public string? UnknownBrainMessage()
+        {
+            foreach (string known in new[] { "scripted", "neural", "neural_polluter", "neural_citizen" })
+            {
+                if (string.Equals(Brain, known, StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+            }
+
+            return "unknown bot brain setting \"" + Brain + "\" (use scripted, neural, neural_polluter or neural_citizen): the scripted brain plays";
+        }
 
         public static BotsSettings Load(string path)
         {

@@ -16,7 +16,7 @@
   "dash":   { "tiles": 6, "cooldown_s": 20, "cleans_refill": 5 },
   "spots":  { "bag_meter_add": 6, "repollute_meter_sub": 5, "tool_time_mult": 0.5, "relitter_s": 60 },
   "bags":   { "cap": 1, "backpack_cap": 3 },
-  "trasher": { "repollute_cooldown_s": 20, "unlock_after": 3, "virus_cooldown_s": 30, "gas_cooldown_s": 90, "gas_warning_s": 10, "start_cooldown_s": 10 },
+  "trasher": { "repollute_cooldown_s": 20, "unlock_after": 3, "virus_cooldown_s": 30, "gas_cooldown_s": 90, "gas_warning_s": 5, "start_cooldown_s": 10 },
   "machine": { "fix_s": 4 },
   "virus":  { "start_s": 60, "fatal_s": 10, "grow_s": 90, "heal_range": 1.5 },
   "tasks":  { "common": 0, "short": 0, "long": 0 },
