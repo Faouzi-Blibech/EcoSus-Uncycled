@@ -11,8 +11,6 @@ const LanguagePicker := preload("res://ui/widgets/language_picker.gd")
 
 const COLUMN_WIDTH_PX: float = 270.0
 ## Reddit's orange, so the button reads as the subreddit link.
-const COMMUNITY_COLOR: Color = Color("ff4500")
-const COMMUNITY_PRESSED_COLOR: Color = Color("cc3700")
 
 var _name_edit: LineEdit
 var _lang: LanguagePicker
@@ -95,26 +93,15 @@ func _ready() -> void:
 	row.move_child(community_btn, 0)
 
 
-## Orange button that opens the subreddit in the browser (a new tab on the web build).
+## The kit's orange pill (the community colour, in the game's style) that opens the subreddit in
+## the browser (a new tab on the web build).
 func _make_community_button() -> Button:
-	var btn: Button = UIKit.make_button(tr("SETTINGS_COMMUNITY"))
+	var btn: Button = UIKit.make_button(tr("SETTINGS_COMMUNITY"), 120.0, "orange")
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.tooltip_text = Settings.COMMUNITY_URL
-	for state in ["normal", "hover", "focus"]:
-		btn.add_theme_stylebox_override(state, _flat_box(COMMUNITY_COLOR))
-	btn.add_theme_stylebox_override("pressed", _flat_box(COMMUNITY_PRESSED_COLOR))
-	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		btn.add_theme_color_override(state, Color.WHITE)
 	btn.pressed.connect(func() -> void: OS.shell_open(Settings.COMMUNITY_URL))
 	return btn
 
-
-func _flat_box(color: Color) -> StyleBoxFlat:
-	var box: StyleBoxFlat = StyleBoxFlat.new()
-	box.bg_color = color
-	box.set_corner_radius_all(6)
-	box.set_content_margin_all(6)
-	return box
 
 
 func _on_save() -> void:

@@ -375,7 +375,7 @@ static func theme() -> Theme:
 	return _theme
 
 
-const BUTTON_KINDS: Array[String] = ["green", "cream", "coral"]
+const BUTTON_KINDS: Array[String] = ["green", "cream", "coral", "orange"]
 
 
 ## Theme type variation of a pill colour: "cream" -> "CreamButton".
