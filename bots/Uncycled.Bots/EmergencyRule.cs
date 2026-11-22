@@ -8,14 +8,17 @@ namespace Uncycled.Bots
     /// <summary>
     /// A Cleaner that sees a Trasher act walks to the emergency table and calls a meeting with the chance
     /// BotsSettings.EmergencyOnWitnessChance, one roll per act, only while the seat has emergency calls left, after its reaction
-    /// delay. An act is a re-pollute the seat witnessed (the engine's witness record), the machine jam going up, or a gas
-    /// warning going up (the two public alarms every Cleaner sees). A planted virus is seen by nobody but the planter, so it
-    /// is no trigger. One instance per seat: the scripted Cleaner and the live NeuralBrain use Watch/Active/Allowed (the base
-    /// class adds the reaction delay), the training host's network seats use Watch/Holds/Step like the report rule.
+    /// delay. An act is only what the seat sees: a re-pollute it witnessed (the engine's witness record), the machine jam going
+    /// up with the machine in its sight, or a gas warning going up with the gas room in its sight (or the seat inside it). The
+    /// public alarms heard from afar are no trigger, and a planted virus is seen by nobody but the planter.
+    /// One instance per seat: the scripted Cleaner and the live NeuralBrain use Watch/Active/Allowed (the base class adds the
+    /// reaction delay), the training host's network seats use Watch/Holds/Step like the report rule.
     /// Trashers are not forced.
     /// </summary>
     public sealed class EmergencyRule
     {
+        private const float SightEps = 0.001f;
+
         private readonly BotsSettings _settings;
         private readonly IRandom _rng;
         private bool _init;
@@ -66,12 +69,13 @@ namespace Uncycled.Bots
             }
 
             _seen = count;
-            if (jam && !_prevJam)
+            // the two public alarms count only for a seat that sees what they hit: the machine in its sight, the gas room in sight or around it
+            if (jam && !_prevJam && SeesMachine(view, map))
             {
                 acts++;
             }
 
-            if (gas && !_prevGas)
+            if (gas && !_prevGas && SeesGasRoom(view, map))
             {
                 acts++;
             }
@@ -92,6 +96,45 @@ namespace Uncycled.Bots
                 }
             }
         }
+
+        private static bool InSight(SeatView view, MapData map, Vec2 point) =>
+            Vec2.Distance(view.Me.Position, point) <= view.Me.Vision + SightEps && map.Sight.HasLineOfSight(view.Me.Position, point);
+
+        private static bool SeesMachine(SeatView view, MapData map)
+        {
+            ConsoleDef? machine = ActionQuery.MachineConsole(map);
+            return machine != null && InSight(view, map, machine.Position);
+        }
+
+        /// <summary>The seat stands in the warned room, or sees its centre or the point of it nearest to the seat.</summary>
+        private static bool SeesGasRoom(SeatView view, MapData map)
+        {
+            ZoneDef? room = null;
+            foreach (ZoneDef z in map.GasRooms)
+            {
+                if (z.Id == view.Gas!.Room)
+                {
+                    room = z;
+                    break;
+                }
+            }
+
+            if (room == null)
+            {
+                return false;
+            }
+
+            Vec2 me = view.Me.Position;
+            if (room.Contains(me))
+            {
+                return true;
+            }
+
+            var nearest = new Vec2(Clamp(me.X, room.X, room.X + room.Width), Clamp(me.Y, room.Y, room.Y + room.Height));
+            return InSight(view, map, nearest) || InSight(view, map, new Vec2(room.X + room.Width / 2f, room.Y + room.Height / 2f));
+        }
+
+        private static float Clamp(float v, float lo, float hi) => v < lo ? lo : (v > hi ? hi : v);
 
         /// <summary>A call is possible now: a call left, no fire, the meeting cooldown over, a table to walk to that no gas warning keeps the seat out of.</summary>
         public bool Allowed(SeatView view, BotMemory mem, MapData map)

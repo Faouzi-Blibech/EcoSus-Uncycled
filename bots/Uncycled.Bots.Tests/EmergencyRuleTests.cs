@@ -14,7 +14,7 @@ using Xunit;
 namespace Uncycled.Bots.Tests
 {
     /// <summary>
-    /// A Cleaner bot that sees a Trasher act (a re-pollute it witnesses, the machine jam, a gas warning) walks to the
+    /// A Cleaner bot that sees a Trasher act (a re-pollute it witnesses, the machine jam going up in its sight, a gas warning going up with the room in its sight) walks to the
     /// emergency table and calls a meeting with the chance emergency_on_witness_chance, one roll per act, only while the
     /// seat has emergency calls left and the meeting cooldown allows, after its reaction delay. Scripted Cleaners, the
     /// live NeuralBrain and the training host's network seats all follow it; Trashers are not forced.
@@ -59,6 +59,38 @@ namespace Uncycled.Bots.Tests
         /// <summary>A brain made mid-match assumes a meeting just ended: let its cooldown run out before the act under test.</summary>
         private static void Warm(BrainRig rig, TestMatch m) => rig.RunUntil(() => false, m.Config.EmergencyMinSinceMeetingS + 1f);
 
+        private static Vec2 MachinePos(TestMatch m) => m.Map.ConsolesOfKind(ConsoleKind.Machine)[0].Position;
+
+        private static ZoneDef GasRoom(TestMatch m) => m.Map.GasRooms.First(z => z.Id == "gas_market");
+
+        /// <summary>A walkable spot well outside the sight of a place: the zone centre farthest from it (the test checks it is beyond the vision).</summary>
+        private static Vec2 OutOfSightOf(TestMatch m, Func<Vec2, float> distanceToPlace)
+        {
+            MapDistances dist = MapDistances.For(m.Map);
+            Vec2 best = default;
+            float far = -1f;
+            foreach (ZoneDef z in m.Map.Zones)
+            {
+                Vec2 c = dist.NearestWalkable(new Vec2(z.X + z.Width / 2f, z.Y + z.Height / 2f));
+                float d = distanceToPlace(c);
+                if (d > far)
+                {
+                    far = d;
+                    best = c;
+                }
+            }
+
+            Assert.True(far > m.Config.VisionCitizen + 1f, "the map has no spot out of sight of the place, farthest " + far);
+            return best;
+        }
+
+        private static float DistanceToRoom(ZoneDef z, Vec2 p)
+        {
+            float dx = Math.Max(Math.Max(z.X - p.X, 0f), p.X - (z.X + z.Width));
+            float dy = Math.Max(Math.Max(z.Y - p.Y, 0f), p.Y - (z.Y + z.Height));
+            return (float)Math.Sqrt(dx * dx + dy * dy);
+        }
+
         private static void WitnessRepollute(TestMatch m, byte trasher, byte witness)
         {
             PlayerState p = m.Engine.Find(trasher)!;
@@ -101,12 +133,13 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
-        public void ScriptedCleaner_SeesTheMachineJam_CallsAnEmergency()
+        public void ScriptedCleaner_SeesTheMachineJamGoUp_CallsAnEmergency()
         {
             TestMatch m = Ready();
             byte cit = m.FirstSeatOf(Role.Citizen);
             BrainRig rig = OneScripted(m, cit, 1f);
             Warm(rig, m);
+            m.Engine.TestTeleport(cit, new MapDistances_Helper(m).WalkableNear(MachinePos(m), 3f));
             Assert.True(m.Engine.Apply(m.FirstSeatOf(Role.Polluter), new SabotageCommand(SabotageKind.Machine)).IsOk);
 
             rig.RunUntil(() => m.Engine.Phase == MatchPhase.Meeting, 40f);
@@ -116,7 +149,22 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
-        public void ScriptedCleaner_SeesAGasWarning_CallsAnEmergency()
+        public void ScriptedCleaner_FarFromTheMachine_IgnoresTheJam()
+        {
+            TestMatch m = Ready();
+            byte cit = m.FirstSeatOf(Role.Citizen);
+            BrainRig rig = OneScripted(m, cit, 1f);
+            Warm(rig, m);
+            m.Engine.TestTeleport(cit, OutOfSightOf(m, p => Vec2.Distance(p, MachinePos(m))));
+            Assert.True(m.Engine.Apply(m.FirstSeatOf(Role.Polluter), new SabotageCommand(SabotageKind.Machine)).IsOk);
+
+            rig.RunUntil(() => false, 25f); // the jam is public, the seat does not see the machine: the roll is never taken (it may go and fix it)
+
+            Assert.DoesNotContain(rig.Sent, s => s.Command is CallMeetingCommand);
+        }
+
+        [Fact]
+        public void ScriptedCleaner_InTheWarnedRoom_CallsAnEmergency()
         {
             TestMatch m = Ready();
             byte cit = m.FirstSeatOf(Role.Citizen);
@@ -124,12 +172,32 @@ namespace Uncycled.Bots.Tests
             m.Engine.Find(pol)!.Ability = TrasherAbility.Gas;
             BrainRig rig = OneScripted(m, cit, 1f);
             Warm(rig, m);
+            ZoneDef room = GasRoom(m);
+            m.Engine.TestTeleport(cit, MapDistances.For(m.Map).NearestWalkable(new Vec2(room.X + room.Width / 2f, room.Y + room.Height / 2f)));
             Assert.True(m.Engine.Apply(pol, new GasCommand("gas_market")).IsOk);
 
             rig.RunUntil(() => m.Engine.Phase == MatchPhase.Meeting, 40f);
 
             Assert.Equal(MatchPhase.Meeting, m.Engine.Phase);
             Assert.Single(AcceptedCalls(rig.Sent, cit));
+        }
+
+        [Fact]
+        public void ScriptedCleaner_OutOfSightOfTheGasRoom_IgnoresTheWarning()
+        {
+            TestMatch m = Ready();
+            byte cit = m.FirstSeatOf(Role.Citizen);
+            byte pol = m.FirstSeatOf(Role.Polluter);
+            m.Engine.Find(pol)!.Ability = TrasherAbility.Gas;
+            BrainRig rig = OneScripted(m, cit, 1f);
+            Warm(rig, m);
+            ZoneDef room = GasRoom(m);
+            m.Engine.TestTeleport(cit, OutOfSightOf(m, p => DistanceToRoom(room, p)));
+            Assert.True(m.Engine.Apply(pol, new GasCommand("gas_market")).IsOk);
+
+            rig.RunUntil(() => false, m.Config.GasWarningS - 1f);
+
+            Assert.DoesNotContain(rig.Sent, s => s.Command is CallMeetingCommand);
         }
 
         [Fact]
@@ -236,15 +304,35 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
-        public void NeuralCleaner_SeesTheMachineJam_CallsAnEmergency()
+        public void NeuralCleaner_SeesTheMachineJamGoUp_CallsAnEmergency()
         {
             TestMatch m = Ready();
             byte cit = m.FirstSeatOf(Role.Citizen);
             byte pol = m.FirstSeatOf(Role.Polluter);
 
-            List<CallMeetingCommand> calls = RunNeural(m, cit, 1f, () => Assert.True(m.Engine.Apply(pol, new SabotageCommand(SabotageKind.Machine)).IsOk), 30f);
+            List<CallMeetingCommand> calls = RunNeural(m, cit, 1f, () =>
+            {
+                m.Engine.TestTeleport(cit, new MapDistances_Helper(m).WalkableNear(MachinePos(m), 3f));
+                Assert.True(m.Engine.Apply(pol, new SabotageCommand(SabotageKind.Machine)).IsOk);
+            }, 30f);
 
             Assert.Single(calls);
+        }
+
+        [Fact]
+        public void NeuralCleaner_FarFromTheMachine_IgnoresTheJam()
+        {
+            TestMatch m = Ready();
+            byte cit = m.FirstSeatOf(Role.Citizen);
+            byte pol = m.FirstSeatOf(Role.Polluter);
+
+            List<CallMeetingCommand> calls = RunNeural(m, cit, 1f, () =>
+            {
+                m.Engine.TestTeleport(cit, OutOfSightOf(m, p => Vec2.Distance(p, MachinePos(m))));
+                Assert.True(m.Engine.Apply(pol, new SabotageCommand(SabotageKind.Machine)).IsOk);
+            }, 25f);
+
+            Assert.Empty(calls);
         }
 
         [Fact]
