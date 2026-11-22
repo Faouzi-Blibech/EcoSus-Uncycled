@@ -300,8 +300,8 @@ namespace Uncycled.Train
             return false;
         }
 
-        /// <summary>Bench helper: random valid actions from each agent's mask, then Advance.</summary>
-        public void AdvanceRandom(IRandom rng)
+        /// <summary>Bench helper: random valid actions from each agent's mask (never the policy index except, when given), then Advance.</summary>
+        public void AdvanceRandom(IRandom rng, int except = -1)
         {
             Prepare();
             var actions = new int[AgentCount];
@@ -311,13 +311,13 @@ namespace Uncycled.Train
                 int n = 0;
                 for (int i = 0; i < PolicyActionsV2.Count; i++)
                 {
-                    if (_masks[a][i])
+                    if (_masks[a][i] && i != except)
                     {
                         valid[n++] = i;
                     }
                 }
 
-                actions[a] = valid[rng.NextInt(n)];
+                actions[a] = n == 0 ? StayIndex : valid[rng.NextInt(n)];
             }
 
             Advance(actions);
