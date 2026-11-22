@@ -83,3 +83,16 @@ func test_an_open_finished_connection_is_not_busy() -> bool:
 	assert_true(script.is_busy(HTTPClient.STATUS_REQUESTING), "sending")
 	assert_true(script.is_busy(HTTPClient.STATUS_BODY), "receiving")
 	return true
+
+
+func test_shop_errors_and_currency() -> bool:
+	var script: GDScript = load("res://autoload/profile.gd")
+	assert_eq(script.buy_error_key(402), "SHOP_NOT_ENOUGH", "too few points")
+	assert_eq(script.buy_error_key(409), "SHOP_OWNED", "already owned")
+	assert_eq(script.buy_error_key(0), "SHOP_OFFLINE", "no answer")
+	var p: Node = track(script.new())
+	p.apply_profile({"points": 130, "currency": 30, "skins": ["robot"]})
+	assert_eq(p.currency, 30, "points left to spend")
+	p.apply_profile({"points": 40})
+	assert_eq(p.currency, 40, "old service without currency: all points")
+	return true

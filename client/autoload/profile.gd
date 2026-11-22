@@ -11,6 +11,11 @@ signal scan_opened()
 signal scan_failed()
 ## The service counted a new scan (points, streak or today's scans went up).
 signal scan_done()
+## The shop list arrived (shop_items).
+signal shop_loaded()
+## A purchase went through (the profile is already updated) or failed: reason is a strings.csv key.
+signal bought(item: String)
+signal buy_failed(reason_key: String)
 
 const Characters := preload("res://ui/widgets/characters.gd")
 const PROFILE_PATH: String = "user://profile.cfg"
@@ -21,6 +26,12 @@ const POLL_MAX_S: float = 180.0
 
 var player_id: String = ""
 var points: int = 0
+## Points not yet spent in the shop.
+var currency: int = 0
+## Points the last counted scan added (for the "+10" pop).
+var last_gain: int = 0
+## Shop items from GET /shop: [{id, price, name, emoji, kind}].
+var shop_items: Array = []
 var streak: int = 0
 var skins: Array[String] = []
 ## Selected skin id, "" when none (or when the saved one is not unlocked).
@@ -34,6 +45,8 @@ var unlock_all: bool = false
 
 var _get: HTTPRequest
 var _post: HTTPRequest
+var _shop_get: HTTPRequest
+var _buy: HTTPRequest
 var _poll: Timer
 var _poll_left: float = 0.0
 var _before: Dictionary = {}
@@ -43,6 +56,8 @@ func _ready() -> void:
 	load_or_create_id(PROFILE_PATH)
 	_get = _make_request(_on_profile)
 	_post = _make_request(_on_scan_start)
+	_shop_get = _make_request(_on_shop)
+	_buy = _make_request(_on_buy)
 	_poll = Timer.new()
 	_poll.wait_time = POLL_S
 	_poll.timeout.connect(_on_poll)
@@ -113,6 +128,7 @@ static func scan_counted(before: Dictionary, after: Dictionary) -> bool:
 
 func apply_profile(data: Dictionary) -> void:
 	points = int(data.get("points", 0))
+	currency = int(data.get("currency", points))
 	streak = int(data.get("streak", 0))
 	scans_today = int(data.get("scans_today", 0))
 	skins.clear()
@@ -161,6 +177,51 @@ func start_scan() -> void:
 		scan_failed.emit()
 
 
+## The shop list (GET /shop); shop_loaded fires when it arrives.
+func fetch_shop() -> void:
+	if not is_busy(_shop_get.get_http_client_status()):
+		_shop_get.request("%s/shop" % Settings.scan_url)
+
+
+## Buys a shop item with currency on the server; bought or buy_failed follows.
+func buy(item: String) -> void:
+	if is_busy(_buy.get_http_client_status()):
+		return
+	var body: String = JSON.stringify({"player_id": player_id, "item": item})
+	var err: Error = _buy.request("%s/shop/buy" % Settings.scan_url, ["Content-Type: application/json"], HTTPClient.METHOD_POST, body)
+	if err != OK:
+		buy_failed.emit("SHOP_OFFLINE")
+
+
+## strings.csv key for a refused purchase (HTTP code from /shop/buy).
+static func buy_error_key(code: int) -> String:
+	match code:
+		402:
+			return "SHOP_NOT_ENOUGH"
+		409:
+			return "SHOP_OWNED"
+		_:
+			return "SHOP_OFFLINE"
+
+
+func _on_shop(_result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var data: Dictionary = _json(code, body)
+	if data.is_empty():
+		return
+	shop_items = Net.as_array(data.get("items"))
+	shop_loaded.emit()
+
+
+func _on_buy(_result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var data: Dictionary = _json(code, body)
+	if data.is_empty():
+		buy_failed.emit(buy_error_key(code))
+		return
+	apply_profile(Net.as_dict(data.get("profile")))
+	changed.emit()
+	bought.emit(str(data.get("item", "")))
+
+
 func _snapshot() -> Dictionary:
 	return {"points": points, "streak": streak, "scans_today": scans_today}
 
@@ -179,6 +240,7 @@ func _on_profile(_result: int, code: int, _headers: PackedStringArray, body: Pac
 	apply_profile(data)
 	changed.emit()
 	if _poll_left > 0.0 and scan_counted(_before, _snapshot()):
+		last_gain = points - int(_before.get("points", points))
 		_poll_left = 0.0
 		_poll.stop()
 		scan_done.emit()
