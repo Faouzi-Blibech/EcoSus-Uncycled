@@ -729,6 +729,9 @@ func _on_event(data: Dictionary) -> void:
 				"ends_at": Net.local_time() + float(data.get("discussion_s", 0.0)),
 				"voted": [] as Array[int],
 				"votes": {},
+				# The reported body; the meeting scene shows the report splash once (not on a rejoin).
+				"pile": int(_num(data.get("pile"), -1.0)),
+				"splash": true,
 			}
 			if data.has("living"):
 				meeting["living"] = Net.as_array(data.get("living"))

@@ -9,6 +9,7 @@ const VoteRules := preload("res://scenes/meeting/vote_rules.gd")
 const Phrases := preload("res://content/phrases.gd")
 const PhrasePicker := preload("res://scenes/meeting/phrase_picker.gd")
 const ChatRules := preload("res://scenes/meeting/chat_rules.gd")
+const ReportSplash := preload("res://scenes/meeting/report_splash.gd")
 
 const CARD_SIZE: Vector2 = Vector2(150.0, UIKit.MIN_TOUCH)
 const ICON_SIZE: int = 32
@@ -144,6 +145,38 @@ func _ready() -> void:
 		for line in Session.ghost_chat:
 			if typeof(line) == TYPE_DICTIONARY:
 				_add_chat(line)
+	_show_report_splash()
+
+
+## A body report opens the meeting with the splash, once per meeting.
+func _show_report_splash() -> void:
+	if not bool(Session.meeting.get("splash", false)):
+		return
+	Session.meeting["splash"] = false
+	if str(Session.meeting.get("cause", "")) != "report":
+		return
+	var victim: int = report_victim(Session.meeting)
+	var color: Color = Session.seat_color(victim) if victim >= 0 else Color(0.6, 0.6, 0.6)
+	var by: String = _name_of(int(Session.meeting.get("by", -1)))
+	var sub: String = tr("MEETING_SPLASH_FOUND") % [by, _name_of(victim)] if victim >= 0 else tr("MEETING_CAUSE_REPORT") % by
+	var splash: Control = ReportSplash.new()
+	splash.setup(color, tr("MEETING_SPLASH_REPORT"), sub)
+	add_child(splash)
+
+
+## The fallen seat of the reported body (its clue), -1 when the clues do not say.
+static func report_victim(meeting: Dictionary) -> int:
+	var pile: int = int(meeting.get("pile", -1))
+	var fallback: int = -1
+	for clue in Net.as_array(meeting.get("clues")):
+		if typeof(clue) != TYPE_DICTIONARY or (clue as Dictionary).get("victim") == null:
+			continue
+		var victim: int = int((clue as Dictionary)["victim"])
+		if int((clue as Dictionary).get("pile", -2)) == pile:
+			return victim
+		if fallback < 0:
+			fallback = victim
+	return fallback
 
 
 func _process(delta: float) -> void:

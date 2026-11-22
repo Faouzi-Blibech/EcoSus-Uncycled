@@ -51,7 +51,7 @@ namespace Sim.Match
                 {
                     if (pile.IsPresent)
                     {
-                        piles.Add(new PileView(pile.Id, pile.Position, pile.Kind, pile.State));
+                        piles.Add(new PileView(pile.Id, pile.Position, pile.Kind, pile.State, pile.Victim));
                     }
                 }
             }
@@ -82,7 +82,7 @@ namespace Sim.Match
                 {
                     if (pile.IsPresent && CanSee(me, pile.Position))
                     {
-                        piles.Add(new PileView(pile.Id, pile.Position, pile.Kind, pile.State));
+                        piles.Add(new PileView(pile.Id, pile.Position, pile.Kind, pile.State, pile.Victim));
                     }
                 }
             }

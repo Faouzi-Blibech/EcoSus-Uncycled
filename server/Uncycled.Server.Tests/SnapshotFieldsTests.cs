@@ -10,10 +10,28 @@ namespace Uncycled.Server.Tests
     /// <summary>Snapshot fields added with the design requests: smog repair progress and the smog level.</summary>
     public class SnapshotFieldsTests
     {
-        private static SeatView View(SabotageView? sabotage)
+        private static SeatView View(SabotageView? sabotage, List<PileView>? piles = null)
         {
             var me = new MyView(0, Role.Citizen, new List<byte>(), null, PlayerStatus.Active, new Vec2(1f, 1f), 4f, 0, null, new List<TaskInfo>());
-            return new SeatView(0, MatchPhase.Playing, 0f, 10f, 600f, DeadlineClock.ActiveTime, 10f, 0f, 2, me, new List<PlayerView>(), new List<PileView>(), sabotage, null, null);
+            return new SeatView(0, MatchPhase.Playing, 0f, 10f, 600f, DeadlineClock.ActiveTime, 10f, 0f, 2, me, new List<PlayerView>(), piles ?? new List<PileView>(), sabotage, null, null);
+        }
+
+        /// <summary>A body carries the fallen seat, so the client draws it in that seat's colour.</summary>
+        [Fact]
+        public void Snapshot_body_pile_carries_the_victim_seat()
+        {
+            var piles = new List<PileView>
+            {
+                new PileView(4, new Vec2(3f, 3f), PileKind.Body, PileState.Fresh, 5),
+                new PileView(6, new Vec2(4f, 3f), PileKind.Dump, PileState.Fresh),
+            };
+
+            using JsonDocument doc = JsonDocument.Parse(Wire.Snapshot(View(null, piles), 1, 1.0));
+
+            JsonElement arr = doc.RootElement.GetProperty("piles");
+            Assert.Equal("body", arr[0].GetProperty("kind").GetString());
+            Assert.Equal(5, arr[0].GetProperty("victim").GetInt32());
+            Assert.False(arr[1].TryGetProperty("victim", out _));
         }
 
         [Fact]

@@ -43,12 +43,13 @@ namespace Sim.Match
 
     public sealed class PileView
     {
-        public PileView(int id, Vec2 position, PileKind kind, PileState state)
+        public PileView(int id, Vec2 position, PileKind kind, PileState state, byte? victim = null)
         {
             Id = id;
             Position = position;
             Kind = kind;
             State = state;
+            Victim = victim;
         }
 
         public int Id { get; }
@@ -58,6 +59,9 @@ namespace Sim.Match
         public PileKind Kind { get; }
 
         public PileState State { get; }
+
+        /// <summary>Body piles: the seat that fell (its colour is drawn on the body). Null for waste.</summary>
+        public byte? Victim { get; }
     }
 
     /// <summary>A spot's public state: every seat sees every spot (positions come from the map).</summary>

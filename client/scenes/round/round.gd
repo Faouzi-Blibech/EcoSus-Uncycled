@@ -312,6 +312,7 @@ func _process(delta: float) -> void:
 
 	_player.avatar.set_display_name(_own_name())
 	_update_remote(Session.sample(Net.server_time() - RENDER_DELAY_S))
+	_mark_reportable()
 
 	_joystick.enabled = not _minigames.is_open()
 	if _dash_wait >= 0.0:
@@ -443,7 +444,9 @@ func _update_piles() -> void:
 			_piles_holder.add_child(p)
 			_piles[id] = p
 		p.position = d.get("pos", Vector2.ZERO)
-		p.setup(id, str(d.get("kind", "")), str(d.get("state", "")))
+		var victim: Variant = d.get("victim")
+		var color: Color = Session.seat_color(int(victim)) if victim != null else Pile.UNKNOWN_BODY_COLOR
+		p.setup(id, str(d.get("kind", "")), str(d.get("state", "")), color)
 	for id in _cleaned_piles.keys():
 		if not present.has(id):
 			_cleaned_piles.erase(id)
@@ -451,6 +454,15 @@ func _update_piles() -> void:
 		if not present.has(id):
 			(_piles[id] as Pile).queue_free()
 			_piles.erase(id)
+
+
+## Marks the body REPORT would report (ring and "!" over it); none while out or outside play.
+func _mark_reportable() -> void:
+	var target: int = -1
+	if Session.phase == "playing" and not Session.is_out:
+		target = _nearest_fresh_pile(local_position_px())
+	for id in _piles.keys():
+		(_piles[id] as Pile).set_reportable(int(id) == target)
 
 
 # ---------------------------------------------------------------- actions
