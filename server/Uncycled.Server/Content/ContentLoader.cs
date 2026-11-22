@@ -110,7 +110,7 @@ public static class ContentLoader
         PhraseCatalogue phrases = PhraseCatalogue.Parse(File.ReadAllText(Path.Combine(contentDir, "phrases.json")));
         ChatFilter filter = ChatFilter.Parse(File.ReadAllText(Path.Combine(contentDir, "chat_filter.json")));
         string wordsPath = Path.Combine(contentDir, "chat_words.json");
-        ChatWords words = File.Exists(wordsPath) ? ChatWords.Parse(File.ReadAllText(wordsPath)) : ChatWords.Empty;
+        ChatWords words = File.Exists(wordsPath) ? ChatWords.Parse(File.ReadAllText(wordsPath)).ForMap(map.Zones.Select(z => z.Id)) : ChatWords.Empty;
         return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter, words);
     }
 

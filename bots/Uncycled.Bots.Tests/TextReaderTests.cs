@@ -178,6 +178,30 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
+        public void ForMap_ZonesOfAnotherMapAreNotRead_AndTheMapsOwnAre()
+        {
+            ChatWords all = Words();
+            ChatWords noMarket = all.ForMap(new[] { "depot", "garden" });
+
+            const string line = "I saw Hedi dump in the market";
+            Assert.Equal("saw_dump(6,market)", string.Join(";", TextReader.Read(line, Speaker, Names, all, 1f).Select(a => a.PhraseId + "(" + a.Seat + "," + a.Zone + ")")));
+            Assert.Equal("sus(6,)", string.Join(";", TextReader.Read(line, Speaker, Names, noMarket, 1f).Select(a => a.PhraseId + "(" + a.Seat + "," + a.Zone + ")")));
+            Assert.Equal("saw_dump", TextReader.Read("I saw Hedi dump in the depot", Speaker, Names, noMarket, 1f).Single().PhraseId);
+            Assert.DoesNotContain("market", noMarket.ZoneAliases.Keys);
+            Assert.Equal(all.List("accuse"), noMarket.List("accuse"));
+        }
+
+        [Fact]
+        public void LoadedContent_OnlyHasZonesOfItsMap()
+        {
+            string dir = Uncycled.Server.Content.ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));
+            Uncycled.Server.Content.ContentBundle content = Uncycled.Server.Content.ContentLoader.Load(dir);
+
+            Assert.NotEmpty(content.Words.ZoneAliases);
+            Assert.All(content.Words.ZoneAliases.Keys, id => Assert.True(content.Map.HasZone(id), "chat_words.json zone " + id + " is not on the loaded map"));
+        }
+
+        [Fact]
         public void ChatWords_Parse_ReadsEveryListAndTheZones()
         {
             ChatWords words = ChatWords.Parse("{\"version\":1,\"lang\":{\"en\":{\"accuse\":[\"sus\"]},\"xx\":{\"accuse\":[\"foo\"]}},\"zones\":{\"depot\":[\"depot\"]}}");

@@ -21,6 +21,12 @@
   "zones": {
     "depot": ["depot", "the depot", "warehouse", "storage"],
     "garden": ["garden", "the garden", "park", "greenhouse"],
-    "market": ["market", "the market", "shop", "store"]
+    "market": ["market", "the market", "shop", "store"],
+    "office": ["office", "the office"],
+    "club": ["club", "the club", "club room", "the club room"],
+    "amphi": ["amphi", "the amphi", "amphitheatre", "the amphitheatre", "amphitheater", "the amphitheater"],
+    "hallway": ["hallway", "the hallway", "corridor", "the corridor"],
+    "lounge": ["lounge", "the lounge"],
+    "parking": ["parking", "the parking", "parking lot", "the parking lot"]
   }
 }

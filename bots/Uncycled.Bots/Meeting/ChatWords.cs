@@ -43,6 +43,22 @@ namespace Uncycled.Bots.Meeting
         /// <summary>The words of one list (accuse, saw_dump, saw_hit, near_pile, alibi, with, deny, lying, vote, skip, negation) over all languages, lower-case; empty when the list is missing.</summary>
         public IReadOnlyList<string> List(string name) => _lists.TryGetValue(name, out List<string>? l) ? l : NoWords;
 
+        /// <summary>The same words with only the zones of the loaded map, so a typed line never names a zone no phrase could.</summary>
+        public ChatWords ForMap(IEnumerable<string> zoneIds)
+        {
+            var ids = new HashSet<string>(zoneIds);
+            var zones = new Dictionary<string, IReadOnlyList<string>>();
+            foreach (KeyValuePair<string, IReadOnlyList<string>> z in ZoneAliases)
+            {
+                if (ids.Contains(z.Key))
+                {
+                    zones[z.Key] = z.Value;
+                }
+            }
+
+            return new ChatWords(_lists, zones);
+        }
+
         /// <summary>Zone id to its aliases split into words, for the reader.</summary>
         internal Dictionary<string, string[][]> ZoneTokens { get; }
 
