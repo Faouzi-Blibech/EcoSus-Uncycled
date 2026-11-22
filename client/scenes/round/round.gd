@@ -312,6 +312,8 @@ func _process(delta: float) -> void:
 	_fade_occluders()
 
 	_player.avatar.set_display_name(_own_name())
+	if Session.phase == "playing":
+		Session.since_meeting_s += delta
 	_update_remote(Session.sample(Net.server_time() - RENDER_DELAY_S))
 	_mark_reportable()
 
@@ -567,6 +569,7 @@ func action_states() -> Dictionary:
 	ctx["is_out"] = Session.is_out
 	ctx["cd"] = Session.cooldowns
 	ctx["emergencies_left"] = Session.emergencies_left
+	ctx["emergency_wait"] = Session.emergency_wait_s()
 	ctx["bags"] = Session.bags
 	ctx["machine_jammed"] = Session.machine_jammed
 	ctx["ability"] = Session.ability
@@ -589,7 +592,7 @@ func perform_action(action: String) -> void:
 	var states: Dictionary = action_states()
 	match action:
 		"use":
-			if bool(states["use"]) and not _minigames.is_open():
+			if bool(states["use"]) and float(states.get("use_wait", 0.0)) <= 0.0 and not _minigames.is_open():
 				_use_nearest_console()
 		"report":
 			if bool(states["report"]):

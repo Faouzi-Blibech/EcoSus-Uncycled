@@ -44,6 +44,9 @@ namespace Sim.Match
         /// <summary>Move budget cap in tiles (08 section 2; not in tuning.json).</summary>
         public float MoveBudgetCap { get; set; } = 1.5f;
 
+        /// <summary>Radius of the player body the client collides with (client Avatar.RADIUS_TILES).</summary>
+        public float BodyRadius { get; set; } = 0.3f;
+
         // vision
         public float VisionCitizen { get; set; } = 4.0f;
         public float VisionPolluter { get; set; } = 5.0f;

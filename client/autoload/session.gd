@@ -129,6 +129,11 @@ var dash_s: float = -1.0
 var match_t: float = 0.0
 var me_pos: Vector2 = Vector2.ZERO
 var has_me_pos: bool = false
+## Seconds of play since the match started or the last meeting ended (the round scene counts it).
+## The server refuses an emergency call until tuning meeting.emergency_min_since_meeting_s.
+var since_meeting_s: float = 0.0
+## Used while tuning has no meeting.emergency_min_since_meeting_s; equals the server default.
+const EMERGENCY_MIN_SINCE_FALLBACK_S: float = 15.0
 ## Set by match_started / round_resumed; the round scene consumes it.
 var spawn: Vector2 = Vector2.ZERO
 var spawn_pending: bool = false
@@ -250,6 +255,12 @@ func seat_color(seat: int) -> Color:
 
 func _meeting_tuning() -> Dictionary:
 	return Net.as_dict(tuning.get("meeting"))
+
+
+## Seconds until the meeting button works again (0 when it does).
+func emergency_wait_s() -> float:
+	var need: float = float(_meeting_tuning().get("emergency_min_since_meeting_s", EMERGENCY_MIN_SINCE_FALLBACK_S))
+	return maxf(0.0, need - since_meeting_s)
 
 
 func phrase_limit() -> int:
@@ -553,6 +564,7 @@ func _on_lobby(data: Dictionary) -> void:
 
 func _on_match_started(data: Dictionary) -> void:
 	move_seq = 0
+	since_meeting_s = 0.0
 	role = str(data.get("role", "citizen"))
 	var p: Variant = data.get("partner")
 	partner_seat = int(p) if p != null else -1
@@ -772,6 +784,7 @@ func _on_event(data: Dictionary) -> void:
 		"round_resumed":
 			phase = "playing"
 			meeting = {}
+			since_meeting_s = 0.0
 			spawn = data.get("spawn", Vector2.ZERO)
 			spawn_pending = true
 		"game_over":

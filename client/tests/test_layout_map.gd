@@ -39,6 +39,26 @@ func test_every_task_console_of_tasks_json_is_on_the_map() -> bool:
 	return true
 
 
+## A floor cell on the map's edge (the north corridor) must not let the body walk off the map: a
+## solid frame surrounds it, outside the floor layer (its used rect still starts at 0,0).
+func test_a_solid_frame_surrounds_the_map() -> bool:
+	var root: MapRoot = load("res://world/maps/%s.tscn" % MAP_ID).instantiate() as MapRoot
+	var edge: StaticBody2D = root.get_node_or_null("Edge") as StaticBody2D
+	assert_true(edge != null, "edge body")
+	if edge != null:
+		assert_eq(edge.collision_layer, 1, "walls' layer")
+		assert_eq(edge.get_child_count(), 4, "four sides")
+		var used: Rect2i = root.floor_layer().get_used_rect()
+		assert_eq(used.position, Vector2i.ZERO, "floor layer unchanged")
+		var map_px := Rect2(Vector2.ZERO, Vector2(used.size * MapRoot.TILE_PX))
+		for c in edge.get_children():
+			var cs: CollisionShape2D = c as CollisionShape2D
+			var r := Rect2(cs.position - (cs.shape as RectangleShape2D).size * 0.5, (cs.shape as RectangleShape2D).size)
+			assert_true(not r.intersects(map_px), "outside the map: " + str(r))
+	root.free()
+	return true
+
+
 func test_furniture_blocks_walking_but_not_sight() -> bool:
 	var d: Dictionary = _built()
 	var walk: Array = d["walk"]

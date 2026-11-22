@@ -39,10 +39,11 @@
     "hall_enactus": ["enactus corridor", "the enactus corridor"],
     "hall_garden_gate": ["garden gate", "the garden gate"],
     "hall_parking": ["parking lane", "the parking lane"],
-    "hall_machine": ["machine hall", "the machine hall", "by the machine", "near the machine"],
+    "hall_machine": ["south corridor", "the south corridor", "bottom corridor", "the bottom corridor"],
     "cafeteria": ["cafeteria", "the cafeteria", "canteen", "the canteen"],
     "library": ["library", "the library"],
     "art": ["art factory", "the art factory", "art room", "the art room"],
-    "enactus": ["enactus", "enactus room", "the enactus room"]
+    "enactus": ["enactus", "enactus room", "the enactus room"],
+    "recycling": ["recycling room", "the recycling room", "machine room", "the machine room", "by the machine", "near the machine"]
   }
 }

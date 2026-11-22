@@ -690,6 +690,10 @@ func _update_buttons() -> void:
 	var states: Dictionary = _round.action_states() if _round != null else ActionRules.button_states({})
 	_states = states
 	_set_simple(states, "use")
+	var use_wait: float = float(states.get("use_wait", 0.0))
+	var use_b: ActionButton = _buttons["use"] as ActionButton
+	use_b.disabled = use_wait > 0.0
+	use_b.set_ring(use_wait, float(Net.as_dict(Session.tuning.get("meeting")).get("emergency_min_since_meeting_s", Session.EMERGENCY_MIN_SINCE_FALLBACK_S)))
 	_set_simple(states, "report")
 	_pulse_report()
 	_set_cooldown(states, "repollute", "trasher", "repollute_cooldown_s")
