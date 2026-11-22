@@ -1,0 +1,8 @@
+{
+  "schema_hash": "e4aa0cb05099abb1a055b200c3bc163028f07841648bc82f8798176b914730fa",
+  "obs_size": 199,
+  "action_count": 35,
+  "run_id": "t1-polluter",
+  "learner": "polluter",
+  "git_commit": "b4eed6430f70b49693ad5b274d66fbf7481fe110"
+}

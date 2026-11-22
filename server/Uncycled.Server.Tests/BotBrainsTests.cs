@@ -40,6 +40,24 @@ namespace Uncycled.Server.Tests
             Assert.Equal(0, log.Warnings);
         }
 
+        [Theory]
+        [InlineData("scripted", false, false)]
+        [InlineData("neural", true, true)]
+        [InlineData("neural_polluter", false, true)]
+        [InlineData("neural_citizen", true, false)]
+        [InlineData("neurl", false, false)]
+        public void The_brain_setting_picks_which_roles_load_a_model(string brain, bool citizen, bool polluter)
+        {
+            var log = new CountingLog();
+
+            using var brains = new BotBrains(new BotsSettings { Brain = brain }, ModelsDirWithFixture(), Content().Tasks, log);
+
+            Assert.Equal(citizen, brains.HasModel(Role.Citizen));
+            Assert.Equal(polluter, brains.HasModel(Role.Polluter));
+            // an unknown value is logged once, a known one is silent
+            Assert.Equal(brain == "neurl" ? 1 : 0, log.Warnings);
+        }
+
         [Fact]
         public void A_model_of_the_v2_contract_loads_for_both_roles()
         {

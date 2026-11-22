@@ -208,6 +208,42 @@ namespace Uncycled.Bots.Tests
             Assert.IsNotType<NeuralBrain>(NeuralBrainFactory.For(Sim.Core.Role.Polluter, Neural(), dir, new XorShiftRandom(1)));
         }
 
+        [Theory]
+        [InlineData("scripted", false, false)]
+        [InlineData("neural", true, true)]
+        [InlineData("neural_polluter", false, true)]
+        [InlineData("neural_citizen", true, false)]
+        [InlineData("NEURAL_POLLUTER", false, true)]
+        [InlineData("neurl", false, false)]
+        public void NeuralBrainFactory_PerRoleSwitch(string brainSetting, bool citizenNeural, bool polluterNeural)
+        {
+            string dir = ModelsDir(null, TinyOnnx);
+            File.Copy(TinyOnnx, Path.Combine(dir, "polluter.onnx"));
+            File.Copy(Path.Combine(Fixtures, "tiny.json"), Path.Combine(dir, "polluter.json"));
+            var s = new BotsSettings { Brain = brainSetting };
+
+            Assert.Equal(citizenNeural, NeuralBrainFactory.For(Sim.Core.Role.Citizen, s, dir, new XorShiftRandom(1)) is NeuralBrain);
+            Assert.Equal(polluterNeural, NeuralBrainFactory.For(Sim.Core.Role.Polluter, s, dir, new XorShiftRandom(1)) is NeuralBrain);
+            Assert.Equal(citizenNeural, s.UsesNetwork(Sim.Core.Role.Citizen));
+            Assert.Equal(polluterNeural, s.UsesNetwork(Sim.Core.Role.Polluter));
+        }
+
+        [Fact]
+        public void ShippedNetworks_LoadWithTheV2Schema()
+        {
+            string models = Path.Combine(Uncycled.Server.Bots.BotBrains.ResolveDir(null), "models");
+            foreach (Sim.Core.Role role in new[] { Sim.Core.Role.Citizen, Sim.Core.Role.Polluter })
+            {
+                var lines = new List<string>();
+                IBotBrain brain = NeuralBrainFactory.For(role, Neural(), models, new XorShiftRandom(1), null, lines.Add);
+                Assert.Empty(lines);
+                Assert.IsType<NeuralBrain>(brain);
+            }
+
+            using JsonDocument bots = JsonDocument.Parse(File.ReadAllText(Path.Combine(models, "..", "bots.json")));
+            Assert.Equal("scripted", bots.RootElement.GetProperty("brain").GetString());
+        }
+
         [Fact]
         public void NeuralBrainFactory_ReportsAnUnusableModelToTheGivenLog()
         {

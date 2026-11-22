@@ -15,7 +15,7 @@ COPY --from=build /out/ ./
 COPY content/ ./content/
 COPY bots/bots.json ./bots/bots.json
 COPY bots/models/ ./bots/models/
-# Bots: bots.json says "scripted". To play networks, add models/ and set UNCYCLED_BOTS_BRAIN=neural
+# Bots: bots.json says "scripted". Both networks ship in models/. To play them set UNCYCLED_BOTS_BRAIN to neural, neural_polluter or neural_citizen
 # (see bots/README.md); no rebuild of bots.json needed.
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080 \
     UNCYCLED_CONTENT_DIR=/app/content \
