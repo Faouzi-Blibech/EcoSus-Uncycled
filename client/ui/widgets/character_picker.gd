@@ -124,6 +124,11 @@ func refresh(my_colour: int, taken: Array[int], my_skin: String = Characters.DEF
 		var badge: TextureRect = parts["badge"]
 		badge.visible = not open or id == my_skin
 		badge.texture = PaperKit.tex("icon_lock.png" if not open else "icon_confirm.png")
+	# Characters with their own colours (tint false, e.g. the robot) take no seat colour: no swatches.
+	var tinted: bool = bool(Characters.info(my_skin).get("tint", true))
+	for sw in _swatches:
+		sw.visible = tinted
+	_hint.text = tr("CHAR_UNLOCK_HINT") if tinted else tr("CHAR_OWN_COLOURS")
 	if _sprout != null:
 		_sprout.call("set_colour", Session.color_of(my_colour))
 	for i in range(_swatches.size()):
