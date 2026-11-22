@@ -23,6 +23,7 @@ Net="*res://autoload/net.gd"
 Session="*res://autoload/session.gd"
 Profile="*res://autoload/profile.gd"
 Haptics="*res://autoload/haptics.gd"
+Sfx="*res://autoload/sfx.gd"
 
 [display]
 

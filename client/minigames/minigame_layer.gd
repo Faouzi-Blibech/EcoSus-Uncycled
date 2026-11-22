@@ -66,6 +66,7 @@ func open_fake(task_type: String, console_id: String = "") -> void:
 
 func close_all() -> void:
 	if _current != null:
+		Sfx.play("ui_close")
 		var m: Minigame = _current
 		_current = null
 		m.step_done.disconnect(_on_step_done)
@@ -144,6 +145,7 @@ func _open(task: Dictionary, step_index: int, is_fake: bool, min_seconds: float 
 	add_child(m)
 	move_child(get_node("CloseButton"), -1)
 	_show_chrome(true)
+	Sfx.play("ui_open")
 
 
 ## The paper theme with HUD-style text: kit buttons and cards, cream outlined words over the map.

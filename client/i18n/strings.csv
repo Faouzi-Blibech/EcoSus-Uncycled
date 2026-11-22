@@ -32,6 +32,8 @@ COMMON_CLOSE,Close,Fermer,إغلاق,Stäng
 SETTINGS_TITLE,Settings,Paramètres,الإعدادات,Inställningar
 SETTINGS_NAME,Player name,Nom du joueur,اسم اللاعب,Spelarnamn
 SETTINGS_LANGUAGE,Language,Langue,اللغة,Språk
+SETTINGS_SOUND,Sound effects,Effets sonores,المؤثرات الصوتية,Ljudeffekter
+SETTINGS_MUSIC,Music,Musique,الموسيقى,Musik
 SETTINGS_SERVER,Server address,Adresse du serveur,عنوان الخادم,Serveradress
 SETTINGS_BAD_URL,"The address must start with ws:// or wss://","L'adresse doit commencer par ws:// ou wss://",يجب أن يبدأ العنوان بـ ws:// أو wss://,Adressen måste börja med ws:// eller wss://
 LANG_EN,English,English,English,English
