@@ -22,6 +22,8 @@ var player_name: String = ""
 var language: String = "en"
 var server_url: String = DEFAULT_SERVER_URL
 var scan_url: String = SCAN_URL
+## Phone buzz on meetings, infection and gas (see haptics.gd); no settings screen toggle yet.
+var haptics_enabled: bool = true
 
 
 func _ready() -> void:
@@ -76,12 +78,14 @@ func load_settings() -> void:
 		language = lang
 	var url: String = saved_url_to_use(str(cfg.get_value("settings", "server_url", "")), OS.has_feature("web"))
 	server_url = url if not url.is_empty() else default_server_url()
+	haptics_enabled = bool(cfg.get_value("settings", "haptics_enabled", haptics_enabled))
 
 
 func save() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
 	cfg.set_value("settings", "player_name", player_name)
 	cfg.set_value("settings", "language", language)
+	cfg.set_value("settings", "haptics_enabled", haptics_enabled)
 	# The default is not a saved choice: on the web it follows the page the next time too.
 	if server_url != default_server_url():
 		cfg.set_value("settings", "server_url", server_url)
