@@ -6,6 +6,13 @@ extends Control
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
+const CharacterSprite := preload("res://ui/widgets/character_sprite.gd")
+## The ejected player's character tumbles across this strip above the reveal line.
+const EJECT_STAGE: Vector2 = Vector2(420.0, 130.0)
+const EJECT_BODY: Vector2 = Vector2(96.0, 120.0)
+## Tumbles in to the middle in EJECT_IN_S, then keeps spinning slowly (one turn per EJECT_SPIN_S).
+const EJECT_IN_S: float = 1.4
+const EJECT_SPIN_S: float = 3.0
 const VoteRules := preload("res://scenes/meeting/vote_rules.gd")
 const Phrases := preload("res://content/phrases.gd")
 const PhrasePicker := preload("res://scenes/meeting/phrase_picker.gd")
@@ -129,7 +136,7 @@ func _ready() -> void:
 	_send_btn.focus_mode = Control.FOCUS_NONE
 	_send_btn.pressed.connect(_on_send_text)
 	_type_row.add_child(_send_btn)
-	_done_btn = UIKit.make_button(tr("CHAT_DONE"), SEND_WIDTH)
+	_done_btn = UIKit.make_button(tr("CHAT_DONE"), SEND_WIDTH, "cream")
 	_done_btn.focus_mode = Control.FOCUS_NONE
 	_done_btn.visible = false
 	_done_btn.pressed.connect(_on_done)
@@ -431,7 +438,7 @@ func _build_voting() -> void:
 	_confirm_btn = UIKit.make_button(tr("MEETING_CONFIRM"), 120.0)
 	_confirm_btn.pressed.connect(_on_confirm)
 	row.add_child(_confirm_btn)
-	_skip_btn = UIKit.make_button(tr("MEETING_SKIP"), 120.0)
+	_skip_btn = UIKit.make_button(tr("MEETING_SKIP"), 120.0, "coral")
 	_skip_btn.pressed.connect(_on_skip)
 	row.add_child(_skip_btn)
 	_skip_btn.disabled = not can
@@ -448,6 +455,8 @@ func _seat_card(seat: int, has_voted: bool, enabled: bool) -> Button:
 	btn.custom_minimum_size = CARD_SIZE
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.toggle_mode = true
+	# A cream card; the one I picked turns green.
+	PaperKit.choice(btn)
 	var tint: Color = PaperKit.seat_ink(Session.seat_color(seat))
 	# Only real seat art: a missing icon would show as a plain colour square beside the name.
 	var icon_path: String = ICON_PATH % int(Session.seat_info(seat).get("color", 0))
@@ -526,6 +535,8 @@ func _build_ejection() -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var lines: VBoxContainer = UIKit.make_vbox(8)
 	box.add_child(lines)
+	if not _ejection.is_empty() and int(_ejection.get("seat", -1)) >= 0:
+		lines.add_child(_ejected_body(int(_ejection.get("seat", -1))))
 	lines.add_child(label)
 	# The count is only meaningful once the ejection is known and its role was revealed (or the
 	# server sent its own count); Session keeps it up to date before this view is built.
@@ -534,6 +545,28 @@ func _build_ejection() -> void:
 		var left: Label = UIKit.make_label(tr(left_key) % Session.polluters_left(), 16, MUTED)
 		left.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lines.add_child(left)
+
+
+## The ejected seat's own character (skin and seat colour): it tumbles in from the side to the
+## middle of the strip, then floats there turning slowly for the rest of the ejection.
+func _ejected_body(seat: int) -> Control:
+	var stage: Control = Control.new()
+	stage.custom_minimum_size = EJECT_STAGE
+	stage.clip_contents = true
+	var body: TextureRect = CharacterSprite.new()
+	body.call("setup", str(Session.seat_info(seat).get("skin", "")), Session.seat_color(seat))
+	body.size = EJECT_BODY
+	body.pivot_offset = EJECT_BODY * 0.5
+	body.position = Vector2(-EJECT_BODY.x, (EJECT_STAGE.y - EJECT_BODY.y) * 0.5)
+	stage.add_child(body)
+	var tw: Tween = stage.create_tween().set_parallel(true)
+	tw.tween_property(body, "position:x", (EJECT_STAGE.x - EJECT_BODY.x) * 0.5, EJECT_IN_S).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(body, "rotation", TAU, EJECT_IN_S).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_callback(func() -> void:
+		var spin: Tween = body.create_tween().set_loops()
+		spin.tween_property(body, "rotation", TAU * 2.0, EJECT_SPIN_S).from(TAU)
+	)
+	return stage
 
 
 # ---------------------------------------------------------------- chat

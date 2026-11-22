@@ -6,6 +6,7 @@ extends GridContainer
 signal picked(code: String)
 
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 
 const BUTTON_WIDTH_PX: float = 128.0
 const COMPACT_WIDTH_PX: float = 60.0
@@ -28,6 +29,8 @@ func _init(compact: bool = false, current: String = Settings.language) -> void:
 		btn.add_theme_constant_override("icon_max_width", FLAG_WIDTH_PX)
 		btn.alignment = HORIZONTAL_ALIGNMENT_CENTER if compact else HORIZONTAL_ALIGNMENT_LEFT
 		btn.toggle_mode = true
+		# Cream flags; the current language is the green one.
+		PaperKit.choice(btn)
 		btn.button_group = _group
 		btn.button_pressed = code == current
 		btn.pressed.connect(func() -> void: picked.emit(code))

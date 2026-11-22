@@ -342,12 +342,15 @@ static func theme() -> Theme:
 			th.set_color(state, type, INK)
 		th.set_color("font_disabled_color", type, SOFT_INK)
 		th.set_stylebox("focus", type, StyleBoxEmpty.new())
-	for type in ["Button", "OptionButton", "MenuButton"]:
-		th.set_stylebox("normal", type, box("button_cream.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
-		th.set_stylebox("hover", type, box("button_cream.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
-		th.set_stylebox("pressed", type, box("button_cream_pressed.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
-		th.set_stylebox("hover_pressed", type, box("button_cream_pressed.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
-		th.set_stylebox("disabled", type, box("button_grey_disabled.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
+	# Buttons are green (go / confirm) unless marked: theme_type_variation "CreamButton" for
+	# cancel, close and back, "CoralButton" for skip and danger (UIKit.make_button's kind).
+	_pill_styles(th, "Button", "green")
+	_pill_styles(th, "OptionButton", "cream")
+	_pill_styles(th, "MenuButton", "cream")
+	for kind in BUTTON_KINDS:
+		var variation: String = variation_of(kind)
+		th.set_type_variation(variation, "Button")
+		_pill_styles(th, variation, kind)
 	for type in ["CheckBox", "CheckButton"]:
 		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 			th.set_stylebox(state, type, StyleBoxEmpty.new())
@@ -372,6 +375,38 @@ static func theme() -> Theme:
 	return _theme
 
 
+const BUTTON_KINDS: Array[String] = ["green", "cream", "coral"]
+
+
+## Theme type variation of a pill colour: "cream" -> "CreamButton".
+static func variation_of(kind: String) -> String:
+	return kind.capitalize() + "Button"
+
+
+static func _pill_styles(th: Theme, type: String, kind: String) -> void:
+	var pad: Vector2 = Vector2(BUTTON_PAD_X, 4.0)
+	var normal: StyleBoxTexture = box("button_%s.png" % kind, 18.0, pad)
+	var held: StyleBoxTexture = box("button_%s_pressed.png" % kind, 18.0, pad)
+	th.set_stylebox("normal", type, normal)
+	th.set_stylebox("hover", type, normal)
+	th.set_stylebox("pressed", type, held)
+	th.set_stylebox("hover_pressed", type, held)
+	th.set_stylebox("disabled", type, box("button_grey_disabled.png", 18.0, pad))
+	th.set_stylebox("focus", type, StyleBoxEmpty.new())
+	# Ink reads on all three pills (the green and coral art are light enough).
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		th.set_color(state, type, INK)
+	th.set_color("font_disabled_color", type, SOFT_INK)
+
+
 ## A seat colour dark enough to read as text on paper (seat colours are made for the dark map).
 static func seat_ink(seat_color: Color) -> Color:
 	return seat_color.darkened(0.45) if seat_color.get_luminance() > 0.35 else seat_color
+
+
+## A pick-one toggle (a language, a vote card): a cream pill that turns green while chosen.
+static func choice(btn: Button) -> void:
+	btn.theme_type_variation = variation_of("cream")
+	var picked: StyleBoxTexture = box("button_green.png", 18.0, Vector2(BUTTON_PAD_X, 4.0))
+	btn.add_theme_stylebox_override("pressed", picked)
+	btn.add_theme_stylebox_override("hover_pressed", picked)

@@ -51,6 +51,8 @@ func _build_pad() -> void:
 		b.size = KEY_SIZE
 		b.custom_minimum_size = KEY_SIZE
 		b.position = Vector2(left + (i % PAD_COLUMNS) * (KEY_SIZE.x + KEY_GAP), PAD_TOP + (i / PAD_COLUMNS) * (KEY_SIZE.y + KEY_GAP))
+		# Digits are cream keys, Clear is the coral one.
+		b.theme_type_variation = "CoralButton" if keys[i] == "clear" else "CreamButton"
 		if keys[i] == "clear":
 			b.text = tr("MG_METER_CLEAR")
 			b.pressed.connect(clear_entry)

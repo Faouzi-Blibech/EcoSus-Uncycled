@@ -92,7 +92,7 @@ func _ready() -> void:
 	send_btn.focus_mode = Control.FOCUS_NONE
 	send_btn.pressed.connect(send)
 	_type_row.add_child(send_btn)
-	_done_btn = UIKit.make_button(tr("CHAT_DONE"), SEND_WIDTH)
+	_done_btn = UIKit.make_button(tr("CHAT_DONE"), SEND_WIDTH, "cream")
 	_done_btn.focus_mode = Control.FOCUS_NONE
 	_done_btn.visible = false
 	_done_btn.pressed.connect(_on_done)

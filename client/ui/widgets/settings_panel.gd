@@ -85,7 +85,7 @@ func _ready() -> void:
 	save_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	save_btn.pressed.connect(_on_save)
 	row.add_child(save_btn)
-	var cancel_btn: Button = UIKit.make_button(tr("COMMON_CANCEL"))
+	var cancel_btn: Button = UIKit.make_button(tr("COMMON_CANCEL"), 120.0, "cream")
 	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel_btn.pressed.connect(_on_cancel)
 	row.add_child(cancel_btn)

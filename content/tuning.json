@@ -2,7 +2,7 @@
   "version": 1,
   "seats": 8, "polluters": 2,
   "rooms": { "sizes": [6, 8, 10], "default_size": 8, "trashers": { "6": 1, "8": 2, "10": 2 } },
-  "speed_tiles_per_s": 3.0,
+  "speed_tiles_per_s": 4.0,
   "report_range": 3.0,
   "vision": { "citizen": 4.0, "polluter": 5.0, "smog_min": 1.0, "dark_mult": 0.5 },
   "poison": { "per_hit": 34, "hit_range": 1.0, "hit_cooldown_s": 25, "start_cooldown_s": 10, "victim_immunity_s": 25 },

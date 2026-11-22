@@ -12,10 +12,8 @@ var clock: Callable = Callable()
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const TOAST_S: float = 2.0
-const SPOT_ART: String = "res://assets/spots/%s_dirty.png"
-const BACKDROP_ALPHA: float = 0.35
-## The backdrop starts under the hint line.
-const BACKDROP_TOP: float = 44.0
+## Hint text over the map: cream with an ink outline, like the HUD.
+const HINT_OUTLINE_PX: int = 5
 const TOAST_TOP: float = 12.0
 
 var _current: Minigame = null
@@ -38,10 +36,10 @@ func _ready() -> void:
 	_show_chrome(false)
 
 
-## The games play on the paper page (the home screen's background), closed with the kit's round X.
+## The games float over the map (nothing behind them, so the round stays in sight); the kit's round
+## X closes them.
 func _style_chrome() -> void:
-	var dim: Control = get_node("Dim") as Control
-	PaperKit.background(dim)
+	(get_node("Dim") as ColorRect).color = Color(0.0, 0.0, 0.0, 0.0)
 	var close: Button = get_node("CloseButton") as Button
 	close.text = ""
 	close.tooltip_text = tr("MG_CLOSE")
@@ -137,8 +135,7 @@ func _open(task: Dictionary, step_index: int, is_fake: bool, min_seconds: float 
 		return
 	var m: Minigame = (load(path) as PackedScene).instantiate() as Minigame
 	m.clock = clock
-	m.theme = UIKit.theme()
-	_set_backdrop(str(task.get("type", "")))
+	m.theme = _game_theme()
 	var wait: float = min_seconds if min_seconds >= 0.0 else Session.min_s_for(str(task.get("type", "")))
 	m.begin(task, step_index, is_fake, wait)
 	m.step_done.connect(_on_step_done)
@@ -149,27 +146,14 @@ func _open(task: Dictionary, step_index: int, is_fake: bool, min_seconds: float 
 	_show_chrome(true)
 
 
-## The spot's own art (assets/spots/<type>_dirty.png), faded behind the game, so each game shows
-## the machine it is played on. Types without spot art get the plain page.
-func _set_backdrop(task_type: String) -> void:
-	var dim: Control = get_node("Dim") as Control
-	var pic: TextureRect = dim.get_node_or_null("Spot") as TextureRect
-	if pic == null:
-		pic = TextureRect.new()
-		pic.name = "Spot"
-		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pic.modulate = Color(1.0, 1.0, 1.0, BACKDROP_ALPHA)
-		dim.add_child(pic)
-		pic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		pic.offset_top = BACKDROP_TOP
-	# A variant such as "crush_cans_depot" uses its base type's art.
-	var base: String = task_type
-	while not ResourceLoader.exists(SPOT_ART % base) and base.contains("_"):
-		base = base.substr(0, base.rfind("_"))
-	var path: String = SPOT_ART % base
-	pic.texture = load(path) as Texture2D if ResourceLoader.exists(path) else null
+## The paper theme with HUD-style text: kit buttons and cards, cream outlined words over the map.
+static func _game_theme() -> Theme:
+	var th: Theme = UIKit.theme().duplicate() as Theme
+	th.set_color("font_color", "Label", PaperKit.CREAM)
+	th.set_color("font_outline_color", "Label", PaperKit.INK)
+	th.set_constant("outline_size", "Label", HINT_OUTLINE_PX)
+	th.set_font_size("font_size", "Label", 16)
+	return th
 
 
 func _show_chrome(on: bool) -> void:

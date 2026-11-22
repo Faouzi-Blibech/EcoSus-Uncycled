@@ -26,7 +26,7 @@ func _ready() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_status)
 
-	var back: Button = UIKit.make_button(tr("RECONNECT_BACK"))
+	var back: Button = UIKit.make_button(tr("RECONNECT_BACK"), 120.0, "cream")
 	back.pressed.connect(_on_back)
 	box.add_child(back)
 

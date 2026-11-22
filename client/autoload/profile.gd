@@ -12,6 +12,7 @@ signal scan_failed()
 ## The service counted a new scan (points, streak or today's scans went up).
 signal scan_done()
 
+const Characters := preload("res://ui/widgets/characters.gd")
 const PROFILE_PATH: String = "user://profile.cfg"
 const TIMEOUT_S: float = 8.0
 ## While the scan page is open: how often to ask whether the photo was counted, and for how long.
@@ -27,6 +28,9 @@ var skin: String = ""
 var scans_today: int = 0
 ## True once /profile answered (the menu hides the numbers until then).
 var loaded: bool = false
+## Developer unlock: every skin on this device. Set [dev] unlock_all_skins=true in profile.cfg;
+## honoured only in debug builds (running from Godot), so a released game keeps the scan streak.
+var unlock_all: bool = false
 
 var _get: HTTPRequest
 var _post: HTTPRequest
@@ -66,6 +70,8 @@ func load_or_create_id(path: String) -> String:
 	if cfg.load(path) == OK:
 		player_id = str(cfg.get_value("profile", "player_id", ""))
 		skin = str(cfg.get_value("profile", "skin", ""))
+		unlock_all = OS.is_debug_build() and bool(cfg.get_value("dev", "unlock_all_skins", false))
+	_grant_all_if_dev()
 	if player_id.is_empty():
 		player_id = new_uuid()
 		cfg.set_value("profile", "player_id", player_id)
@@ -112,9 +118,20 @@ func apply_profile(data: Dictionary) -> void:
 	skins.clear()
 	for s in Net.as_array(data.get("skins")):
 		skins.append(str(s))
+	_grant_all_if_dev()
 	if not skins.has(skin):
 		skin = ""
 	loaded = true
+
+
+## With the developer unlock, every character is in the unlocked list (whatever the service says).
+func _grant_all_if_dev() -> void:
+	if not unlock_all:
+		return
+	for c in Characters.LIST:
+		var id: String = str(c["id"])
+		if id != Characters.DEFAULT_ID and not skins.has(id):
+			skins.append(id)
 
 
 ## The lobby's pick (plan L3), saved for the next rooms; "" is the default character.

@@ -204,7 +204,7 @@ static func skin_to_wear(saved: String, unlocked: Array[String], profile_loaded:
 
 ## Put the saved character on this seat if it differs from what the server shows.
 func _wear_saved_skin() -> void:
-	var wanted: Variant = skin_to_wear(Profile.skin, Profile.skins, Profile.loaded)
+	var wanted: Variant = skin_to_wear(Profile.skin, Profile.skins, Profile.loaded or Profile.unlock_all)
 	if wanted == null:
 		return
 	var current: String = str(Session.seat_info(Session.seat_id).get("skin", ""))

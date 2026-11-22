@@ -1,7 +1,6 @@
 # Mini-game piece art
 
-The mini-games already use the paper page, the kit buttons and the spot art (`assets/spots/`) as a
-faded backdrop. Their **pieces** (the things you drag or tap) still show a paper card with a name
+The mini-games float over the map with the kit buttons and paper cards. Their **pieces** (the things you drag or tap) still show a paper card with a name
 until their picture exists here. Each file is picked up by name, no code change needed
 (`Minigame.dress`): the picture fills the piece's box at its own proportions.
 
