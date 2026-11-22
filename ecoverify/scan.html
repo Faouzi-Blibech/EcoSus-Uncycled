@@ -35,6 +35,7 @@
       min-height: 56px; border-radius: 14px; border: 0; font: 600 18px/1 inherit; cursor: pointer;
       background: var(--accent); color: var(--on-accent); text-decoration: none;
     }
+    #takeBtn { min-height: 76px; font-size: 22px; }
     .btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
     .btn[disabled] { opacity: .55; cursor: default; }
     canvas { width: 100%; height: auto; border-radius: 12px; display: none; background: #000; }
@@ -58,8 +59,10 @@
 <main>
   <div>
     <h1>♻️ Scan a recyclable item</h1>
-    <p class="sub" id="lead">Take a photo of something you are recycling today. Fill the frame with it, in good light.</p>
+    <p class="sub" id="lead">Photograph something you are recycling today: fill the frame with it, in good light.</p>
   </div>
+
+  <label class="btn" id="takeBtn" for="cam">📸 Open the camera</label>
 
   <canvas id="shot" aria-label="Your photo with the detected item outlined"></canvas>
 
@@ -74,7 +77,6 @@
     <p class="unlock hidden" id="unlock"></p>
   </div>
 
-  <label class="btn" id="takeBtn" for="cam">📸 Take a photo</label>
   <input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
   <button class="btn secondary" id="backBtn" type="button">← Back to game</button>
   <p class="hint" id="closeHint"></p>
@@ -97,7 +99,7 @@
   $('backBtn').onclick = () => {
     if (history.length > 1) { history.back(); return; }
     window.close();
-    $('closeHint').textContent = 'You can close this tab and go back to the game.';
+    $('closeHint').textContent = 'Use your phone’s Back button to return to the game.';
   };
 
   async function loadImage(file) {
@@ -155,7 +157,7 @@
     let img;
     try { img = await loadImage(file); } catch (err) {
       showResult(false, 'Could not open that photo', 'Try taking it again.');
-      take.textContent = '📸 Try again'; take.removeAttribute('disabled'); $('cam').disabled = false;
+      take.textContent = '📸 Open the camera again'; take.removeAttribute('disabled'); $('cam').disabled = false;
       return;
     }
     const canvas = draw(img, null, false);
@@ -179,15 +181,16 @@
         showProfile(data.profile);
         show(take, false);
         $('backBtn').className = 'btn';
+        $('closeHint').textContent = 'Done! Use your phone’s Back button to return to the game: it shows your new points.';
       } else {
         showResult(false, 'Not accepted', data.message);
         showProfile(data.profile);
-        take.textContent = '📸 Try again';
+        take.textContent = '📸 Open the camera again';
         take.removeAttribute('disabled'); $('cam').disabled = false;
       }
     } catch (err) {
       showResult(false, 'Could not reach the server', err.message + '. Check your connection and try again.');
-      take.textContent = '📸 Try again';
+      take.textContent = '📸 Open the camera again';
       take.removeAttribute('disabled'); $('cam').disabled = false;
     }
   };

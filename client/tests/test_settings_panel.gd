@@ -15,3 +15,18 @@ func test_panel_fits_the_logical_screen_with_room_to_spare() -> bool:
 	assert_true(need.y <= SCREEN.y - SPARE_PX, "height %s fits with spare room" % need.y)
 	assert_true(need.x <= SCREEN.x - SPARE_PX, "width %s fits" % need.x)
 	return true
+
+
+func test_scan_address_field_saves_a_cleaned_address() -> bool:
+	load("res://i18n/i18n_loader.gd").load_csv()
+	TranslationServer.set_locale("en")
+	var before: Array = [Settings.scan_url, Settings.server_url]
+	var p: Control = track(SettingsPanel.new()) as Control
+	(Engine.get_main_loop() as SceneTree).current_scene.add_child(p)
+	p._scan_edit.text = "not an address"
+	p._on_save()
+	assert_eq(p._error.text, "The scan address must look like http://192.168.1.20:8000 or https://…", "bad address refused")
+	assert_eq(Settings.scan_url, before[0], "not saved")
+	Settings.scan_url = before[0]
+	Settings.server_url = before[1]
+	return true

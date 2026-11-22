@@ -13,6 +13,7 @@ const DEFAULT_SERVER_URL: String = "ws://localhost:%d%s" % [SERVER_PORT, SERVER_
 ## derived from the page; set the hosted address here when it is online. 127.0.0.1, not localhost:
 ## Godot tries IPv6 (::1) for localhost, and a service listening on IPv4 only refuses it.
 const SCAN_URL: String = "http://127.0.0.1:8000"
+const SCAN_PORT: int = 8000
 const SETTINGS_PATH: String = "user://settings.cfg"
 const LANGUAGES: Array[String] = ["en", "fr", "ar"]
 ## Godot's default font has no Arabic letters; this one is added behind it (see _add_font_fallbacks).
@@ -58,6 +59,51 @@ static func server_url_for_page(protocol: String, hostname: String, host: String
 	return "ws://%s:%d%s" % [hostname, SERVER_PORT, SERVER_PATH]
 
 
+## The scan service address when nothing is saved: on a plain-http web page (a LAN demo) the page's
+## own hostname on the scan port, so phones that open the game from a PC also reach its scan service;
+## otherwise SCAN_URL. On https pages and native builds, set it in Settings (or here when hosted).
+static func scan_url_for_page(protocol: String, hostname: String) -> String:
+	if protocol == "http:" and not hostname.is_empty():
+		return "http://%s:%d" % [hostname, SCAN_PORT]
+	return SCAN_URL
+
+
+## The scan service on the same machine as a game server typed in Settings: the phone then needs one
+## address (the demo laptop runs both). "" for localhost or a hosted wss server (set that one by hand).
+static func scan_url_for_server(server: String) -> String:
+	if not server.begins_with("ws://"):
+		return ""
+	var host: String = server.trim_prefix("ws://").get_slice("/", 0).get_slice(":", 0)
+	if host.is_empty() or host == "localhost" or host == "127.0.0.1":
+		return ""
+	return "http://%s:%d" % [host, SCAN_PORT]
+
+
+func default_scan_url() -> String:
+	if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
+		return scan_url_for_page(
+			str(JavaScriptBridge.eval("window.location.protocol")),
+			str(JavaScriptBridge.eval("window.location.hostname")))
+	var same_machine: String = scan_url_for_server(server_url)
+	return same_machine if not same_machine.is_empty() else SCAN_URL
+
+
+## What the player typed as the scan address, cleaned up: "http://" added when no scheme is given,
+## no trailing slash. "" when it cannot be an address (spaces, other schemes).
+static func normalize_scan_url(text: String) -> String:
+	var url: String = text.strip_edges()
+	if url.contains(" "):
+		return ""
+	var scheme: String = "http"
+	if url.contains("://"):
+		scheme = url.get_slice("://", 0)
+		url = url.get_slice("://", 1)
+	url = url.rstrip("/")
+	if url.is_empty() or not (scheme == "http" or scheme == "https"):
+		return ""
+	return "%s://%s" % [scheme, url]
+
+
 ## The saved address worth using, "" when there is none. On the web the old default
 ## (ws://localhost:5000/ws) counts as unset: an earlier build saved it on every name entry, and it
 ## would keep a phone dialling its own localhost instead of the page host.
@@ -69,6 +115,7 @@ static func saved_url_to_use(saved: String, is_web: bool) -> String:
 
 func load_settings() -> void:
 	server_url = default_server_url()
+	scan_url = default_scan_url()
 	var cfg: ConfigFile = ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) != OK:
 		return
@@ -78,6 +125,8 @@ func load_settings() -> void:
 		language = lang
 	var url: String = saved_url_to_use(str(cfg.get_value("settings", "server_url", "")), OS.has_feature("web"))
 	server_url = url if not url.is_empty() else default_server_url()
+	var scan: String = normalize_scan_url(str(cfg.get_value("settings", "scan_url", "")))
+	scan_url = scan if not scan.is_empty() else default_scan_url()
 	haptics_enabled = bool(cfg.get_value("settings", "haptics_enabled", haptics_enabled))
 
 
@@ -89,6 +138,8 @@ func save() -> void:
 	# The default is not a saved choice: on the web it follows the page the next time too.
 	if server_url != default_server_url():
 		cfg.set_value("settings", "server_url", server_url)
+	if scan_url != default_scan_url():
+		cfg.set_value("settings", "scan_url", scan_url)
 	var err: int = cfg.save(SETTINGS_PATH)
 	if err != OK:
 		push_warning("Settings: could not save %s (error %d)" % [SETTINGS_PATH, err])
