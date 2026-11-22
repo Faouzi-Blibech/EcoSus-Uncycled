@@ -27,6 +27,10 @@
     "amphi": ["amphi", "the amphi", "amphitheatre", "the amphitheatre", "amphitheater", "the amphitheater"],
     "hallway": ["hallway", "the hallway", "corridor", "the corridor"],
     "lounge": ["lounge", "the lounge"],
-    "parking": ["parking", "the parking", "parking lot", "the parking lot"]
+    "parking": ["parking", "the parking", "parking lot", "the parking lot"],
+    "art": ["art", "the art room", "art room", "the art studio", "art studio"],
+    "cafeteria": ["cafeteria", "the cafeteria", "canteen", "the canteen", "cafe", "the cafe"],
+    "enactus": ["enactus", "the enactus", "enactus room", "the enactus room"],
+    "library": ["library", "the library"]
   }
 }
