@@ -16,27 +16,27 @@ namespace Uncycled.Bots.Tests
     {
         private static readonly string ContentDir = ContentLoader.ResolveDir(Environment.GetEnvironmentVariable("UNCYCLED_CONTENT_DIR"));
 
-        private static HostOptions Options(params string[] extra)
+        internal static HostOptions Options(params string[] extra)
         {
             var args = new List<string> { "--content", ContentDir, "--matches", "1", "--seed", "7", "--threads", "1" };
             args.AddRange(extra);
             return HostOptions.Parse(args.ToArray());
         }
 
-        private static MatchRunner NewRunner(HostOptions o)
+        internal static MatchRunner NewRunner(HostOptions o)
         {
             ContentBundle content = ContentLoader.Load(o.ContentDir);
             return new MatchRunner(o, 0, content, HostBrains.Scripted(BotsSettings.Load("none"), content));
         }
 
-        private static byte[] Frames(MatchRunner r)
+        internal static byte[] Frames(MatchRunner r)
         {
             var buf = new byte[r.AgentCount * r.FrameSize];
             r.WriteFrames(buf);
             return buf;
         }
 
-        private static float Reward(MatchRunner r, byte[] frames, int agent)
+        internal static float Reward(MatchRunner r, byte[] frames, int agent)
         {
             return BitConverter.ToSingle(frames, agent * r.FrameSize + r.RewardOffset);
         }
@@ -367,7 +367,7 @@ namespace Uncycled.Bots.Tests
         /// scripted Cleaner, which calls the meeting, accuses and votes. Plays on (random learner actions) until that meeting is over;
         /// onStep runs after every decision. Ends with no meeting resolved if the staging did not work: callers assert what they need.
         /// </summary>
-        private static void StageAccusation(MatchRunner r, Action onStep)
+        internal static void StageAccusation(MatchRunner r, Action onStep)
         {
             ContentBundle content = ContentLoader.Load(ContentDir);
             var rng = new XorShiftRandom(21);

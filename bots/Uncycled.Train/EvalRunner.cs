@@ -66,6 +66,8 @@ namespace Uncycled.Train
             int dumps = 0;
             int meetings = 0;
             int chatLines = 0;
+            int votesCast = 0;
+            int votesMissed = 0;
             int wrongEjections = 0;
             int deliveries = 0;
             int repollutes = 0;
@@ -114,6 +116,20 @@ namespace Uncycled.Train
                     {
                         meetings++;
                     }
+                    else if (e is MeetingResultEvent mr)
+                    {
+                        foreach (VoteRecord v in mr.Votes)
+                        {
+                            if (v.Missed)
+                            {
+                                votesMissed++;
+                            }
+                            else
+                            {
+                                votesCast++;
+                            }
+                        }
+                    }
                     else if (e is ChatEvent chat && !chat.Ghost)
                     {
                         chatLines++;
@@ -138,6 +154,8 @@ namespace Uncycled.Train
             sb.Append(",\"dumps\":").Append(dumps.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"meetings\":").Append(meetings.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"chat_lines\":").Append(chatLines.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"votes_cast\":").Append(votesCast.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"votes_missed\":").Append(votesMissed.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"match_time\":").Append(engine.MatchTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append(",\"active_time\":").Append(engine.ActiveTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append('}');
