@@ -141,10 +141,12 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
-        public void Read_JunkOf500Chars_IsNoActAndFast()
+        public void Read_LongJunk_IsCutAtMaxChars_IsNoActAndFast()
         {
             ChatWords words = Words();
             string junk = string.Concat(Enumerable.Repeat("xq zv 12 !! ", 42)).Substring(0, 500);
+            Assert.True(junk.Length > TextReader.MaxChars);
+            Assert.Empty(TextReader.Read(junk.Substring(0, TextReader.MaxChars - 1) + ". Hedi is sus", Speaker, Names, words, 1f)); // past the cut: not read
             TextReader.Read(junk, Speaker, Names, words, 1f); // warm up
 
             var sw = Stopwatch.StartNew();
@@ -189,6 +191,24 @@ namespace Uncycled.Bots.Tests
             Assert.Equal("saw_dump", TextReader.Read("I saw Hedi dump in the depot", Speaker, Names, noMarket, 1f).Single().PhraseId);
             Assert.DoesNotContain("market", noMarket.ZoneAliases.Keys);
             Assert.Equal(all.List("accuse"), noMarket.List("accuse"));
+        }
+
+        [Fact]
+        public void Read_TwoNamesThatReadTheSame_GiveNoAct()
+        {
+            var names = new Dictionary<byte, string>(Names) { { 7, "Bot_3" } }; // tokenizes like "Bot 3"
+            ChatWords words = Words();
+
+            Assert.Empty(TextReader.Read("bot 3 is sus", Speaker, names, words, 1f));
+            Assert.Equal("sus", TextReader.Read("Hedi is sus", Speaker, names, words, 1f).Single().PhraseId); // other names still work
+        }
+
+        [Fact]
+        public void Read_OneLineAccusesOneSeat_TheFirstClearOne()
+        {
+            Assert.Equal("saw_dump(5,market);vote(5,-)", Read("I saw Bot 5 dump in the market. I saw Hedi gas someone in the depot. Vote Bot 5."));
+            Assert.Equal("vote(1,-)", Read("Vote Sami. Bot 5 is sus. Hedi is lying."));
+            Assert.Equal("not_me(-,-);sus(5,-)", Read("Not me. Bot 5 is sus. Hedi is sus.")); // a denial names no seat
         }
 
         [Fact]

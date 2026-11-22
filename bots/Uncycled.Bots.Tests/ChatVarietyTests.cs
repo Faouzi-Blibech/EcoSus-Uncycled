@@ -59,6 +59,22 @@ namespace Uncycled.Bots.Tests
         }
 
         [Fact]
+        public void RepeatedAccusation_TurnedIntoAgreeOrWhere_StillAnnouncesTheVote()
+        {
+            MeetingState s = State(chat: new[] { Sus(2, 5) }, suspicion: Doubtful5);
+            MeetingDecision agree = Grounding.Check(MeetingDecision.Say("fake", "sus", 5), s);
+            Assert.Equal("agree", agree.PhraseId);
+            Assert.Equal((byte?)5, agree.Announces);
+
+            MeetingState asked = State(chat: new[] { Sus(2, 5), Act(3, "agree", "react", 2) }, suspicion: Doubtful5);
+            MeetingDecision where = Grounding.Check(MeetingDecision.Say("fake", "sus", 5), asked);
+            Assert.Equal("where", where.PhraseId);
+            Assert.Equal((byte?)5, where.Announces);
+
+            Assert.Null(Grounding.Check(MeetingDecision.Say("fake", "sus", 4), State(suspicion: new Dictionary<byte, float> { { 4, 20f } })).Announces);
+        }
+
+        [Fact]
         public void RepeatedAccusation_WhenAgreeWasSaid_AsksWhere_ThenSaysItsVote_ThenStaysQuiet()
         {
             ChatAct accusation = Sus(2, 5);

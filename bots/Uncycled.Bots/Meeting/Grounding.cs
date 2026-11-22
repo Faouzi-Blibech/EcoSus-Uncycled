@@ -41,7 +41,18 @@ namespace Uncycled.Bots.Meeting
         private static MeetingDecision CheckSpeak(MeetingDecision d, MeetingState s)
         {
             MeetingDecision g = CheckGrounded(d, s);
-            return g.Speak && IsRepeat(s.Chat, s.Self, g.PhraseId!, g.Seat, g.Zone) ? InsteadOfRepeat(g, s) : g;
+            if (!g.Speak || !IsRepeat(s.Chat, s.Self, g.PhraseId!, g.Seat, g.Zone))
+            {
+                return g;
+            }
+
+            MeetingDecision instead = InsteadOfRepeat(g, s);
+            if (instead.Speak && g.Seat != null && (instead.PhraseId == "agree" || instead.PhraseId == "where"))
+            {
+                instead.Announces = g.Seat;
+            }
+
+            return instead;
         }
 
         // ---------- no repeats ----------

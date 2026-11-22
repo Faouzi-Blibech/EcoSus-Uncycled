@@ -248,6 +248,11 @@ namespace Uncycled.Bots.Meeting
                 _announced = true;
                 _announcedVote = null;
             }
+            else if (say.Announces != null)
+            {
+                _announced = true;
+                _announcedVote = say.Announces;
+            }
 
             _replyAt = null;
             _nextAt = now + Between(GapMinS, GapMaxS);

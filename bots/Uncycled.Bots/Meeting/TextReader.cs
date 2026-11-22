@@ -40,14 +40,27 @@ namespace Uncycled.Bots.Meeting
                 text = text.Substring(0, MaxChars);
             }
 
-            // longest name first, so "bot 3" is not also read as a shorter name inside it
-            var names = new List<(byte Seat, string[] Tokens)>();
+            // longest name first, so "bot 3" is not also read as a shorter name inside it; two names that read the same
+            // ("Bot 3" and "Bot_3") are one entry that counts as two seats, so a line naming them gives no act
+            var names = new List<(byte Seat, string[] Tokens, bool Ambiguous)>();
+            var byTokens = new Dictionary<string, int>();
             foreach (KeyValuePair<byte, string> kv in livingNames)
             {
                 string[] t = Tokenize(kv.Value);
-                if (t.Length > 0)
+                if (t.Length == 0)
                 {
-                    names.Add((kv.Key, t));
+                    continue;
+                }
+
+                string key = string.Join(" ", t);
+                if (byTokens.TryGetValue(key, out int index))
+                {
+                    names[index] = (names[index].Seat, t, true);
+                }
+                else
+                {
+                    byTokens[key] = names.Count;
+                    names.Add((kv.Key, t, false));
                 }
             }
 
@@ -58,7 +71,31 @@ namespace Uncycled.Bots.Meeting
                 ReadClause(clause, speaker, names, words, time, acts);
             }
 
-            return acts;
+            return OneAccusationTarget(acts);
+        }
+
+        /// <summary>One typed line accuses at most one seat (the first clear one): a later accusation, vote or "lying" about another seat is dropped, so a line is never stronger than one phrase.</summary>
+        private static IReadOnlyList<ChatAct> OneAccusationTarget(List<ChatAct> acts)
+        {
+            byte? target = null;
+            var kept = new List<ChatAct>();
+            foreach (ChatAct a in acts)
+            {
+                bool accuses = a.Seat != null && (a.Kind == "accuse" || a.Kind == "vote" || a.PhraseId == "lying");
+                if (accuses)
+                {
+                    if (target != null && target != a.Seat)
+                    {
+                        continue;
+                    }
+
+                    target = a.Seat;
+                }
+
+                kept.Add(a);
+            }
+
+            return kept;
         }
 
         /// <summary>Lower-case words of a text: letters, digits, apostrophes and inner hyphens; anything else separates.</summary>
@@ -145,12 +182,13 @@ namespace Uncycled.Bots.Meeting
             }
         }
 
-        private static void ReadClause(string[] t, byte speaker, List<(byte Seat, string[] Tokens)> names, ChatWords words, float time, List<ChatAct> acts)
+        private static void ReadClause(string[] t, byte speaker, List<(byte Seat, string[] Tokens, bool Ambiguous)> names, ChatWords words, float time, List<ChatAct> acts)
         {
             var taken = new bool[t.Length]; // tokens that are part of a name
             var seats = new List<byte>();
             int nameStart = int.MaxValue;
-            foreach ((byte seat, string[] tokens) in names)
+            bool ambiguous = false;
+            foreach ((byte seat, string[] tokens, bool twin) in names)
             {
                 foreach (int at in Occurrences(t, tokens, taken))
                 {
@@ -163,6 +201,8 @@ namespace Uncycled.Bots.Meeting
                     {
                         seats.Add(seat);
                     }
+
+                    ambiguous |= twin;
 
                     nameStart = Math.Min(nameStart, at);
                 }
@@ -182,7 +222,7 @@ namespace Uncycled.Bots.Meeting
             }
 
             string? oneZone = zones.Count == 1 ? zones[0] : null;
-            byte? oneSeat = seats.Count == 1 && seats[0] != speaker ? seats[0] : (byte?)null;
+            byte? oneSeat = seats.Count == 1 && !ambiguous && seats[0] != speaker ? seats[0] : (byte?)null;
 
             if (Find(t, words.Tokens("deny"), taken) >= 0)
             {
