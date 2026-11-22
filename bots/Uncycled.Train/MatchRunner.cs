@@ -29,6 +29,7 @@ namespace Uncycled.Train
         private readonly ContentBundle _content;
         private readonly Func<Role, IRandom, IBotBrain> _brains;
         private readonly OpponentMix? _mix;
+        private readonly IMeetingDecider? _learnerDecider;
         private readonly int _slot;
         private readonly int _ticksPerDecision;
         private readonly BotsSettings _settings;
@@ -55,12 +56,13 @@ namespace Uncycled.Train
         private MeetingFeed _feed = new MeetingFeed();
         private readonly RewardsV2 _v2;
 
-        public MatchRunner(HostOptions options, int slot, ContentBundle content, Func<Role, IRandom, IBotBrain> brains, OpponentMix? mix = null)
+        public MatchRunner(HostOptions options, int slot, ContentBundle content, Func<Role, IRandom, IBotBrain> brains, OpponentMix? mix = null, IMeetingDecider? learnerDecider = null)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _content = content ?? throw new ArgumentNullException(nameof(content));
             _brains = brains ?? throw new ArgumentNullException(nameof(brains));
             _mix = mix;
+            _learnerDecider = learnerDecider;
             _slot = slot;
             _v2 = new RewardsV2(options.Rewards, options.Learner);
             _v2.IsTrasher = seat => _engine.Find(seat)?.Role == Role.Polluter;
@@ -141,6 +143,9 @@ namespace Uncycled.Train
         public int PollutersEjected { get; private set; }
 
         public byte? LastEjectedSeat { get; private set; }
+
+        /// <summary>The votes of the last meeting that was resolved (null before the first one).</summary>
+        public IReadOnlyList<VoteRecord>? LastMeetingVotes { get; private set; }
 
         public byte AgentSeat(int agent) => _agents[agent].Seat;
 
@@ -358,13 +363,16 @@ namespace Uncycled.Train
 
             _agents = agents.ToArray();
             _feed = new MeetingFeed(new MeetingLog(_content.Phrases ?? throw new InvalidOperationException("the content has no phrase catalogue")));
+            var floor = new MeetingFloor();
             foreach (Agent agent in _agents)
             {
                 agent.Memory.Chat = _feed.Log;
+                // the learner seats talk and vote like the scripted ones: the meeting brain (rule decider unless a test hands one in)
+                var rng = new Random(unchecked((int)(Seed * 2654435761UL) + agent.Seat));
+                agent.Voter = new MeetingVoter(_learnerDecider ?? new RuleDecider(), floor, _feed.Log, rng);
                 _feed.Add(agent.Seat, agent.Memory, agent.Voter);
             }
 
-            var floor = new MeetingFloor();
             _talkBySeat = new IBotBrain?[_brainBySeat.Length];
             for (int s = 0; s < _brainBySeat.Length; s++)
             {
@@ -469,6 +477,9 @@ namespace Uncycled.Train
                         MeetingsHeld++;
                         _reportBy = m.Cause == MeetingCause.Report ? m.By : (byte?)null;
                         break;
+                    case MeetingResultEvent mr:
+                        LastMeetingVotes = mr.Votes;
+                        break;
                     case RoundResumedEvent:
                         _reportBy = null;
                         break;
@@ -550,7 +561,6 @@ namespace Uncycled.Train
                     FollowCapS = settings.FollowCapS,
                     Pace = new PacePolicy(settings.Pace, rng),
                 };
-                Voter = new MeetingVoter();
                 Send = cmd =>
                 {
                     CommandResult result = engine.Apply(seat, cmd);
@@ -572,7 +582,7 @@ namespace Uncycled.Train
 
             public PolicyDriver Policy { get; } = new PolicyDriver();
 
-            public MeetingVoter Voter { get; }
+            public MeetingVoter Voter { get; set; } = null!;
 
             public Action<ICommand> Send { get; }
         }

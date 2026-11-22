@@ -72,6 +72,8 @@ namespace Uncycled.Train
             int accusedSeats = 0;
             int accusedAnswered = 0;
             var accused = new Dictionary<byte, bool>(); // accused seat of this meeting -> has spoken since
+            int votesCast = 0;
+            int votesMissed = 0;
             int wrongEjections = 0;
             int deliveries = 0;
             int repollutes = 0;
@@ -121,6 +123,20 @@ namespace Uncycled.Train
                         meetings++;
                         saidInMeeting.Clear();
                         accused.Clear();
+                    }
+                    else if (e is MeetingResultEvent mr)
+                    {
+                        foreach (VoteRecord v in mr.Votes)
+                        {
+                            if (v.Missed)
+                            {
+                                votesMissed++;
+                            }
+                            else
+                            {
+                                votesCast++;
+                            }
+                        }
                     }
                     else if (e is ChatEvent chat && !chat.Ghost)
                     {
@@ -177,6 +193,8 @@ namespace Uncycled.Train
             sb.Append(",\"hedge_lines\":").Append(hedgeLines.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"accused_seats\":").Append(accusedSeats.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"accused_answered\":").Append(accusedAnswered.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"votes_cast\":").Append(votesCast.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"votes_missed\":").Append(votesMissed.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"match_time\":").Append(engine.MatchTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append(",\"active_time\":").Append(engine.ActiveTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append('}');
