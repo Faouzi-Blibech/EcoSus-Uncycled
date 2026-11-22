@@ -73,7 +73,7 @@ const TYPED_MESSAGES: Array[String] = [
 
 const PROTOCOL_VERSION: int = 4
 const TILE_PX: float = 32.0
-const DEFAULT_SPEED_TILES_PER_S: float = 2.5
+const DEFAULT_SPEED_TILES_PER_S: float = 3.0
 const CONNECT_TIMEOUT_S: float = 6.0
 const PING_INTERVAL_S: float = 2.0
 const RECONNECT_BACKOFF_S: Array[float] = [0.5, 1.0, 2.0, 4.0]
