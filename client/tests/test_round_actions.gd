@@ -856,5 +856,6 @@ func test_dash_ok_moves_the_player_there() -> bool:
 	r._finish_dash()
 	assert_true(r._player.global_position.is_equal_approx(to), "at the end point")
 	assert_true(r._dash_wait < 0.0, "no longer waiting")
+	assert_true(not r._dash_busy(), "walking again once the dash ends")
 	_restore()
 	return true

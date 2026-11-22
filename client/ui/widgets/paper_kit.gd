@@ -70,8 +70,11 @@ static func background(parent: Control) -> void:
 
 
 ## Fixed 640x360 stage centred on screen; wider phones get extra paper at the sides.
+## Always left to right, so the drawn composition matches the mockup in Arabic too (Arabic text
+## still reads right to left inside it).
 static func stage(parent: Control) -> Control:
 	var s: Control = Control.new()
+	s.layout_direction = Control.LAYOUT_DIRECTION_LTR
 	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(s)
 	s.set_anchors_preset(Control.PRESET_CENTER)
@@ -82,9 +85,15 @@ static func stage(parent: Control) -> Control:
 	return s
 
 
+## Top-left anchored rect. Offsets, not position: setting position on a control with no parent
+## yet mirrors it when the language is Arabic (against a zero-width parent), which threw the home
+## art off screen.
 static func place(c: Control, rect: Rect2) -> void:
-	c.position = rect.position
-	c.size = rect.size
+	c.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	c.offset_left = rect.position.x
+	c.offset_top = rect.position.y
+	c.offset_right = rect.end.x
+	c.offset_bottom = rect.end.y
 
 
 static func label(text: String, font_size: int, color: Color = INK, handwritten: bool = true) -> Label:

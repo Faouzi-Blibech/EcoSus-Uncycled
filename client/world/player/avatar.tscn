@@ -10,8 +10,6 @@ script = ExtResource("1_avatar")
 
 [node name="Body" type="Sprite2D" parent="."]
 
-[node name="Icon" type="Sprite2D" parent="."]
-
 [node name="NameLabel" type="Label" parent="."]
 material = SubResource("CanvasItemMaterial_tag")
 custom_minimum_size = Vector2(96, 14)
