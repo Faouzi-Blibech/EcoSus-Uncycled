@@ -142,7 +142,7 @@ ZONE_HALL_ART,Art corridor,Couloir de l'Art Factory,ممر الفنون
 ZONE_HALL_ENACTUS,Enactus corridor,Couloir Enactus,ممر إيناكتس
 ZONE_HALL_GARDEN_GATE,Garden gate,Portail du jardin,بوابة الحديقة
 ZONE_HALL_PARKING,Parking lane,Allée du parking,ممر الموقف
-ZONE_HALL_MACHINE,Machine hall,Couloir de la machine,ممر الآلة
+ZONE_HALL_MACHINE,South corridor,Couloir sud,الممر الجنوبي
 WASTE_PLASTIC,plastic,plastique,بلاستيك
 WASTE_GLASS,glass,verre,زجاج
 WASTE_PAPER,paper,papier,ورق
