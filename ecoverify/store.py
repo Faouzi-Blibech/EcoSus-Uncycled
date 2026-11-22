@@ -39,6 +39,13 @@ CREATE TABLE IF NOT EXISTS submissions (
     embedding   BLOB
 );
 CREATE INDEX IF NOT EXISTS ix_sub_player_day ON submissions (player_id, day);
+CREATE TABLE IF NOT EXISTS purchases (
+    player_id   TEXT NOT NULL,
+    item_id     TEXT NOT NULL,
+    price       INTEGER NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY (player_id, item_id)
+);
 CREATE TABLE IF NOT EXISTS scan_tokens (
     token       TEXT PRIMARY KEY,
     player_id   TEXT NOT NULL,
@@ -85,6 +92,18 @@ class Store:
             rows = self._db.execute(
                 "SELECT day, COUNT(*) AS n FROM submissions WHERE player_id = ? GROUP BY day", (pid,))
             return {r["day"]: int(r["n"]) for r in rows}
+
+    # ── shop ───────────────────────────────────────────────────
+    def purchases(self, pid: str) -> dict[str, int]:
+        """Bought item id -> price paid."""
+        with self.lock:
+            rows = self._db.execute("SELECT item_id, price FROM purchases WHERE player_id = ?", (pid,))
+            return {r["item_id"]: int(r["price"]) for r in rows}
+
+    def buy(self, pid: str, item_id: str, price: int, now_iso: str) -> None:
+        with self.lock, self._db:
+            self._db.execute("INSERT INTO purchases (player_id, item_id, price, created_at) VALUES (?, ?, ?, ?)",
+                             (pid, item_id, price, now_iso))
 
     # ── scan links (single use, short-lived) ───────────────────
     def issue_token(self, pid: str, now: float, ttl_s: float) -> str:

@@ -147,7 +147,9 @@ class ScanEndpointTests(unittest.TestCase):
         self.assertTrue(body["verified"], body["message"])
         p = body["profile"]
         self.assertEqual((p["points"], p["streak"], p["scans_today"]), (10, 1, 1))
-        self.assertEqual(p["new_skins"], [s["id"] for s in config.SKINS if s["required_streak"] <= 1])
+        self.assertEqual(p["new_skins"], [s["id"] for s in config.SKINS
+                                          if s["required_streak"] is not None and s["required_streak"] <= 1])
+        self.assertEqual(body["points_gained"], config.TUNING["points_per_scan"])
         self.assertEqual(self.upload(token, seed=2).status_code, 410)
 
     def test_rejected_photo_gives_the_link_back(self):
@@ -170,8 +172,57 @@ class ScanEndpointTests(unittest.TestCase):
         for seed in range(4):  # 4 different items the same day: only 3 score
             self.assertTrue(v.verify(jpeg(photo(seed + 10)), self.pid, NOW, skip_exif=True)["verified"])
         p = self.client.get(f"/profile/{self.pid}").json()
-        self.assertEqual(p["points"], 30)
+        t = config.TUNING
+        self.assertEqual(p["points"], rules.points([4], t["points_per_scan"], t["max_scored_scans_per_day"]))
         self.assertEqual(p, self.client.get(f"/players/{self.pid}").json())
+
+
+class ShopTests(unittest.TestCase):
+    """Skins with a price in content/skins.json are bought with scan points (currency = points - spent)."""
+
+    def setUp(self):
+        self.store = Store(":memory:")
+        self.original = service_app.verifier
+        service_app.verifier = Verifier(self.store, FakeDetector("bottle"), None, config.TUNING)
+        self.client = TestClient(service_app.app)
+        self.pid = str(uuid.uuid4())
+        self.item = next(iter(config.SHOP.values()))
+
+    def tearDown(self):
+        service_app.verifier = self.original
+        self.store.close()
+
+    def earn(self, n):
+        for seed in range(n):
+            self.assertTrue(service_app.verifier.verify(jpeg(photo(100 + seed)), self.pid, NOW, skip_exif=True)["verified"])
+
+    def buy(self, item=None):
+        return self.client.post("/shop/buy", json={"player_id": self.pid, "item": item or self.item["id"]})
+
+    def test_shop_lists_priced_skins(self):
+        items = self.client.get("/shop").json()["items"]
+        self.assertIn(self.item["id"], [i["id"] for i in items])
+        self.assertTrue(all(i["price"] > 0 for i in items))
+
+    def test_cases(self):
+        self.assertEqual(self.buy().status_code, 402, "no points yet")
+        self.assertEqual(self.buy("no_such_item").status_code, 404)
+        per_scan = config.TUNING["points_per_scan"]
+        self.earn(-(-self.item["price"] // per_scan))  # enough scans to afford it
+        r = self.buy()
+        self.assertEqual(r.status_code, 200, r.text)
+        p = r.json()["profile"]
+        self.assertIn(self.item["id"], p["skins"])
+        self.assertEqual(p["currency"], p["points"] - self.item["price"])
+        self.assertEqual(self.buy().status_code, 409, "already owned")
+
+    def test_can_buy_rule(self):
+        item = {"id": "x", "price": 100}
+        cases = [(None, set(), 500, "unknown"), (item, {"x"}, 500, "owned"),
+                 (item, set(), 99, "not_enough"), (item, set(), 100, None)]
+        for it, owned, money, want in cases:
+            with self.subTest(owned=owned, money=money):
+                self.assertEqual(rules.can_buy(it, owned, money), want)
 
 
 if __name__ == "__main__":
