@@ -146,3 +146,17 @@ func test_refused_skin_shows_a_line() -> bool:
 	assert_eq(l._toast.text, "That character is still locked. Keep your scan streak going!", "skin refused")
 	_restore()
 	return true
+
+
+func test_no_colour_swatches_for_a_character_with_its_own_colours() -> bool:
+	var before: Dictionary = _with_unlocked(["robot"] as Array[String])
+	var l: Control = _lobby()
+	Session.seats[0]["skin"] = "robot"
+	l._open_picker()
+	assert_true(not (l._picker._swatches[0] as Button).visible, "robot: no colours")
+	Session.seats[0]["skin"] = ""
+	l._refresh()
+	assert_true((l._picker._swatches[0] as Button).visible, "sprout: colours back")
+	_restore()
+	_restore_profile(before)
+	return true

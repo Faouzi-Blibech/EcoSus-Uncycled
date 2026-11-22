@@ -12,6 +12,11 @@ const EJECT_STAGE: Vector2 = Vector2(420.0, 130.0)
 const EJECT_BODY: Vector2 = Vector2(96.0, 120.0)
 ## Tumbles in to the middle in EJECT_IN_S, then keeps spinning slowly (one turn per EJECT_SPIN_S).
 const EJECT_IN_S: float = 1.4
+## Vote results: the voted player's face, then a chip (face and name) per voter.
+const VOTED_FACE_PX: float = 34.0
+const VOTER_FACE_PX: float = 22.0
+## Inside a vote row's pill: room for the rounded ends, a little above and below.
+const VOTE_PILL_PAD: Vector2 = Vector2(22.0, 10.0)
 const EJECT_SPIN_S: float = 3.0
 const VoteRules := preload("res://scenes/meeting/vote_rules.gd")
 const Phrases := preload("res://content/phrases.gd")
@@ -497,19 +502,13 @@ func _build_results() -> void:
 	if not VoteRules.can_show_tally(_result):
 		_left.add_child(UIKit.make_label(tr("MEETING_RESULTS_PENDING"), 18))
 		return
-	var votes: Dictionary = Net.as_dict(Session.meeting.get("votes"))
-	var tally: Dictionary = {}
-	var skips: int = 0
-	for voter in votes:
-		var target: Variant = votes[voter]
-		if target == null or typeof(target) == TYPE_STRING:
-			skips += 1
-		else:
-			var t: int = int(target)
-			tally[t] = int(tally.get(t, 0)) + 1
-	for seat in tally:
-		_left.add_child(UIKit.make_label(tr("MEETING_VOTES_FOR") % [_name_of(int(seat)), int(tally[seat])], 14))
-	_left.add_child(UIKit.make_label(tr("MEETING_VOTES_SKIP") % skips, 14, MUTED))
+	# Who voted for whom: one row per voted player (most votes first), then the skips.
+	var voters_of: Dictionary = VoteRules.voters_by_target(Net.as_dict(Session.meeting.get("votes")))
+	var targets: Array = voters_of.keys().filter(func(t: Variant) -> bool: return int(t) >= 0)
+	targets.sort_custom(func(a: Variant, b: Variant) -> bool: return (voters_of[a] as Array).size() > (voters_of[b] as Array).size())
+	for seat in targets:
+		_left.add_child(_vote_row(int(seat), voters_of[seat] as Array))
+	_left.add_child(_vote_row(-1, voters_of.get(-1, []) as Array))
 	var ejected: Variant = _result.get("ejected")
 	var line: String
 	if ejected != null:
@@ -545,6 +544,45 @@ func _build_ejection() -> void:
 		var left: Label = UIKit.make_label(tr(left_key) % Session.polluters_left(), 16, MUTED)
 		left.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lines.add_child(left)
+
+
+## A results row on its own pill (cream; grey for the skips): the voted seat's face, name and count
+## (or the skip count when target is -1), then a chip per voter with their character's face and name.
+func _vote_row(target: int, voters: Array) -> Control:
+	var pill: PanelContainer = PanelContainer.new()
+	# As wide as its faces and names, never the whole column.
+	pill.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	pill.add_theme_stylebox_override("panel", PaperKit.box("button_cream.png" if target >= 0 else "button_grey_disabled.png", 18.0, VOTE_PILL_PAD))
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	pill.add_child(row)
+	if target >= 0:
+		row.add_child(_face(target, VOTED_FACE_PX))
+		row.add_child(UIKit.make_label(tr("MEETING_VOTES_FOR") % [_name_of(target), voters.size()], 16, PaperKit.seat_ink(Session.seat_color(target))))
+	else:
+		row.add_child(UIKit.make_label(tr("MEETING_VOTES_SKIP") % voters.size(), 14, MUTED))
+	var chips: HBoxContainer = HBoxContainer.new()
+	chips.add_theme_constant_override("separation", 8)
+	row.add_child(chips)
+	for voter in voters:
+		var chip: HBoxContainer = HBoxContainer.new()
+		chip.add_theme_constant_override("separation", 3)
+		chip.add_child(_face(int(voter), VOTER_FACE_PX))
+		chip.add_child(UIKit.make_label(_name_of(int(voter)), 13, PaperKit.seat_ink(Session.seat_color(int(voter)))))
+		chips.add_child(chip)
+	return pill
+
+
+## A seat's round face: its character (lobby skin, seat colour) in a cream disc of px.
+func _face(seat: int, px: float) -> Control:
+	var skin: String = str(Session.seat_info(seat).get("skin", ""))
+	if not CharacterSprite.Characters.has(skin):
+		skin = CharacterSprite.Characters.DEFAULT_ID
+	var holder: Control = Control.new()
+	holder.custom_minimum_size = Vector2(px, px)
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	holder.add_child(CharacterSprite.avatar(skin, Session.seat_color(seat), Rect2(Vector2.ZERO, Vector2(px, px))))
+	return holder
 
 
 ## The ejected seat's own character (skin and seat colour): it tumbles in from the side to the

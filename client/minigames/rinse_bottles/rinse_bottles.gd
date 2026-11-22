@@ -8,9 +8,13 @@ const FALLBACK_WIDTH: float = 640.0
 const FILL_PER_S: float = 0.5
 const BAND_LO: float = 0.6
 const BAND_HI: float = 0.85
+const SINK_ART: String = "res://assets/spots/rinse_bottles_%s.png"
+const SINK_SIZE: Vector2 = Vector2(150.0, 150.0)
+const SINK_GAP: float = 16.0
 
 var _hint: Label = null
 var _gauge: HoldGauge = null
+var _sink: TextureRect = null
 
 
 func _ready() -> void:
@@ -28,10 +32,26 @@ func _ready() -> void:
 	_gauge.band_lo = float(cfg.get("rinse_band_lo", BAND_LO))
 	_gauge.band_hi = float(cfg.get("rinse_band_hi", BAND_HI))
 	_gauge.released.connect(_on_gauge_released)
+	# The sink being rinsed, beside the gauge (the spot's own art; it turns clean on a success).
+	_sink = TextureRect.new()
+	_sink.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_sink.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_sink.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sink.size = SINK_SIZE
+	_sink.position = _gauge.position + Vector2(-SINK_SIZE.x - SINK_GAP, _gauge.size.y - SINK_SIZE.y)
+	_set_sink("dirty")
+	add_child(_sink)
+
+
+func _set_sink(state: String) -> void:
+	var path: String = SINK_ART % state
+	if ResourceLoader.exists(path):
+		_sink.texture = load(path) as Texture2D
 
 
 func _on_gauge_released(in_band: bool) -> void:
 	if in_band:
+		_set_sink("clean")
 		finish_step()
 	else:
 		_hint.text = tr("MG_RINSE_RETRY")

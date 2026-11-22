@@ -1,5 +1,5 @@
 {
-  "brain": "scripted",
+  "brain": "neural_polluter",
   "decision_interval_s": 0.5,
   "reaction_min_s": 0.4,
   "reaction_max_s": 1.2,

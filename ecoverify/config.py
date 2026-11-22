@@ -13,7 +13,8 @@ def load(path: Path = CONTENT_FILE, taco_path: Path = TACO_FILE, skins_path: Pat
         data = json.load(f)
     with open(skins_path, "r", encoding="utf-8") as f:
         # skins.json uses "streak" (shared with the game server); the mobile app reads "required_streak"
-        data["skins"] = [dict(s, required_streak=s["streak"]) for s in json.load(f)["skins"]]
+        # A skin with "price" and no "streak" is a shop item (required_streak None).
+        data["skins"] = [dict(s, required_streak=s.get("streak")) for s in json.load(f)["skins"]]
     data["taco"] = {}
     if taco_path.exists():
         with open(taco_path, "r", encoding="utf-8") as f:
@@ -40,7 +41,8 @@ def _check(data: dict) -> None:
 
 CONFIG = load()
 TUNING: dict = CONFIG["tuning"]
-SKINS: list = sorted(CONFIG["skins"], key=lambda s: s["required_streak"])
+SKINS: list = sorted(CONFIG["skins"], key=lambda s: (s["required_streak"] is None, s["required_streak"] or 0))
+SHOP: dict = {s["id"]: s for s in SKINS if s.get("price") is not None}  # skin id -> skin with its price
 DETECTIONS: dict = CONFIG["detections"]
 SUBTYPES: dict = CONFIG.get("subtypes", {})
 FALLBACK: list = CONFIG.get("fallback", [])

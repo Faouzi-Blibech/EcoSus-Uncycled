@@ -54,3 +54,18 @@ static func polluters_left_key(left: int) -> String:
 	if left < 1:
 		return ""
 	return "EJECTION_LEFT_ONE" if left == 1 else "EJECTION_LEFT_MANY"
+
+
+## meeting_result votes {voter: target or "skip"} grouped by target: {target seat: [voters]}, with
+## the skips (and timed-out votes) under -1. Voters are sorted.
+static func voters_by_target(votes: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for voter in votes:
+		var target: Variant = votes[voter]
+		var key: int = -1 if target == null or typeof(target) == TYPE_STRING else int(target)
+		if not out.has(key):
+			out[key] = []
+		(out[key] as Array).append(int(voter))
+	for key in out:
+		(out[key] as Array).sort()
+	return out

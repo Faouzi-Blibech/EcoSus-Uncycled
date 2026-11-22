@@ -12,8 +12,8 @@ const DEFAULT_ID: String = "sprout"
 
 const LIST: Array[Dictionary] = [
 	{"id": "sprout", "name_key": "CHAR_SPROUT", "frame_ms": [100, 100, 100, 100], "tint": true, "face": Vector2(0.5, 0.42), "zoom": 1.15, "faces_right": false},
-	{"id": "robot", "name_key": "CHAR_ROBOT", "frame_ms": [100, 100, 200], "tint": false, "face": Vector2(0.5, 0.25), "zoom": 1.35, "faces_right": true},
-	{"id": "eagle", "name_key": "CHAR_EAGLE", "frame_ms": [100, 200, 100, 200, 100, 100], "tint": false, "face": Vector2(0.55, 0.24), "zoom": 1.45, "faces_right": false},
+	{"id": "robot", "name_key": "CHAR_ROBOT", "frame_ms": [100, 100, 200], "tint": false, "face": Vector2(0.5, 0.25), "zoom": 1.35, "faces_right": false},
+	{"id": "eagle", "name_key": "CHAR_EAGLE", "frame_ms": [100, 200, 100, 200, 100, 100], "tint": false, "face": Vector2(0.55, 0.24), "zoom": 1.45, "faces_right": true},
 	{"id": "rabbit", "name_key": "CHAR_RABBIT", "frame_ms": [100, 200, 100, 200], "tint": false, "face": Vector2(0.5, 0.3), "zoom": 1.35, "faces_right": false},
 ]
 

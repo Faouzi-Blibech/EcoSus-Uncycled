@@ -23,14 +23,20 @@ namespace Uncycled.Bots.Neural
         }
 
         /// <summary>
-        /// Neural when s.Brain is "neural" and the role's model loads with the v2 schema
+        /// Neural when s.UsesNetwork(role) (brain "neural", or the role's own "neural_polluter" / "neural_citizen") and the role's model loads with the v2 schema
         /// hash; scripted otherwise (switch off, file missing, corrupt, other schema). Never throws for a bad model.
         /// </summary>
         public static IBotBrain For(Role role, BotsSettings s, string modelsDir, IRandom rng, IReadOnlyList<TaskTypeDef>? taskTypes = null, Action<string>? log = null)
         {
             IBotBrain scripted = BrainFactory.Scripted(role, s, rng, taskTypes);
-            if (!string.Equals(s.Brain, "neural", StringComparison.OrdinalIgnoreCase))
+            if (!s.UsesNetwork(role))
             {
+                string? unknown = s.UnknownBrainMessage();
+                if (unknown != null && Reported.TryAdd("brain:" + s.Brain, true))
+                {
+                    (log ?? (message => Console.Error.WriteLine(message)))(unknown);
+                }
+
                 return scripted;
             }
 
