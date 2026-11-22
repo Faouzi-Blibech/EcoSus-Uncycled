@@ -1,392 +1,202 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from ultralytics import YOLOE
-from PIL import Image
-from PIL.ExifTags import Base as ExifBase
+"""Uncycled eco photo verification API.
+
+Run: uvicorn app:app --host 0.0.0.0 --port 8000
+The pipeline lives in ecoverify/; tuning and taxonomy in content/eco_verify.json, skins in content/skins.json.
+"""
 import io
-import imagehash
 import json
 import os
-import asyncio
-from datetime import datetime, timedelta, timezone
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 
-app = FastAPI(title="Uncycled Photo Verification API")
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, Response
+from pydantic import BaseModel
 
-# ─── CORS (so teammates' frontends can reach this server) ─────
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from ecoverify import config
+from ecoverify.clip import ClipEmbedder
+from ecoverify.service import Verifier, co2_equivalence
+from ecoverify.store import Store
+from ecoverify.vision import Detector
 
-# ─── 1. Load YOLOE Model & Configure Custom Classes ──────────
-model = YOLOE("yoloe-26s-seg.pt")
+app = FastAPI(title="Uncycled Photo Verification API", version="3.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Zero-shot vision models match much better when prompted with natural synonyms.
-# All synonyms map cleanly back to your canonical recycling categories.
-CLASS_SYNONYMS = {
-    # Plastic & Bottles
-    "plastic bottle": "plastic bottle",
-    "water bottle": "plastic bottle",
-    "bottle": "plastic bottle",
-    "beverage bottle": "plastic bottle",
-    "plastic container": "plastic bottle",
-
-    # Aluminum, Cans & Foil Wrappers (e.g. gum foil, soda cans)
-    "aluminum can": "aluminum can",
-    "soda can": "aluminum can",
-    "tin can": "aluminum can",
-    "beverage can": "aluminum can",
-    "can": "aluminum can",
-    "aluminum foil": "aluminum can",
-    "foil wrapper": "aluminum can",
-    "metal foil": "aluminum can",
-
-    # Cardboard & Cartons
-    "cardboard box": "cardboard box",
-    "cardboard": "cardboard box",
-    "carton": "cardboard box",
-    "packaging box": "cardboard box",
-
-    # Glass
-    "glass jar": "glass jar",
-    "glass bottle": "glass jar",
-    "jar": "glass jar",
-
-    # Paper
-    "paper waste": "paper waste",
-    "paper": "paper waste",
-    "newspaper": "paper waste",
-}
-model.set_classes(list(CLASS_SYNONYMS.keys()))
-
-# ─── 2. CO₂ Savings Per Item (grams of CO₂ avoided) ──────────
-CO2_SAVINGS = {
-    "plastic bottle": 82,
-    "aluminum can": 170,
-    "cardboard box": 390,
-    "glass jar": 215,
-    "paper waste": 60,
-}
-CO2_EQUIVALENCES = [
-    {"threshold": 100, "text": "like charging your phone {} times"},
-    {"threshold": 500, "text": "like skipping {} km of driving"},
-    {"threshold": 1000, "text": "like saving {} plastic bags from the ocean"},
-    {"threshold": 5000, "text": "like planting {} small trees"},
-]
-
-def get_co2_equivalence(grams: int) -> str:
-    """Convert grams of CO₂ into a relatable human metaphor."""
-    if grams < 100:
-        charges = max(1, round(grams / 8))
-        return f"Like charging your phone {charges} time{'s' if charges != 1 else ''}!"
-    elif grams < 1000:
-        km = round(grams / 120, 1)
-        return f"Like taking a car off the road for {km} km!"
-    elif grams < 5000:
-        bags = round(grams / 33)
-        return f"Like keeping {bags} plastic bags out of the ocean!"
-    else:
-        trees = round(grams / 2200, 1)
-        return f"Like what {trees} trees absorb in a month!"
-
-# ─── 3. Setup Hackathon-friendly Database ─────────────────────
-DB_FILE = "submitted_hashes.json"
-STATS_FILE = "eco_stats.json"
-
-if os.path.exists(DB_FILE):
-    with open(DB_FILE, "r") as f:
-        seen_hashes = json.load(f)
-else:
-    seen_hashes = []
-
-if os.path.exists(STATS_FILE):
-    with open(STATS_FILE, "r") as f:
-        eco_stats = json.load(f)
-else:
-    eco_stats = {"total_items": 0, "total_co2_grams": 0, "items_by_type": {}}
-
-_db_lock = asyncio.Lock()
-
-async def save_hash_to_db(new_hash: str):
-    seen_hashes.append(new_hash)
-    with open(DB_FILE, "w") as f:
-        json.dump(seen_hashes, f)
-
-async def update_eco_stats(item_type: str, co2_grams: int):
-    eco_stats["total_items"] += 1
-    eco_stats["total_co2_grams"] += co2_grams
-    eco_stats["items_by_type"][item_type] = eco_stats["items_by_type"].get(item_type, 0) + 1
-    with open(STATS_FILE, "w") as f:
-        json.dump(eco_stats, f)
-
-
-# ─── 4. EXIF Live-Capture Verification ───────────────────────
-MAX_PHOTO_AGE_SECONDS = 120  # Reject images older than 2 minutes
-# Server-side switch for local tests only; clients can never turn the check off.
+T = config.TUNING
+store = Store(os.environ.get("ECO_DB", "eco_verify.db"))
+detector = Detector(T["model"], T.get("fallback_model"))
+embedder = ClipEmbedder(T["clip_model"]) if os.environ.get("ECO_DISABLE_CLIP") != "1" else None
+# Litter model fine-tuned on TACO (ecoverify/train/). Optional: off until the weights exist.
+TACO_PATH = Path(__file__).parent / T["taco_model"]
+taco = Detector(str(TACO_PATH)) if TACO_PATH.exists() and os.environ.get("ECO_DISABLE_TACO") != "1" else None
+verifier = Verifier(store, detector, embedder, taco=taco)
+# Server-side switch for local tests only (browser webcam shots carry no EXIF);
+# clients can never turn the freshness check off.
 SKIP_EXIF = os.environ.get("UNCYCLED_DEV_SKIP_EXIF") == "1"
+TESTER_HTML = (Path(__file__).parent / "ecoverify" / "tester.html").read_text(encoding="utf-8")
+SCAN_HTML = (Path(__file__).parent / "ecoverify" / "scan.html").read_text(encoding="utf-8")
+LINK_GONE = "This scan link has expired or was already used. Start a new scan from the game."
 
-def check_exif_timestamp(image: Image.Image) -> dict:
-    """
-    Checks if the image has EXIF data with a recent timestamp.
-    Returns {"live": True/False, "reason": "..."}.
-    A missing EXIF is suspicious (downloaded images rarely have it).
-    """
+
+def _player_id(value: str | None) -> str:
+    """Players are identified by a random UUID the app creates on first launch."""
     try:
-        exif_data = image._getexif()
-    except Exception:
-        exif_data = None
-
-    if exif_data is None:
-        return {
-            "live": False,
-            "reason": "No EXIF metadata found — image may not be from a camera."
-        }
-
-    # ExifBase.DateTimeOriginal = 36867
-    dt_original = exif_data.get(ExifBase.DateTimeOriginal) or exif_data.get(36867)
-    if dt_original is None:
-        # Some cameras don't write DateTimeOriginal, check DateTime (306)
-        dt_original = exif_data.get(ExifBase.DateTime) or exif_data.get(306)
-
-    if dt_original is None:
-        return {
-            "live": False,
-            "reason": "No capture timestamp in EXIF — image may not be a fresh photo."
-        }
-
-    # Parse EXIF datetime (format: "YYYY:MM:DD HH:MM:SS")
-    try:
-        photo_time = datetime.strptime(dt_original, "%Y:%m:%d %H:%M:%S")
-        # Treat as local time, compare with current local time
-        now = datetime.now()
-        age = abs((now - photo_time).total_seconds())
-
-        if age > MAX_PHOTO_AGE_SECONDS:
-            return {
-                "live": False,
-                "reason": f"Photo is {int(age)}s old (max {MAX_PHOTO_AGE_SECONDS}s). Please take a new photo."
-            }
-        return {"live": True, "reason": "Fresh capture confirmed."}
+        return str(uuid.UUID(value or ""))
     except ValueError:
-        return {"live": True, "reason": "EXIF timestamp present but unparseable — allowing."}
+        raise HTTPException(status_code=400, detail="Missing or invalid X-Player-Id header (expected a UUID).")
 
 
-# ─── 5. Main Verification Endpoint ───────────────────────────
-@app.post("/verify-daily-photo")
-async def verify_photo(file: UploadFile = File(...)):
-    if not file.content_type.startswith("image/"):
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _base_url(request: Request) -> str:
+    """Public address of this service, for the links and QR codes the game shows.
+
+    ECO_PUBLIC_URL wins (set it to the tunnel/host URL); otherwise use the forwarded host and
+    scheme a tunnel or proxy sends (cloudflared does), otherwise the address the request came in on.
+    """
+    if os.environ.get("ECO_PUBLIC_URL"):
+        return os.environ["ECO_PUBLIC_URL"].rstrip("/")
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    return f"{proto}://{host}"
+
+
+async def _read_image(file: UploadFile) -> bytes:
+    if file.content_type and not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type.")
-
-    # ── Read & validate size ──────────────────────────────────
-    image_data = await file.read()
-    if len(image_data) > 10 * 1024 * 1024:
+    data = await file.read(T["max_upload_bytes"] + 1)
+    if len(data) > T["max_upload_bytes"]:
         raise HTTPException(status_code=413, detail="Image too large (max 10 MB).")
+    return data
 
-    image = Image.open(io.BytesIO(image_data)).convert("RGB")
 
-    # ── EXIF live-capture check (skipped only when the server sets UNCYCLED_DEV_SKIP_EXIF=1 for local tests) ─
-    if not SKIP_EXIF:
-        image_with_exif = Image.open(io.BytesIO(image_data))
-        exif_check = check_exif_timestamp(image_with_exif)
-        if not exif_check["live"]:
-            return {
-                "verified": False,
-                "message": f"Live-capture check failed: {exif_check['reason']}"
-            }
+@app.on_event("startup")
+async def warm_up():
+    """Load the models before the first photo so the demo's first scan is fast."""
+    from PIL import Image
+    await run_in_threadpool(detector.detect, Image.new("RGB", (64, 64)), 0.9)
+    if taco is not None:
+        await run_in_threadpool(taco.detect, Image.new("RGB", (64, 64)), 0.9)
+    if embedder is not None:
+        await run_in_threadpool(embedder.analyse, Image.new("RGB", (64, 64)), None)
 
-    # ── Run YOLOE Detection ───────────────────────────────────
-    # Threshold at 0.20 allows zero-shot vision embeddings to pick up
-    # real-world webcam/phone angles, lighting changes, and wrappers reliably
-    results = model.predict(image, conf=0.20)
-    result = results[0]
 
-    if result.boxes is None or len(result.boxes) == 0:
-        return {
-            "verified": False,
-            "message": "No recyclable item detected. Try again."
-        }
-
-    # ── Select Highest-Confidence Detection ───────────────────
-    confidences = result.boxes.conf.tolist()
-    best_idx = confidences.index(max(confidences))
-
-    best_conf = confidences[best_idx]
-    best_cls_id = int(result.boxes.cls[best_idx])
-    raw_label = result.names[best_cls_id]
-    best_label = CLASS_SYNONYMS.get(raw_label, raw_label)
-    best_bbox = result.boxes.xyxy[best_idx].tolist()
-
-    # ── ANTI-CHEAT: Crop to Bounding Box & Hash ──────────────
-    x1, y1, x2, y2 = [int(c) for c in best_bbox]
-    cropped = image.crop((x1, y1, x2, y2))
-    current_hash = imagehash.phash(cropped)
-
-    async with _db_lock:
-        for stored_hash_str in seen_hashes:
-            stored_hash = imagehash.hex_to_hash(stored_hash_str)
-            if current_hash - stored_hash < 10:
-                return {
-                    "verified": False,
-                    "detected_item": best_label,
-                    "confidence_score": round(best_conf, 3),
-                    "bbox": [x1, y1, x2, y2],
-                    "message": "Anti-cheat triggered: You already recycled this exact item!"
-                }
-
-        # ── Valid & Not Duplicate → Save & Return ─────────────
-        co2_grams = CO2_SAVINGS.get(best_label, 50)
-        await save_hash_to_db(str(current_hash))
-        await update_eco_stats(best_label, co2_grams)
-
+@app.get("/health")
+async def health():
     return {
-        "verified": True,
-        "detected_item": best_label,
-        "item_detail": raw_label,
-        "confidence_score": round(best_conf, 3),
-        "bbox": [x1, y1, x2, y2],
-        "co2_saved_grams": co2_grams,
-        "co2_equivalence": get_co2_equivalence(co2_grams),
-        "message": f"Eco-streak validated! You saved ~{co2_grams}g of CO₂ 🌍"
+        "ok": True,
+        "model": detector.loaded_name,
+        "taco_model": Path(taco.loaded_name).name if taco is not None and taco.loaded_name else None,
+        "taco_classes": len(config.TACO) if taco is not None else 0,
+        "dev_skip_exif": SKIP_EXIF,
+        "clip": embedder is not None and embedder.available,
+        "clip_error": embedder.error if embedder is not None else "disabled",
     }
 
 
-# ─── 6. Eco Impact Stats Endpoint (for leaderboard/game) ─────
+@app.post("/verify-daily-photo")
+async def verify_photo(
+    file: UploadFile = File(...),
+    x_player_id: str | None = Header(default=None),
+    x_tz_offset_minutes: int | None = Header(default=None),
+):
+    pid = _player_id(x_player_id)
+    data = await _read_image(file)
+    return await run_in_threadpool(verifier.verify, data, pid, _now(), x_tz_offset_minutes, SKIP_EXIF)
+
+
+@app.get("/players/{player_id}")
+@app.get("/profile/{player_id}")
+async def player_profile(player_id: str):
+    """Points, streak, totals and unlocked skins. The game, the phone app and the scan page read this."""
+    return verifier.profile(_player_id(player_id), _now())
+
+
+# ── Scan links: the game asks for a link, the player opens it on a phone and photographs an item ──
+class ScanStart(BaseModel):
+    player_id: str
+
+
+@app.post("/scan/start")
+async def scan_start(body: ScanStart, request: Request):
+    """A single-use link (and its QR code) valid for scan_token_ttl_s seconds."""
+    pid = _player_id(body.player_id)
+    ttl = T["scan_token_ttl_s"]
+    token = verifier.store.issue_token(pid, time.time(), ttl)
+    base = _base_url(request)
+    return {"token": token, "url": f"{base}/scan?t={token}", "qr_url": f"{base}/scan/qr?t={token}",
+            "expires_s": ttl}
+
+
+@app.get("/scan", response_class=HTMLResponse)
+async def scan_page(t: str = Query(default="")):
+    """Phone page: take a photo of the item, see the result, go back to the game."""
+    state = {"token": t, "valid": verifier.store.token_player(t, time.time()) is not None,
+             "gone_message": LINK_GONE}
+    # json.dumps output is safe inside <script> once "</" is escaped
+    return SCAN_HTML.replace("/*__STATE__*/null", json.dumps(state).replace("</", "<\\/"))
+
+
+@app.post("/scan/upload")
+async def scan_upload(token: str = Form(...), file: UploadFile = File(...)):
+    """The scan link replaces the EXIF time check: only a fresh, unused link is accepted.
+
+    A photo that is not accepted gives the link back, so the player can retry until it expires.
+    """
+    data = await _read_image(file)
+    pid = verifier.store.redeem_token(token, time.time())
+    if pid is None:
+        raise HTTPException(status_code=410, detail=LINK_GONE)
+    result = await run_in_threadpool(verifier.verify, data, pid, _now(), None, True)
+    if not result["verified"]:
+        verifier.store.release_token(token)
+    # On success the verify result already has the profile with this scan's new skins.
+    result["profile"] = result.get("player") or verifier.profile(pid, _now())
+    return result
+
+
+@app.get("/scan/qr")
+async def scan_qr(request: Request, t: str = Query(default="")):
+    """PNG QR code of the scan link (the Windows build shows it for a phone to scan)."""
+    if verifier.store.token_player(t, time.time()) is None:
+        raise HTTPException(status_code=410, detail=LINK_GONE)
+    import qrcode
+    img = qrcode.make(f"{_base_url(request)}/scan?t={t}", box_size=8, border=2)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return Response(content=buf.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/recycling-guide")
+async def recycling_guide():
+    return {
+        "total_streams": len(config.TAXONOMY),
+        "total_items_supported": sum(len(s["items"]) for s in config.TAXONOMY.values()),
+        "streams": config.TAXONOMY,
+        "skins": config.SKINS,
+    }
+
+
 @app.get("/eco-stats")
-async def get_eco_stats():
+async def eco_stats():
+    s = verifier.store.global_stats()
     return {
-        "total_items_recycled": eco_stats["total_items"],
-        "total_co2_saved_grams": eco_stats["total_co2_grams"],
-        "total_co2_saved_kg": round(eco_stats["total_co2_grams"] / 1000, 2),
-        "co2_equivalence": get_co2_equivalence(eco_stats["total_co2_grams"]),
-        "items_by_type": eco_stats["items_by_type"],
+        "total_items_recycled": s["items"],
+        "total_players": s["players"],
+        "total_co2_saved_grams": s["co2"],
+        "total_co2_saved_kg": round(s["co2"] / 1000, 2),
+        "co2_equivalence": co2_equivalence(s["co2"]) if s["co2"] else None,
+        "streams": s["streams"],
+        "items_by_type": s["items_by_type"],
     }
 
 
-# ─── 7. Interactive In-Browser Tester ────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def web_tester():
-    return """<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Uncycled — Eco Verification Tester</title>
-  <style>
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-    .card { background: #1e293b; padding: 24px; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    h1 { margin-top: 0; color: #22c55e; font-size: 22px; text-align: center; }
-    video, #preview { width: 100%; border-radius: 12px; background: #000; margin-bottom: 12px; aspect-ratio: 4/3; object-fit: cover; }
-    .row { display: flex; gap: 8px; margin-bottom: 12px; }
-    button { flex: 1; padding: 12px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-    .btn-green { background: #22c55e; color: #000; }
-    .btn-green:hover { background: #16a34a; }
-    .btn-blue { background: #3b82f6; color: #fff; }
-    .btn-blue:hover { background: #2563eb; }
-    .opt-box { font-size: 13px; color: #94a3b8; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-    #resultBox { margin-top: 16px; padding: 16px; border-radius: 10px; display: none; font-size: 14px; line-height: 1.6; }
-    .success { background: #14532d; border: 1px solid #22c55e; color: #bbf7d0; }
-    .fail { background: #7f1d1d; border: 1px solid #ef4444; color: #fecaca; }
-    pre { background: #0f172a; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin-top: 8px; color: #e2e8f0; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>♻️ Uncycled AI Tester</h1>
-    <video id="video" autoplay playsinline></video>
-    <img id="preview" style="display:none;" />
-    
-    <div class="row">
-      <button class="btn-green" id="snapBtn">📸 Take Photo & Verify</button>
-      <button class="btn-blue" id="switchBtn">🔄 Switch / Restart Cam</button>
-    </div>
-
-    <div style="margin-top: 10px;">
-      <label style="font-size: 13px; color: #94a3b8;">Or test an image file from your PC:</label>
-      <input type="file" id="fileInput" accept="image/*" style="margin-top: 6px; width: 100%; font-size: 13px; color: #cbd5e1;" />
-    </div>
-
-    <div id="resultBox"></div>
-  </div>
-
-  <canvas id="canvas" style="display:none;"></canvas>
-
-  <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const resultBox = document.getElementById('resultBox');
-    let stream = null;
-
-    async function initCamera() {
-      try {
-        if (stream) stream.getTracks().forEach(t => t.stop());
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-        video.srcObject = stream;
-        video.style.display = 'block';
-        document.getElementById('preview').style.display = 'none';
-      } catch (err) {
-        resultBox.style.display = 'block';
-        resultBox.className = 'fail';
-        resultBox.innerHTML = '⚠️ Camera permission denied or not available. You can still test using file upload below.';
-      }
-    }
-    initCamera();
-    document.getElementById('switchBtn').onclick = initCamera;
-
-    async function sendImage(blob) {
-      resultBox.style.display = 'block';
-      resultBox.className = '';
-      resultBox.style.background = '#334155';
-      resultBox.style.color = '#fff';
-      resultBox.innerHTML = '⏳ Analyzing with YOLOE + Anti-Cheat Hash...';
-
-      const formData = new FormData();
-      formData.append('file', blob, 'capture.jpg');
-      try {
-        const resp = await fetch('/verify-daily-photo', { method: 'POST', body: formData });
-        const data = await resp.json();
-        
-        resultBox.className = data.verified ? 'success' : 'fail';
-        resultBox.innerHTML = (data.verified ? '✅ <b>VALID RECYCLING!</b>' : '❌ <b>VERIFICATION REJECTED</b>')
-          + '<br><b>Message:</b> ' + data.message
-          + (data.detected_item ? '<br><b>Detected Item:</b> ' + data.detected_item : '')
-          + (data.confidence_score ? '<br><b>Confidence:</b> ' + (data.confidence_score * 100).toFixed(1) + '%' : '')
-          + (data.co2_saved_grams ? '<br><b>CO₂ Saved:</b> -' + data.co2_saved_grams + 'g (' + data.co2_equivalence + ')' : '')
-          + '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-      } catch (err) {
-        resultBox.className = 'fail';
-        resultBox.innerHTML = '⚠️ Error contacting server: ' + err.message;
-      }
-    }
-
-    document.getElementById('snapBtn').onclick = () => {
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      canvas.toBlob((blob) => {
-        document.getElementById('preview').src = URL.createObjectURL(blob);
-        document.getElementById('preview').style.display = 'block';
-        video.style.display = 'none';
-        sendImage(blob);
-      }, 'image/jpeg', 0.9);
-    };
-
-    document.getElementById('fileInput').onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        document.getElementById('preview').src = URL.createObjectURL(file);
-        document.getElementById('preview').style.display = 'block';
-        video.style.display = 'none';
-        sendImage(file);
-      }
-    };
-  </script>
-</body>
-</html>
-"""
-
+    return TESTER_HTML

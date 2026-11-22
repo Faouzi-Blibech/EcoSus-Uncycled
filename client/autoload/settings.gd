@@ -110,6 +110,7 @@ func _register_input_actions() -> void:
 	_add_action("move_down", [KEY_S, KEY_DOWN])
 	# The design lists Space next to E; E stays first so the HUD hint reads [E].
 	_add_action("act_use", [KEY_SPACE])
+	_add_action("act_dash", [KEY_SHIFT])
 
 
 ## Physical keys, so WASD keeps the same shape on AZERTY keyboards (ZQSD).

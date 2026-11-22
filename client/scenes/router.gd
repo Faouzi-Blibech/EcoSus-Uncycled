@@ -3,6 +3,8 @@ extends RefCounted
 
 const BOOT: String = "res://scenes/boot/boot.tscn"
 const MENU: String = "res://scenes/menu/menu.tscn"
+const CREATE: String = "res://scenes/create/create.tscn"
+const JOIN: String = "res://scenes/join/join.tscn"
 const LOBBY: String = "res://scenes/lobby/lobby.tscn"
 const ROUND: String = "res://scenes/round/round.tscn"
 const MEETING: String = "res://scenes/meeting/meeting.tscn"

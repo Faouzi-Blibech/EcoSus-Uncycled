@@ -1,5 +1,5 @@
 extends "res://tests/test_case.gd"
-## Lobby: taken colours are dimmed, a refused colour or a failed Start says so, no "Ready" column.
+## Lobby: taken colours are dimmed, free seats are listed, a refused colour or a failed Start says so.
 
 const SESSION_FIELDS: Array[String] = ["seat_id", "seats", "host_seat", "room_code"]
 
@@ -37,10 +37,23 @@ func test_taken_colours_are_the_other_seats_colours() -> bool:
 
 func test_swatches_of_other_seats_are_disabled() -> bool:
 	var l: Control = _lobby()
-	assert_true(not (l._swatches[0] as Button).disabled, "my own colour")
-	assert_true((l._swatches[3] as Button).disabled, "Bo has colour 3")
-	assert_true((l._swatches[5] as Button).disabled, "the bot has colour 5")
-	assert_true(not (l._swatches[1] as Button).disabled, "a free colour")
+	l._open_picker()
+	var swatches: Array = l._picker._swatches
+	assert_true(not (swatches[0] as Button).disabled, "my own colour")
+	assert_true((swatches[3] as Button).disabled, "Bo has colour 3")
+	assert_true((swatches[5] as Button).disabled, "the bot has colour 5")
+	assert_true(not (swatches[1] as Button).disabled, "a free colour")
+	_restore()
+	return true
+
+
+func test_free_seats_are_listed_up_to_the_room_size() -> bool:
+	var saved_size: int = Session.room_size
+	Session.room_size = 6
+	var l: Control = _lobby()
+	assert_eq(l._count.text, "3/6", "three seated of six")
+	assert_eq(l._filled, [true, true, true, false, false, false] as Array[bool], "a tick per taken seat, then three free seats")
+	Session.room_size = saved_size
 	_restore()
 	return true
 

@@ -58,7 +58,11 @@ public sealed class ContentBundle
 
 public static class ContentLoader
 {
+    /// <summary>The map tests and tools load by default (their fixtures are laid out on it).</summary>
     public const string DefaultMapId = "greybox_01";
+
+    /// <summary>The map rooms play (UNCYCLED_MAP overrides it): the TBS campus.</summary>
+    public const string PlayMapId = "tbs_01";
 
     /// <summary>
     /// UNCYCLED_CONTENT_DIR when set, else the first "content" folder holding tuning.json found in
@@ -204,6 +208,10 @@ public static class ContentLoader
             ToolTimeMult = Num(t, "spots", "tool_time_mult", d.ToolTimeMult),
             BagMeterAdd = Num(t, "spots", "bag_meter_add", d.BagMeterAdd),
             RepolluteMeterSub = Num(t, "spots", "repollute_meter_sub", d.RepolluteMeterSub),
+            SpotRelitterS = Num(t, "spots", "relitter_s", d.SpotRelitterS),
+            DashTiles = Num(t, "dash", "tiles", d.DashTiles),
+            DashCooldownS = Num(t, "dash", "cooldown_s", d.DashCooldownS),
+            DashCleansRefill = (int)Num(t, "dash", "cleans_refill", d.DashCleansRefill),
             RepolluteCooldownS = Num(t, "trasher", "repollute_cooldown_s", d.RepolluteCooldownS),
             UnlockAfter = (int)Num(t, "trasher", "unlock_after", d.UnlockAfter),
             TrasherStartCooldownS = Num(t, "trasher", "start_cooldown_s", d.TrasherStartCooldownS),

@@ -39,6 +39,9 @@ var seat_id: int = -1
 var room_code: String = ""
 var reconnect_token: String = ""
 var host_seat: int = -1
+## Seats in the room (lobby "size") and the sizes the host may pick ("sizes").
+var room_size: int = 0
+var room_sizes: Array = []
 var map_id: String = ""
 var phase: String = "lobby"
 var tuning: Dictionary = {}
@@ -121,6 +124,8 @@ var infected_s: float = -1.0
 ## Trasher-only: re-pollutes so far and the unlocked ability ("", "virus" or "gas").
 var repollutes: int = 0
 var ability: String = ""
+## Seconds until my dash is ready (0 = ready, every role); -1 until a snapshot says.
+var dash_s: float = -1.0
 var match_t: float = 0.0
 var me_pos: Vector2 = Vector2.ZERO
 var has_me_pos: bool = false
@@ -332,6 +337,8 @@ func clear_room() -> void:
 	room_code = ""
 	reconnect_token = ""
 	host_seat = -1
+	room_size = 0
+	room_sizes = []
 	phase = "lobby"
 	seats = []
 	my_tasks = []
@@ -460,6 +467,7 @@ func _on_welcome(data: Dictionary) -> void:
 	room_code = str(data.get("room", ""))
 	reconnect_token = str(data.get("token", ""))
 	host_seat = int(data.get("host_seat", -1))
+	_read_room_size(data)
 	map_id = str(data.get("map_id", ""))
 	tuning = Net.as_dict(data.get("tuning"))
 	speed_px_per_s = float(tuning.get("speed_px_per_s", Net.tiles_to_px(Net.DEFAULT_SPEED_TILES_PER_S)))
@@ -528,9 +536,16 @@ func _on_welcome(data: Dictionary) -> void:
 	_save_saved()
 
 
+func _read_room_size(data: Dictionary) -> void:
+	room_size = int(data.get("size", room_size))
+	if data.has("sizes"):
+		room_sizes = Net.as_array(data.get("sizes"))
+
+
 func _on_lobby(data: Dictionary) -> void:
 	seats = Net.as_array(data.get("seats"))
 	host_seat = int(data.get("host_seat", host_seat))
+	_read_room_size(data)
 	_mark_out_from_seats()
 	phase = "lobby"
 	_save_saved()
@@ -612,6 +627,7 @@ func _read_private(me: Dictionary) -> void:
 	masks = int(_num(me.get("masks"), 0.0))
 	infected_s = _num(me.get("infected_s"), -1.0)
 	repollutes = int(_num(me.get("repollutes"), 0.0))
+	dash_s = _num(me.get("dash"), -1.0)
 	ability = str(me["ability"]) if me.get("ability") is String else ""
 
 
@@ -671,6 +687,8 @@ func _on_event(data: Dictionary) -> void:
 		"gas_done":
 			gas_room = ""
 			gas_in_s = 0.0
+		"dash_ok":
+			dash_s = _num(data.get("cooldown"), 0.0)
 		"repollute_ok":
 			cooldowns["repollute"] = _num(data.get("cooldown"), 0.0)
 			repollutes = int(_num(data.get("count"), repollutes))

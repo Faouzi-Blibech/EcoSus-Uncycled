@@ -3,3 +3,19 @@
 client/
 build/
 .git/
+# Python verifier: keep the build context small
+venv/
+**/__pycache__/
+*.pt
+*.ts
+*.part
+*.db
+mobile/
+reference/
+eco_stats.json
+submitted_hashes.json
+ecoverify/train/data/
+ecoverify/train/runs/
+venv-train/
+# keep the trained TACO litter model in the verifier image
+!ecoverify/models/*.pt

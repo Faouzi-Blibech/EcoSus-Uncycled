@@ -139,7 +139,7 @@ namespace Uncycled.Train
                 }
 
                 string path = specs[i].Spec.Substring(OnnxPrefix.Length);
-                if (!OnnxPolicy.TryLoad(path, ObservationBuilder.SchemaHash, out OnnxPolicy? policy, out string reason) || policy == null)
+                if (!OnnxPolicy.TryLoad(path, SchemaV2.Hash, out OnnxPolicy? policy, out string reason) || policy == null)
                 {
                     throw new ArgumentException("--opponents model not usable (" + path + "): " + reason);
                 }

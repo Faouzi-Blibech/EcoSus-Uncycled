@@ -15,7 +15,9 @@ namespace Sim.Match
         {
             float? repair = Smog.Active && Smog.RepairSeat == seat ? Smog.RepairElapsed : (float?)null;
             float? machineRepair = Machine.Jammed && Machine.RepairSeat == seat ? Machine.RepairElapsed : (float?)null;
-            return new SnapshotExtras(Smog.Level, repair, Machine.Jammed, machineRepair, _gasRoom?.Id, Math.Max(0f, _gasLeft));
+            PlayerState? me = Find(seat);
+            float dash = me == null ? 0f : Math.Max(0f, me.DashReadyAt - ActiveTime);
+            return new SnapshotExtras(Smog.Level, repair, Machine.Jammed, machineRepair, _gasRoom?.Id, Math.Max(0f, _gasLeft), dash);
         }
 
         /// <summary>
@@ -190,7 +192,8 @@ namespace Sim.Match
                 Result,
                 me.IsActive ? null : new List<ChatEvent>(_ghostChat),
                 spots,
-                Machine.Jammed);
+                Machine.Jammed,
+                _gasRoom == null ? null : new GasView(_gasRoom.Id, Math.Max(0f, _gasLeft)));
         }
     }
 }

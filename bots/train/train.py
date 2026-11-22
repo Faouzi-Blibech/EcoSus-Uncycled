@@ -38,6 +38,24 @@ def resolve_device(requested: str) -> str:
     return requested
 
 
+def init_schema_problem(ckpt: Path, host_hash: str) -> str | None:
+    """Why a checkpoint cannot start a run on this host, or None. The hash in the run.json beside the checkpoint
+    must equal the host's handshake hash: a network trained on another observation or action list has the same
+    layout only by luck and would play garbage."""
+    run_json = ckpt.parent / "run.json"
+    if not run_json.is_file():
+        return f"checkpoint {ckpt} has no run.json beside it, so its schema hash is unknown (refusing)"
+    try:
+        recorded = json.loads(run_json.read_text(encoding="utf-8")).get("schema_hash")
+    except (OSError, ValueError):
+        recorded = None
+    if not recorded:
+        return f"{run_json} records no schema_hash (refusing)"
+    if recorded != host_hash:
+        return f"checkpoint schema hash {recorded} differs from the host's {host_hash} (schema mismatch, refusing)"
+    return None
+
+
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--config", type=Path, default=HERE / "config.yaml")
@@ -102,15 +120,27 @@ def main(argv=None) -> int:
     run_runs.mkdir(parents=True, exist_ok=True)
     run_ckpt.mkdir(parents=True, exist_ok=True)
 
+    # map and seats go to the host on the command line, so host_cmd in run.json records them
+    host_flags = []
+    if host.get("map") is not None:
+        host_flags += ["--map", str(host["map"])]
+    if host.get("seats") is not None:
+        host_flags += ["--seats", str(host["seats"])]
     env = UncycledVecEnv(host_cmd, content_dir=str((cfg_dir / host["content_dir"]).resolve()),
                          learner=args.learner, matches=matches, seed=seed, reward_weights=cfg["rewards"],
-                         threads=host.get("threads"), extra_args=shlex.split(args.host_extra))
+                         threads=host.get("threads"), extra_args=host_flags + shlex.split(args.host_extra))
     try:
+        if args.init is not None:
+            problem = init_schema_problem(args.init, env.schema_hash)
+            if problem:
+                print(f"error: --init {problem}", file=sys.stderr)
+                return 2
         venv = VecMonitor(env)
         info = {
             "run": args.run, "learner": args.learner, "seed": seed, "steps": args.steps, "matches": matches,
             "agents": env.num_envs, "obs_size": env.obs_size, "action_count": env.action_count,
             "schema_hash": env.schema_hash, "git_commit": git_commit(), "host_cmd": env.host_cmd,
+            "map": host.get("map"), "seats": host.get("seats"),
             "device": device, "cuda_available": torch.cuda.is_available(),
             "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
             "versions": {"python": platform.python_version(), "torch": torch.__version__,

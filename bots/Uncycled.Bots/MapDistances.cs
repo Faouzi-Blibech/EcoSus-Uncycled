@@ -9,11 +9,14 @@ namespace Uncycled.Bots
 {
     /// <summary>
     /// Walking distances in tiles on the 4-neighbour walk grid, cached per map (a breadth-first
-    /// field per target cell, built on first use). Safe to share between threads.
+    /// field per target cell, built on first use, at most MaxCachedFields kept). Safe to share between threads.
     /// </summary>
     public sealed class MapDistances
     {
         public const int Unreachable = -1;
+
+        /// <summary>Most breadth-first fields kept per map (each is Width x Height ushorts); see Path.</summary>
+        public const int MaxCachedFields = 256;
 
         private static readonly ConditionalWeakTable<MapData, MapDistances> Cache = new ConditionalWeakTable<MapData, MapDistances>();
 
@@ -27,6 +30,9 @@ namespace Uncycled.Bots
 
         public static MapDistances For(MapData map) => Cache.GetValue(map, m => new MapDistances(m));
 
+        /// <summary>Fields held right now (for tests and memory checks).</summary>
+        public int CachedFieldCount => _fields.Count;
+
         /// <summary>Steps from a to b (cell to cell), or Unreachable.</summary>
         public int Path(Vec2 a, Vec2 b)
         {
@@ -37,7 +43,19 @@ namespace Uncycled.Bots
                 return Unreachable;
             }
 
-            ushort d = _fields.GetOrAdd(bi, Build)[ai];
+            if (!_fields.TryGetValue(bi, out ushort[]? field))
+            {
+                // clear-on-full keeps the memory fixed (players and bodies are moving targets, so every cell can become one);
+                // a field already handed out stays valid, and the few static targets are rebuilt on their next use
+                if (_fields.Count >= MaxCachedFields)
+                {
+                    _fields.Clear();
+                }
+
+                field = _fields.GetOrAdd(bi, Build);
+            }
+
+            ushort d = field[ai];
             return d == ushort.MaxValue ? Unreachable : d;
         }
 

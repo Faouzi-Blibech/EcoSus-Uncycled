@@ -82,12 +82,11 @@ ITEM_PERFUME_FLASK,Perfume flask,Flacon de parfum,قارورة عطر
 ITEM_APPLE_CORE,Apple core,Trognon de pomme,قلب تفاحة
 ITEM_BANANA_PEEL,Banana peel,Peau de banane,قشرة موز
 ITEM_EGGSHELL,Eggshell,Coquille d'oeuf,قشرة بيض
-MEETING_CAUSE_REPORT,%s reported a body,%s a signalé un corps,%s أبلغ عن جثة
+MEETING_CAUSE_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط
 MEETING_CAUSE_EMERGENCY,%s called an emergency meeting,%s a lancé une réunion d'urgence,%s دعا إلى اجتماع طارئ
 MEETING_CLUES,Clues,Indices,أدلة
 MEETING_NO_CLUES,No clues.,Aucun indice.,لا توجد أدلة.
 MEETING_CLUE_PLAIN,%s (%s),%s (%s),%s (%s)
-MEETING_TASK_BAR,Tasks done: %.0f%%,Tâches faites : %.0f%%,المهام المنجزة: %.0f%%
 MEETING_CHAT,Chat,Discussion,الدردشة
 MEETING_DISCUSSION,Discussion,Discussion,نقاش
 MEETING_VOTING,Vote,Vote,تصويت
@@ -109,6 +108,12 @@ EJECTION_PENDING,Ejection in progress...,Éjection en cours...,الطرد جار
 ZONE_MARKET,Market,Marché,السوق
 ZONE_GARDEN,Garden,Jardin,الحديقة
 ZONE_DEPOT,Depot,Dépôt,المستودع
+ZONE_OFFICE,Office,Bureau,المكتب
+ZONE_CLUB,Club room,Salle du club,قاعة النادي
+ZONE_AMPHI,Amphitheatre,Amphithéâtre,المدرج
+ZONE_HALLWAY,Hallway,Couloir,الممر
+ZONE_LOUNGE,Lounge,Salon,الاستراحة
+ZONE_PARKING,Parking,Parking,موقف السيارات
 WASTE_PLASTIC,plastic,plastique,بلاستيك
 WASTE_GLASS,glass,verre,زجاج
 WASTE_PAPER,paper,papier,ورق
@@ -136,7 +141,7 @@ RESULT_TL_AT,%s (%s),%s (%s),%s (%s)
 RESULT_TL_DUMP,%s dumped waste,%s a jeté des déchets,%s رمى نفايات
 RESULT_TL_HIT,%s poisoned %s,%s a empoisonné %s,%s سمّم %s
 RESULT_TL_POISONED_OUT,%s was knocked out by toxic gas,%s a été éliminé par le gaz toxique,%s تم إقصاؤه بالغاز السام
-RESULT_TL_REPORT,%s reported a body,%s a signalé un corps,%s أبلغ عن جثة
+RESULT_TL_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط
 RESULT_TL_MEETING,%s called a meeting,%s a lancé une réunion,%s دعا إلى اجتماع
 RESULT_TL_EJECTION,%s was ejected,%s a été éjecté,تم طرد %s
 RESULT_FACT_LABEL,Did you know?,Le savais-tu ?,هل تعلم؟
@@ -275,6 +280,7 @@ SABOTAGE_BANNER_MACHINE,The Recycling Machine is jammed! Hold FIX at the machine
 REJECT_NO_BAGS,You carry no bags.,Tu ne portes aucun sac.,لا تحمل أي أكياس.
 REJECT_MACHINE_JAMMED,The machine is jammed. Fix it first.,La machine est bloquée. Répare-la d'abord.,الآلة معطّلة. أصلحها أولًا.
 REJECT_NO_ITEM,That item is not available.,Cet objet n'est pas disponible.,هذا العنصر غير متوفر.
+ACT_DASH,Dash,Élan,اندفاع
 ACT_REPOLLUTE,Re-pollute,Repolluer,إعادة التلويث
 ACT_VIRUS,Virus,Virus,فيروس
 ACT_GAS,Gas,Gaz,غاز
@@ -302,3 +308,22 @@ ACT_ALERT,Alert,Alerter,نبّه
 HUD_HEALED,You were healed.,Tu as été soigné.,تم علاجك.
 HUD_MASK_USED,Your gas mask saved you!,Ton masque à gaz t'a sauvé !,قناع الغاز أنقذك!
 GAS_WARNING,Toxic gas: %s in %d s!,Gaz toxique : %s dans %d s !,غاز سام: %s بعد %d ث!
+COMMON_BACK,Back,Retour,رجوع
+COMMON_CONFIRM,Confirm,Confirmer,تأكيد
+CREATE_MAP,Map :,Carte :,الخريطة:
+CREATE_BUTTON,Create,Créer,إنشاء
+MAP_TBS,TBS,TBS,TBS
+MAP_INSAT,INSAT,INSAT,INSAT
+MAP_SIDI_BOU_SAID,Sidi Bou Said,Sidi Bou Saïd,سيدي بوسعيد
+MAP_SOON,Coming soon,Bientôt,قريبًا
+MAP_LOCKED,This map is coming soon.,Cette carte arrive bientôt.,هذه الخريطة قادمة قريبًا.
+LOBBY_COPY,Copy the code,Copier le code,انسخ الرمز
+LOBBY_COPIED,Code copied.,Code copié.,تم نسخ الرمز.
+LOBBY_CHARACTER,Character,Personnage,الشخصية
+LOBBY_START_SHORT,Start,Lancer,ابدأ
+CHAR_TITLE,Choose your character,Choisis ton personnage,اختر شخصيتك
+CHAR_UNLOCK_HINT,Keep a daily scan streak to unlock more characters.,Garde ta série de scans quotidiens pour débloquer d'autres personnages.,حافظ على سلسلة المسح اليومية لفتح شخصيات أخرى.
+CHAR_SPROUT,Sprouty,Sprouty,Sprouty
+CHAR_ROBOT,Abdo,Abdo,Abdo
+CHAR_EAGLE,Enactor,Enactor,Enactor
+CHAR_RABBIT,Timi,Timi,Timi

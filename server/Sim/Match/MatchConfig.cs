@@ -156,6 +156,19 @@ namespace Sim.Match
         /// <summary>Meter removed when a Trasher re-pollutes a spot (spots.repollute_meter_sub).</summary>
         public float RepolluteMeterSub { get; set; } = 10f;
 
+        /// <summary>Seconds after its last clean that litter comes back on a spot; 0 = never (spots.relitter_s).</summary>
+        public float SpotRelitterS { get; set; } = 0f;
+
+        // dash (every seat; tuning.json dash.*)
+        /// <summary>Longest dash in tiles; walls stop it sooner (dash.tiles).</summary>
+        public float DashTiles { get; set; } = 6f;
+
+        /// <summary>Seconds from the match start, then from each dash, until the dash is ready (dash.cooldown_s).</summary>
+        public float DashCooldownS { get; set; } = 20f;
+
+        /// <summary>Spots cleaned that refill the dash at once; 0 = never (dash.cleans_refill).</summary>
+        public int DashCleansRefill { get; set; } = 5;
+
         // Trasher kit (v2; tuning.json trasher.* and machine.*)
         /// <summary>Cooldown between two re-pollutes (trasher.repollute_cooldown_s).</summary>
         public float RepolluteCooldownS { get; set; } = 20f;

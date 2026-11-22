@@ -329,6 +329,7 @@ public static class Wire
             w.WriteString("status", Snake(me.Status));
             WriteBags(w, me);
             WriteTrasherFields(w, me);
+            w.F("dash", extras?.DashS ?? 0f);
             WriteInfected(w, me);
             if (me.Cooldowns != null)
             {
@@ -746,6 +747,14 @@ public static class Wire
                     w.WriteString("kind", Snake(e.Kind));
                     w.WriteNumber("seat", (int)e.Actor);
                     w.Pos("pos", e.Position);
+                });
+
+            case DashOkEvent e:
+                return JsonOut.Build(w =>
+                {
+                    w.WriteString("t", "dash_ok");
+                    w.Pos("pos", e.Position);
+                    w.F("cooldown", e.Cooldown);
                 });
 
             case RepolluteOkEvent e:
