@@ -224,7 +224,7 @@ func _seat_button(seat: int) -> Button:
 func _back_row(with_send: bool) -> HBoxContainer:
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
-	var back_btn: Button = UIKit.make_button(tr("CHAT_BACK"), 100.0)
+	var back_btn: Button = UIKit.make_button(tr("CHAT_BACK"), 100.0, "cream")
 	back_btn.pressed.connect(back)
 	row.add_child(back_btn)
 	if with_send:

@@ -183,7 +183,7 @@ func _finish_popup(box: VBoxContainer, close_key: String) -> HBoxContainer:
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	box.add_child(row)
-	var close_btn: Button = UIKit.make_button(tr(close_key))
+	var close_btn: Button = UIKit.make_button(tr(close_key), 120.0, "cream")
 	close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	close_btn.pressed.connect(_close_popup)
 	row.add_child(close_btn)

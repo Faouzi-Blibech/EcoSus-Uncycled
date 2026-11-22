@@ -110,7 +110,7 @@ func _ensure_built() -> void:
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(_row)
 	if cancelable:
-		var cancel: Button = UIKit.make_button(tr(cancel_key), CARD_SIZE.x)
+		var cancel: Button = UIKit.make_button(tr(cancel_key), CARD_SIZE.x, "cream")
 		cancel.custom_minimum_size.y = maxf(cancel.custom_minimum_size.y, CANCEL_MIN_HEIGHT)
 		cancel.pressed.connect(_on_cancel)
 		box.add_child(cancel)
