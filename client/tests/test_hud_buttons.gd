@@ -39,7 +39,7 @@ func test_use_button_face_per_look() -> bool:
 	assert_eq(Hud.use_look_face({"kind": "use", "count": 0}), ["use", "Use"], "use")
 	assert_eq(Hud.use_look_face({"kind": "clean", "count": 0}), ["clean", "Clean"], "clean")
 	assert_eq(Hud.use_look_face({"kind": "recycle", "count": 3}), ["recycle", "Recycle (3)"], "recycle shows the bags")
-	assert_eq(Hud.use_look_face({"kind": "meeting", "count": 0}), ["alert", "Meeting"], "meeting")
+	assert_eq(Hud.use_look_face({"kind": "meeting", "count": 0}), ["meeting", "Meeting"], "meeting has its own button")
 	assert_eq(Hud.use_look_face({}), ["use", "Use"], "no look yet")
 	return true
 
