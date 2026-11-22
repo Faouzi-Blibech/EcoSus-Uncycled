@@ -29,9 +29,79 @@ Read this first when resuming. Keep it short: done, next, known issues, decision
   end to end, protocol 1 (PR #3, #5). Tests: server 134, Sim 186, bots 236 (+1 skipped, needs
   Cloudflare keys), all green. Mystery challenge announced: online game + network benchmark on the
   organisers' networks. Design pivot to v2 (see top).
+- 2026-11-22 (art + HUD, PRs #31, #34, #35):
+  - **Map:** TBS map with the Figma rooms (cafeteria, library, Art Factory, Enactus) and the Gemini
+    recycling room (machine on its pad).
+  - **Players:** animated lobby characters in the round instead of discs; speed 3.0 tiles/s.
+  - **HUD (Screens reference look, Caroni font):**
+    - painted round action buttons, labels on a pill under the disc;
+    - pollution bar;
+    - player card, note with the timer, mini map, painted joystick.
+  - **Campus ground:** brick, plaster walls, stone corridors.
+  - **Gemini assets** via the asset skill file (`EcoSus_Asset_Skill.md`), always scaled uniformly.
 
 ## Next
 The v2 plan and schedule: `docs/team/README.md`.
+
+### HUD parity with the server (Cleaners and Trashers)
+
+**Context.** The server already implements the v2 Cleaner loop (design s5): clean a dirty spot through its
+mini-game and get one bag (`bags.cap` 1, 3 with the Backpack); a full Cleaner cannot clean; `use` on the
+machine delivers all bags (+6 meter each) and opens an upgrade offer. It also implements the Trasher loop
+(s6): re-pollute 3 times, then pick virus or gas. The client handles every server message (audit 2026-11-22),
+but the screen does not show all of it:
+
+| Server feature | Client today | Gap |
+|---|---|---|
+| Bags: 1 slot (3 with Backpack); full Cleaners cannot clean | "Bags: 1/3" text in the note | No visual bag gauge, no "bag full, go recycle" prompt |
+| `use` cleans a spot, recycles at the machine, calls a meeting at the emergency table (fake clean for a Trasher) | One "Use" hand button | The button does not say what it will do |
+| Items: backpack, tool, heal, mask | One line of item names | No item icons |
+| Trasher unlocks virus/gas after 3 re-pollutes, then keeps one | Nothing until the choice cards | No unlock progress, no "your ability" display |
+| Basic vs special actions | All buttons the same size | Size difference requested by the art lead |
+
+These already work and need no change: upgrade cards after a delivery, jammed-machine banner and Fix,
+virus countdown and Alert, Heal, gas warning, mask-used toast, and the machine art (idle, working, jammed).
+No server or protocol change is needed.
+
+**Plan** (client only: `client/ui/hud/hud.gd`, `client/ui/hud/action_button.gd`, `client/i18n/strings.csv`,
+`client/assets/ui/hud/`, one new test file):
+
+1. **Art** (done, branch `art/bag-recycle-art`). Files in `client/assets/ui/hud/`:
+   - `bag_full.png`: the Gemini trash bag;
+   - `bag_empty.png`: the same bag, faded;
+   - `btn_recycle*`: the green recycle disc, normal, pressed and disabled;
+   - `btn_sabotage_machine*`: the "jam machine" choice now uses the purple bag disc, so the recycle icon
+     stays a Cleaner icon.
+2. **Two button sizes.**
+   - **Basic (52 px disc):** Use, Report, Dash and Fix, plus the two sabotage choices.
+   - **Special (64 px disc):** Clean, Heal and Alert for Cleaners; Re-pollute, Virus/Gas and Sabotage
+     for Trashers.
+   - The label pill stays under the disc; the grid and the Dash position adapt.
+3. **Context Use button.** It changes with the console the player is next to:
+   - dirty spot: Clean (sponge);
+   - machine with bags: Recycle (n) (recycle disc);
+   - emergency table: Meeting (bell);
+   - anything else: Use (hand).
+
+   A Trasher at a spot also sees Clean, so the fake clean looks the same. New strings `ACT_RECYCLE` and
+   `ACT_MEETING` (EN/FR/AR).
+4. **Bag gauge on the player card** (Cleaners only, since bags are private).
+   - One slot per bag of capacity (`bag_full` / `bag_empty`).
+   - When the last slot fills, the slots bounce and the toast reads "Bag full! Take it to the Recycling
+     Machine" (`HUD_BAGS_FULL`).
+   - The slots empty with a short animation on `delivered`.
+5. **Trasher progress on the player card.** Re-pollute pips (x/`trasher.unlock_after`) until the unlock;
+   after the pick, the ability's icon and name.
+6. **Items as icons** in the top-right note (backpack, tool, heal, mask, only while owned). This replaces
+   the "Bags: x/y" line and the item-name line.
+7. **Tests and checks.**
+   - Table tests for the pure rules: the Use button look per context, the bag slots, the unlock progress.
+   - Full client, Sim and server test runs.
+   - A rendered screenshot per role, then a play test.
+
+Open points:
+- Confirm the basic/special split in step 2.
+- Bell for "Meeting"? Alert also uses the bell.
 
 ## Known issues
 - Server has 12 colours, client palette has 8 (colours 8-11 draw white). Fixed in gameplay step 1.
