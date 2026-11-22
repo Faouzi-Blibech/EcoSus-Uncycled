@@ -2613,9 +2613,9 @@
 			"id": "hall_machine",
 			"kind": "zone",
 			"rect": [
-				20,
+				5,
 				46,
-				105,
+				120,
 				2
 			],
 			"name_key": "zone_hall_machine"

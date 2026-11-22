@@ -59,6 +59,12 @@ namespace Sim.Match
         /// <summary>Step along the dash line when looking for the last point before a wall (tiles).</summary>
         private const float DashStep = 0.05f;
 
+        /// <summary>
+        /// The dash ends where the client's body fits; this much overlap is allowed (tiles), so a
+        /// player standing flush against a wall can still dash along it.
+        /// </summary>
+        private const float DashFitSlack = 0.02f;
+
         private CommandResult ApplyDash(PlayerState p, DashCommand c)
         {
             if (Phase != MatchPhase.Playing)
@@ -95,7 +101,9 @@ namespace Sim.Match
             {
                 float d = Math.Min(i * DashStep, Config.DashTiles) / length;
                 Vec2 next = new Vec2(start.X + dir.X * d, start.Y + dir.Y * d);
-                if (!Map.Walk.SegmentClear(start, next))
+                // The body, not only its centre, must fit: a point stop next to a wall left the client's
+                // body inside it (pushed out with a jolt).
+                if (!Map.Walk.SegmentClear(start, next) || !Map.Walk.CircleFits(next, Config.BodyRadius - DashFitSlack))
                 {
                     break;
                 }

@@ -14,7 +14,10 @@ const OCCLUDER_SHADER: String = "res://world/maps/occluder.gdshader"
 const FLOOR_ATLAS: Vector2i = Vector2i(0, 0)
 const WALL_ATLAS: Vector2i = Vector2i(1, 0)
 const OBSTACLE_ATLAS: Vector2i = Vector2i(2, 0)
-const GENERATED: Array[String] = ["Art", "Floor", "Occluders", "Markers"]
+const GENERATED: Array[String] = ["Art", "Floor", "Occluders", "Markers", "Edge"]
+## Thickness of the solid frame around the map (px). Outside the map there are no tiles, so without
+## it a floor cell on the edge lets the body walk off the map (the server refuses it: a snap back).
+const EDGE_PX: float = 64.0
 
 @export_file("*.json") var layout_path: String = "":
 	set(value):
@@ -80,10 +83,31 @@ func _build() -> void:
 	ground.room_rects = room_rects
 
 	add_child(_floor_layer(cells))
+	add_child(_edge(size))
 	add_child(occluders)
 	add_child(_markers(lay.get("markers", [])))
 	for row in cells:
 		_sight.append("".join(PackedStringArray(row)).replace("o", "."))
+
+
+## Four solid strips just outside the map, on the walls' collision layer. A separate body, so the
+## floor layer's used rect (camera bounds, the export) stays the map itself.
+static func _edge(size: Vector2i) -> StaticBody2D:
+	var body := StaticBody2D.new()
+	body.name = "Edge"
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var w: float = size.x * TILE_PX
+	var h: float = size.y * TILE_PX
+	var e: float = EDGE_PX
+	for r in [Rect2(-e, -e, w + 2.0 * e, e), Rect2(-e, h, w + 2.0 * e, e), Rect2(-e, 0.0, e, h), Rect2(w, 0.0, e, h)]:
+		var shape := RectangleShape2D.new()
+		shape.size = (r as Rect2).size
+		var c := CollisionShape2D.new()
+		c.shape = shape
+		c.position = (r as Rect2).get_center()
+		body.add_child(c)
+	return body
 
 
 ## Paints the room's cells and adds its picture and depth pieces. Returns its footprint in tiles.

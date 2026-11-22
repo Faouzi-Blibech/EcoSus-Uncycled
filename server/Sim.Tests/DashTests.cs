@@ -42,6 +42,20 @@ namespace Sim.Tests
             Assert.True(x < 6f && x > 5.5f, "stopped at x = " + x);
         }
 
+        /// <summary>Regression: the dash stopped with its centre 0.05 from the wall, the client's body inside it.</summary>
+        [Theory]
+        [InlineData(2.5f, 3.5f, 1f, 0f)]   // straight into the wall column (x = 6)
+        [InlineData(2.5f, 2.5f, 1f, 0.3f)] // at an angle
+        [InlineData(10.5f, 3.5f, -1f, 0f)] // from the other side
+        public void Dash_EndsWhereTheBodyFits(float x, float y, float dx, float dy)
+        {
+            var (e, c) = Ready(new Vec2(x, y));
+            Assert.True(e.Apply(c, new DashCommand(new Vec2(dx, dy))).IsOk);
+            Vec2 at = P(e, c).Position;
+            Assert.True(e.Map.Walk.CircleFits(at, 0.28f), "body overlaps a wall at " + at.X + "," + at.Y);
+            Assert.True(Vec2.Distance(at, new Vec2(x, y)) > 2f, "still dashed");
+        }
+
         [Fact]
         public void Dash_EmitsDashOkToTheDasherOnly()
         {
