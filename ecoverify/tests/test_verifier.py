@@ -67,6 +67,11 @@ def pid():
     return str(uuid.uuid4())
 
 
+def unlocked_at(streak: int) -> list[str]:
+    """Skin ids a streak of exactly `streak` unlocks, from content/skins.json (data, not test code)."""
+    return [s["id"] for s in config.SKINS if streak - 1 < s["required_streak"] <= streak]
+
+
 class VerifyTests(unittest.TestCase):
     def tearDown(self):
         while _OPEN:
@@ -80,7 +85,7 @@ class VerifyTests(unittest.TestCase):
         r = self.verify(v, p, photo(1))
         self.assertTrue(r["verified"], r)
         self.assertEqual(r["player"]["streak"], 1)
-        self.assertEqual([s["id"] for s in r["player"]["new_unlocks"]], ["eco_novice"])
+        self.assertEqual([s["id"] for s in r["player"]["new_unlocks"]], unlocked_at(1))
         self.assertEqual(len(r["contour"]), 4)
         for x, y in r["contour"]:
             self.assertTrue(0 <= x <= 1 and 0 <= y <= 1)
@@ -91,7 +96,7 @@ class VerifyTests(unittest.TestCase):
             r = self.verify(v, p, photo(10 + day), NOW + timedelta(days=day))
             self.assertTrue(r["verified"], r)
         self.assertEqual(r["player"]["streak"], 3)
-        self.assertEqual([s["id"] for s in r["player"]["new_unlocks"]], ["recycled_scout"])
+        self.assertEqual([s["id"] for s in r["player"]["new_unlocks"]], unlocked_at(3))
 
     def test_same_photo_rejected_even_rotated(self):
         v, p = make(), pid()

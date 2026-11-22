@@ -4,7 +4,9 @@ from datetime import date, datetime, timezone
 from ecoverify import config, rules
 
 D = date(2026, 11, 21)
-SKINS = config.SKINS
+# The rules take the catalogue as data; this test list stays put when content/skins.json changes.
+SKINS = [{"id": "a", "required_streak": 1}, {"id": "b", "required_streak": 3},
+         {"id": "c", "required_streak": 7}, {"id": "d", "required_streak": 14}]
 
 
 class StreakTests(unittest.TestCase):
@@ -35,17 +37,17 @@ class StreakTests(unittest.TestCase):
 class UnlockTests(unittest.TestCase):
     def test_new_unlocks(self):
         cases = [
-            (1, set(), ["eco_novice"]),
-            (3, {"eco_novice"}, ["recycled_scout"]),
-            (7, set(), ["eco_novice", "recycled_scout", "waste_warrior"]),
-            (2, {"eco_novice"}, []),
+            (1, set(), ["a"]),
+            (3, {"a"}, ["b"]),
+            (7, set(), ["a", "b", "c"]),
+            (2, {"a"}, []),
         ]
         for streak, have, want in cases:
             with self.subTest(streak=streak):
                 self.assertEqual([s["id"] for s in rules.new_unlocks(streak, have, SKINS)], want)
 
     def test_next_skin(self):
-        self.assertEqual(rules.next_skin(set(), SKINS)["id"], "eco_novice")
+        self.assertEqual(rules.next_skin(set(), SKINS)["id"], "a")
         self.assertIsNone(rules.next_skin({s["id"] for s in SKINS}, SKINS))
 
 
