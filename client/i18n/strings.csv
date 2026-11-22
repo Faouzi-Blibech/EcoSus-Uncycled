@@ -364,3 +364,5 @@ CHAR_EAGLE,Enactor,Enactor,Enactor,Enactor
 CHAR_RABBIT,Timi,Timi,Timi,Timi
 LANG_SV,Svenska,Svenska,Svenska,Svenska
 SETTINGS_COMMUNITY,Community r/EcoSus,Communauté r/EcoSus,مجتمع r/EcoSus,Gemenskap r/EcoSus
+ACT_RECYCLE,Recycle (%d),Recycler (%d),إعادة التدوير (%d),Återvinn (%d)
+ACT_MEETING,Meeting,Réunion,اجتماع,Möte
