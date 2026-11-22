@@ -1,4 +1,5 @@
 keys,en,fr,ar
+CHAR_LOCKED,That character is still locked. Keep your scan streak going!,Ce personnage est encore verrouillé. Continue ta série de scans !,هذه الشخصية ما زالت مقفلة. واصل سلسلة المسح!
 BOOT_TITLE,Uncycled,Uncycled,Uncycled
 BOOT_CONNECTING,Connecting to the server...,Connexion au serveur...,جارٍ الاتصال بالخادم...
 BOOT_OFFLINE,"Cannot reach the game server. Check the address in Settings.\n%s","Impossible de joindre le serveur de jeu. Vérifie l'adresse dans les Paramètres.\n%s",تعذّر الوصول إلى خادم اللعبة. تحقّق من العنوان في الإعدادات.\n%s

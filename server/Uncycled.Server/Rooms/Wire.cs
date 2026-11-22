@@ -81,6 +81,7 @@ public static class Wire
                 w.WriteNumber("seat", (int)s.Id);
                 w.WriteString("name", s.Name);
                 w.WriteNumber("color", (int)s.Color);
+                w.WriteString("skin", s.Skin);
                 w.WriteBoolean("human", s.Control == SeatControl.Human);
                 w.WriteBoolean("ready", true);
                 w.WriteEndObject();
@@ -168,6 +169,7 @@ public static class Wire
             w.WriteNumber("seat", (int)s.Id);
             w.WriteString("name", s.Name);
             w.WriteNumber("color", (int)s.Color);
+            w.WriteString("skin", s.Skin);
             w.WriteBoolean("human", s.Control == SeatControl.Human);
             w.WriteBoolean("out", isOut(s.Id));
             w.WriteEndObject();

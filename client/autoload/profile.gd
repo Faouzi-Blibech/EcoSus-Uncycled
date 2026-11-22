@@ -111,6 +111,16 @@ func apply_profile(data: Dictionary) -> void:
 	loaded = true
 
 
+## The lobby's pick (plan L3), saved for the next rooms; "" is the default character.
+func choose_skin(id: String) -> void:
+	skin = id
+	var cfg: ConfigFile = ConfigFile.new()
+	cfg.load(PROFILE_PATH)
+	cfg.set_value("profile", "skin", skin)
+	cfg.save(PROFILE_PATH)
+	changed.emit()
+
+
 func refresh() -> void:
 	if _get.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
 		return

@@ -125,11 +125,13 @@ def main() -> int:
     check("people/bus -> not_recyclable", r.get("reason") == "not_recyclable", r.get("detected_class"))
     check("rejection still returns an outline", len(r.get("contour") or []) >= 3, f"{len(r.get('contour') or [])} pts")
 
+    # Skins are data (content/skins.json): expect whatever a streak of 1 unlocks there.
+    first_skins = [s["id"] for s in get(base, "/recycling-guide")[1].get("skins", []) if s.get("streak", 99) <= 1]
     status, r = post(base, sample("zidane.jpg"), player)
     check("tie -> accepted (depot)", r.get("verified") and r.get("kind") == "depot",
           f"{r.get('detected_class')} -> {r.get('detected_item')} {r.get('co2_saved_grams')} g")
     check("streak = 1, first skin unlocked",
-          (r.get("player") or {}).get("streak") == 1 and [s["id"] for s in r["player"]["new_unlocks"]] == ["eco_novice"])
+          (r.get("player") or {}).get("streak") == 1 and [s["id"] for s in r["player"]["new_unlocks"]] == first_skins)
 
     status, r = post(base, sample("zidane.jpg"), player)
     check("same photo again -> duplicate", r.get("reason") == "duplicate", r.get("message"))
