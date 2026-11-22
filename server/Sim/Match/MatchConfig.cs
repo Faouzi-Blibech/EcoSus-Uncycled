@@ -92,6 +92,10 @@ namespace Sim.Match
         /// <summary>The room goes back to the lobby this long after game_over.</summary>
         public float ReturnToLobbyS { get; set; } = 15f;
 
+        /// <summary>Snapshots per second sent to each human (net.snapshot_hz); the room still ticks at 20 Hz.
+        /// Fewer snapshots means less upload per player; the client interpolates over ~100 ms.</summary>
+        public float SnapshotHz { get; set; } = 20f;
+
         /// <summary>Clock the deadline runs on. ActiveTime: meetings and ejections do not count, so stalling cannot win.</summary>
         public DeadlineClock DeadlineClock { get; set; } = DeadlineClock.ActiveTime;
 

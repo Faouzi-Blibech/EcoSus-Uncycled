@@ -14,6 +14,11 @@ const DEFAULT_SERVER_URL: String = "ws://localhost:%d%s" % [SERVER_PORT, SERVER_
 ## Godot tries IPv6 (::1) for localhost, and a service listening on IPv4 only refuses it.
 const SCAN_URL: String = "http://127.0.0.1:8000"
 const SCAN_PORT: int = 8000
+## Hosted mode: exported builds read the live game server and photo service addresses from this
+## file at startup (deploy/online.ps1 publishes it each time the laptop's tunnels start, since their
+## addresses change). The web build reads the config.json next to its own page instead.
+## "" turns hosted mode off.
+const HOSTED_CONFIG_URL: String = "https://uncycled.pages.dev/config.json"
 const SETTINGS_PATH: String = "user://settings.cfg"
 ## The players' community (Settings has a button to it).
 const COMMUNITY_URL: String = "https://www.reddit.com/r/EcoSus/"
@@ -25,6 +30,10 @@ var player_name: String = ""
 var language: String = "en"
 var server_url: String = DEFAULT_SERVER_URL
 var scan_url: String = SCAN_URL
+## From the hosted config.json (see HOSTED_CONFIG_URL); "" until it arrives or when there is none.
+## They replace the built-in defaults; an address the player saved in Settings still wins.
+var hosted_server_url: String = ""
+var hosted_scan_url: String = ""
 ## Phone buzz on meetings, infection and gas (see haptics.gd); no settings screen toggle yet.
 var haptics_enabled: bool = true
 ## Sound effects and music (see sfx.gd); toggled in the Settings panel.
@@ -46,6 +55,8 @@ func _ready() -> void:
 ## The address used when the player has not saved one: the page's own host on the web (a phone
 ## then needs only a name and a code), localhost on desktop and Android.
 func default_server_url() -> String:
+	if not hosted_server_url.is_empty():
+		return hosted_server_url
 	if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
 		return server_url_for_page(
 			str(JavaScriptBridge.eval("window.location.protocol")),
@@ -85,12 +96,56 @@ static func scan_url_for_server(server: String) -> String:
 
 
 func default_scan_url() -> String:
+	if not hosted_scan_url.is_empty():
+		return hosted_scan_url
 	if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
 		return scan_url_for_page(
 			str(JavaScriptBridge.eval("window.location.protocol")),
 			str(JavaScriptBridge.eval("window.location.hostname")))
 	var same_machine: String = scan_url_for_server(server_url)
 	return same_machine if not same_machine.is_empty() else SCAN_URL
+
+
+## True when this build should ask for the hosted config: exported builds only (a run from the
+## editor keeps its local server), and only when there is an address to ask.
+static func wants_hosted_config(is_exported: bool, url: String) -> bool:
+	return is_exported and not url.is_empty()
+
+
+## Where to read config.json: next to the page on the web (same origin, any host), else HOSTED_CONFIG_URL.
+## A time stamp in the query skips any cached copy (the addresses change on every tunnel restart).
+func hosted_config_url() -> String:
+	var url: String = HOSTED_CONFIG_URL
+	if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
+		url = str(JavaScriptBridge.eval("new URL('config.json', window.location.href).href"))
+	if url.is_empty():
+		return ""
+	return "%s?t=%d" % [url, int(Time.get_unix_time_from_system())]
+
+
+## {server, scan} from config.json; each "" when missing or not a usable address (server: ws/wss,
+## scan: http/https, no spaces).
+static func parse_hosted_config(text: String) -> Dictionary:
+	var out: Dictionary = {"server": "", "scan": ""}
+	var json: JSON = JSON.new()
+	if json.parse(text) != OK or not json.data is Dictionary:
+		return out
+	var parsed: Variant = json.data
+	var server: String = str((parsed as Dictionary).get("server", "")).strip_edges()
+	if (server.begins_with("wss://") or server.begins_with("ws://")) and not server.contains(" "):
+		out["server"] = server
+	var scan_raw: String = str((parsed as Dictionary).get("scan", "")).strip_edges()
+	if scan_raw.begins_with("https://") or scan_raw.begins_with("http://"):
+		out["scan"] = normalize_scan_url(scan_raw)
+	return out
+
+
+## The hosted addresses arrived: they become the defaults, then the saved settings are read again
+## (a saved address still wins).
+func apply_hosted(server: String, scan: String) -> void:
+	hosted_server_url = server
+	hosted_scan_url = scan
+	load_settings()
 
 
 ## What the player typed as the scan address, cleaned up: "http://" added when no scheme is given,

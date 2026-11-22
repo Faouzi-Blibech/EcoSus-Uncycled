@@ -214,6 +214,7 @@ public static class ContentLoader
             FireExpiredAdd = Num(t, "meter", "fire_expired_add", d.FireExpiredAdd),
             DeadlineS = Num(t, "match", "deadline_s", d.DeadlineS),
             ReturnToLobbyS = Num(t, "match", "return_to_lobby_s", d.ReturnToLobbyS),
+            SnapshotHz = Num(t, "net", "snapshot_hz", d.SnapshotHz),
             DiscussionS = Num(t, "meeting", "discussion_s", d.DiscussionS),
             VotingS = Num(t, "meeting", "voting_s", d.VotingS),
             ResultsS = Num(t, "meeting", "results_s", d.ResultsS),
