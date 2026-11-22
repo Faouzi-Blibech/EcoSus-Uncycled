@@ -55,8 +55,9 @@ static func make_line_edit(placeholder: String, text: String = "", max_len: int 
 
 ## Outlined label for the in-game HUD (readable over any floor colour).
 static func make_hud_label(font_size: int = FONT_SIZE) -> Label:
-	var l: Label = make_label("", font_size)
-	l.add_theme_color_override("font_outline_color", Color.BLACK)
+	# Storybook colours: paper-cream text with an ink outline.
+	var l: Label = make_label("", font_size, Color("faf2dd"))
+	l.add_theme_color_override("font_outline_color", Color("3e2b25"))
 	l.add_theme_constant_override("outline_size", 4)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l

@@ -54,7 +54,12 @@ func test_machine_must_be_next_to_the_map_edge() -> bool:
 	var d: Dictionary = _built()
 	assert_eq(MapJson.validate(d).size(), 0, "fixture machine at (1.5, 2.5) touches the west wall")
 	_special(d, "machine")["pos"] = [2.5, 2.5]
-	assert_true(_has_error(MapJson.validate(d), "machine"), "machine one tile in from the edge")
+	d["zones"] = []
+	assert_true(_has_error(MapJson.validate(d), "machine"), "machine one tile in from the edge, in no room")
+	d["zones"] = [{"id": "recycling", "name_key": "", "rect": [1, 1, 4, 4]}]
+	assert_eq(MapJson.validate(d).size(), 0, "inside a room that reaches the edge (a recycling room) is fine")
+	d["zones"] = [{"id": "recycling", "name_key": "", "rect": [2, 2, 1, 1]}]
+	assert_true(_has_error(MapJson.validate(d), "machine"), "a room away from the edge is not")
 	return true
 
 
