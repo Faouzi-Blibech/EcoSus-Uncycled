@@ -125,6 +125,7 @@ var _avatar_slot: Control
 var _avatar_key: String = ""
 var _note: PanelContainer
 var _minimap: Minimap
+var _arrows: MissionArrows
 var _minimap_bound: bool = false
 
 
@@ -148,6 +149,10 @@ func _build() -> void:
 	add_child(_root)
 	UIKit.fill(_root)
 	_apply_safe_area()
+	# Mission arrows sit under every other HUD widget.
+	_arrows = MissionArrows.new()
+	_root.add_child(_arrows)
+	UIKit.fill(_arrows)
 
 	_spectator = SpectatorScene.instantiate() as SpectatorOverlay
 	_spectator.visible = false
@@ -599,6 +604,7 @@ func _on_hold_ended(action: String) -> void:
 
 func _process(_delta: float) -> void:
 	_bind_minimap()
+	_arrows.update_from(_round)
 	_update_header()
 	_update_tasks()
 	_update_buttons()
