@@ -8,3 +8,5 @@ func _init() -> void:
 	known_items = ["backpack", "tool", "heal", "mask"]
 	icon_format = "res://assets/icons/upgrade_%s.png"
 	label_prefix = "UPGRADE_"
+	cancelable = true
+	cancel_key = "COMMON_CLOSE"

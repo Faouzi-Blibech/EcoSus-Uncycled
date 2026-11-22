@@ -15,10 +15,14 @@ func _items(list: Array[String]) -> Array[String]:
 
 
 func _has_cancel(p: CardPicker) -> bool:
+	return _button(p, "COMMON_CANCEL") != null
+
+
+func _button(p: CardPicker, key: String) -> Button:
 	for n in p.find_children("*", "Button", true, false):
-		if (n as Button).text == p.tr("COMMON_CANCEL"):
-			return true
-	return false
+		if (n as Button).text == p.tr(key):
+			return n as Button
+	return null
 
 
 func test_ability_skips_unknown_and_picks_once() -> bool:
@@ -35,10 +39,22 @@ func test_ability_skips_unknown_and_picks_once() -> bool:
 	return true
 
 
-func test_ability_has_no_cancel() -> bool:
+## The ability choice can be closed (the HUD reopens it): Close emits dismissed, no pick.
+func test_ability_close_dismisses_without_a_pick() -> bool:
 	var p: AbilityPicker = _ability()
+	var got: Array[String] = []
+	var dismissed: Array[bool] = []
+	p.picked.connect(func(item: String) -> void: got.append(item))
+	p.dismissed.connect(func() -> void: dismissed.append(true))
 	p.open(_items(["virus", "gas"]))
-	assert_true(not _has_cancel(p), "no cancel")
+	var close: Button = _button(p, "COMMON_CLOSE")
+	assert_true(close != null, "close button")
+	close.pressed.emit()
+	assert_true(not p.is_open(), "closed")
+	assert_eq(got.size(), 0, "no pick")
+	assert_eq(dismissed.size(), 1, "dismissed once")
+	p.open(_items(["virus", "gas"]))
+	assert_eq(p._row.get_child_count(), 2, "reopens with both cards")
 	return true
 
 
