@@ -6,14 +6,14 @@ const MIN_TOUCH: float = 48.0
 const BG_COLOR: Color = Color(0.09, 0.14, 0.12)
 const FONT_SIZE: int = 14
 
-static var _theme: Theme = null
+## Ink for text on paper (same as PaperKit.INK).
+const INK: Color = Color(0.17, 0.15, 0.13)
 
 
+## The shared paper look (PaperKit.theme): our kit art for buttons, fields and panels. Loaded at
+## run time because PaperKit preloads this script.
 static func theme() -> Theme:
-	if _theme == null:
-		_theme = Theme.new()
-		_theme.default_font_size = FONT_SIZE
-	return _theme
+	return load("res://ui/widgets/paper_kit.gd").theme()
 
 
 static func fill(c: Control) -> void:
@@ -29,7 +29,7 @@ static func background(parent: Control, color: Color = BG_COLOR) -> ColorRect:
 	return rect
 
 
-static func make_label(text: String, font_size: int = FONT_SIZE, color: Color = Color.WHITE) -> Label:
+static func make_label(text: String, font_size: int = FONT_SIZE, color: Color = INK) -> Label:
 	var l: Label = Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", font_size)

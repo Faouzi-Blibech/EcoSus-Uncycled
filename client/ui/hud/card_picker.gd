@@ -3,6 +3,7 @@ extends Control
 ## Modal card row: the player picks one item (or cancels, when allowed). Subclasses set the config vars in _init().
 
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const CARD_SIZE: Vector2 = Vector2(116.0, 96.0)
 const GAP: int = 8
 const DIM: Color = Color(0.0, 0.0, 0.0, 0.55)
@@ -81,6 +82,7 @@ func _ensure_built() -> void:
 		return
 	_built = true
 	visible = false
+	theme = UIKit.theme()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UIKit.fill(self)
 	UIKit.background(self, DIM)
@@ -124,6 +126,15 @@ func _make_card(item: String) -> Button:
 		card.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	card.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# A small paper card; it greens a little while pressed.
+	var paper: StyleBoxTexture = PaperKit.box("panel_paper.png", 12.0, Vector2(6.0, 8.0))
+	var held: StyleBoxTexture = paper.duplicate() as StyleBoxTexture
+	held.modulate_color = Color(0.85, 0.95, 0.8)
+	for state in ["normal", "hover", "disabled"]:
+		card.add_theme_stylebox_override(state, paper)
+	for state in ["pressed", "hover_pressed"]:
+		card.add_theme_stylebox_override(state, held)
+	card.add_theme_font_size_override("font_size", 13)
 	card.pressed.connect(_on_card_pressed.bind(item))
 	return card
 

@@ -15,6 +15,8 @@ const INK: Color = Color(0.17, 0.15, 0.13)
 const SOFT_INK: Color = Color(0.42, 0.36, 0.3)
 const ERROR_INK: Color = Color(0.65, 0.2, 0.12)
 const BG_FALLBACK: Color = Color(0.97, 0.94, 0.85)
+## Cream ink for text on the dark (purple) notes.
+const CREAM: Color = Color(0.97, 0.94, 0.85)
 
 ## Icons draw at ICON_SIZE inside a UIKit.MIN_TOUCH square, so the tap target stays 48 px.
 const ICON_SIZE: float = 40.0
@@ -291,3 +293,85 @@ static func _keeps_aspect(target: Control) -> bool:
 	if target is TextureButton:
 		return (target as TextureButton).stretch_mode == TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	return false
+
+
+static var _dense: Dictionary = {}
+static var _theme: Theme = null
+static var _theme_lang: String = ""
+
+
+## A kit texture that reports its logical size (texture pixels / DENSITY) but keeps every pixel, so a
+## StyleBoxTexture's margins are logical pixels and the corners draw at the art's real size.
+static func dense(file: String) -> Texture2D:
+	if _dense.has(file):
+		return _dense[file] as Texture2D
+	var src: Texture2D = tex(file)
+	var img: Image = src.get_image() if src != null else null
+	if img == null:
+		return src
+	var t: ImageTexture = ImageTexture.create_from_image(img)
+	t.set_size_override(Vector2i((Vector2(img.get_size()) / DENSITY).round()))
+	_dense[file] = t
+	return t
+
+
+## Nine-slice box over a kit texture (margins in logical px; only the middle stretches).
+static func box(file: String, margin: float, content: Vector2 = Vector2(10.0, 6.0)) -> StyleBoxTexture:
+	var b: StyleBoxTexture = StyleBoxTexture.new()
+	b.texture = dense(file)
+	b.set_texture_margin_all(margin)
+	b.content_margin_left = content.x
+	b.content_margin_right = content.x
+	b.content_margin_top = content.y
+	b.content_margin_bottom = content.y
+	return b
+
+
+## The paper look for screens built from plain controls: Caroni ink text, cream pill buttons,
+## the paper input strip, paper panels. UIKit.theme() returns it, so every UIKit screen shares it.
+static func theme() -> Theme:
+	if _theme != null and _theme_lang == Settings.language:
+		return _theme
+	_theme_lang = Settings.language
+	var th: Theme = Theme.new()
+	th.default_font = font()
+	th.default_font_size = UIKit.FONT_SIZE
+	th.set_color("font_color", "Label", INK)
+	for type in ["Button", "OptionButton", "MenuButton", "CheckBox", "CheckButton"]:
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+			th.set_color(state, type, INK)
+		th.set_color("font_disabled_color", type, SOFT_INK)
+		th.set_stylebox("focus", type, StyleBoxEmpty.new())
+	for type in ["Button", "OptionButton", "MenuButton"]:
+		th.set_stylebox("normal", type, box("button_cream.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
+		th.set_stylebox("hover", type, box("button_cream.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
+		th.set_stylebox("pressed", type, box("button_cream_pressed.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
+		th.set_stylebox("hover_pressed", type, box("button_cream_pressed.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
+		th.set_stylebox("disabled", type, box("button_grey_disabled.png", 18.0, Vector2(BUTTON_PAD_X, 4.0)))
+	for type in ["CheckBox", "CheckButton"]:
+		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+			th.set_stylebox(state, type, StyleBoxEmpty.new())
+	th.set_icon("checked", "CheckBox", dense("checkbox_checked.png"))
+	th.set_icon("unchecked", "CheckBox", dense("checkbox_empty.png"))
+	var field: StyleBoxTexture = box("field_input.png", 14.0, Vector2(14.0, 6.0))
+	th.set_stylebox("normal", "LineEdit", field)
+	th.set_stylebox("focus", "LineEdit", StyleBoxEmpty.new())
+	th.set_stylebox("read_only", "LineEdit", field)
+	th.set_color("font_color", "LineEdit", INK)
+	th.set_color("font_placeholder_color", "LineEdit", SOFT_INK)
+	th.set_color("caret_color", "LineEdit", INK)
+	th.set_color("font_uneditable_color", "LineEdit", SOFT_INK)
+	var paper: StyleBoxTexture = box("panel_paper.png", 20.0, Vector2(16.0, 14.0))
+	th.set_stylebox("panel", "PanelContainer", paper)
+	th.set_stylebox("panel", "Panel", paper)
+	th.set_stylebox("panel", "PopupMenu", paper)
+	for state in ["font_color", "font_hover_color"]:
+		th.set_color(state, "PopupMenu", INK)
+	th.set_font("font", "PopupMenu", font())
+	_theme = th
+	return _theme
+
+
+## A seat colour dark enough to read as text on paper (seat colours are made for the dark map).
+static func seat_ink(seat_color: Color) -> Color:
+	return seat_color.darkened(0.45) if seat_color.get_luminance() > 0.35 else seat_color

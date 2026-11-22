@@ -61,6 +61,7 @@ func _build_crate() -> void:
 	_crate_home_y = CRATE_Y
 	_crate.position = Vector2(_centre_x(CRATE_SIZE.x), CRATE_Y)
 	_label_in(_crate, "MG_GLASS_CRATE")
+	dress(_crate, "crate")
 	_crate.gui_input.connect(_on_crate_input)
 	add_child(_crate)
 
@@ -89,6 +90,7 @@ func _build_bank() -> void:
 	_bank.position = Vector2(_centre_x(BANK_SIZE.x), BANK_Y)
 	_bank.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_label_in(_bank, "MG_GLASS_BANK")
+	dress(_bank, "glass_bank")
 	add_child(_bank)
 
 
@@ -110,6 +112,7 @@ func _build_bottles() -> void:
 		p.position = Vector2(gap + (i % per_row) * (box.x + gap), BOTTLES_TOP + row * (box.y + FALLBACK_GAP))
 		p.set_meta("home", p.position)
 		_label_in(p, "MG_GLASS_BOTTLE")
+		dress(p, "bottle")
 		p.gui_input.connect(_on_bottle_input.bind(p))
 		add_child(p)
 

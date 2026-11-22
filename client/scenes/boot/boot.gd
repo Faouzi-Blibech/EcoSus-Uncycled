@@ -4,6 +4,7 @@ extends Control
 
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const SettingsPanel := preload("res://ui/widgets/settings_panel.gd")
 const LOADING_ART: String = "res://assets/ui/loading_screen.jpg"
 
@@ -16,7 +17,7 @@ var _panel: SettingsPanel = null
 func _ready() -> void:
 	theme = UIKit.theme()
 	UIKit.fill(self)
-	UIKit.background(self)
+	PaperKit.background(self)
 	var has_art: bool = ResourceLoader.exists(LOADING_ART)
 	if has_art:
 		var art: TextureRect = TextureRect.new()

@@ -6,6 +6,7 @@ extends Control
 signal closed(applied: bool)
 
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const LanguagePicker := preload("res://ui/widgets/language_picker.gd")
 
 const COLUMN_WIDTH_PX: float = 270.0
@@ -73,7 +74,7 @@ func _ready() -> void:
 		_scan_auto_shown = Settings.scan_url
 	right.add_child(_scan_edit)
 
-	_error = UIKit.make_label("", 14, Color(1.0, 0.5, 0.5))
+	_error = UIKit.make_label("", 14, PaperKit.ERROR_INK)
 	_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(_error)
 

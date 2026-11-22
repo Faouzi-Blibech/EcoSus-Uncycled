@@ -21,10 +21,6 @@ const STATUS_TOP: float = 334.0
 ## The two big circles cast a larger shadow so it reads at their size.
 const BIG_SHADOW_SCALE: float = 2.0
 
-const POPUP_BG: Color = Color(0.13, 0.19, 0.15)
-const POPUP_BORDER: Color = Color(0.97, 0.94, 0.85)
-const POPUP_BORDER_PX: int = 2
-const POPUP_RADIUS_PX: int = 10
 
 var _status: Label
 var _panel: SettingsPanel = null
@@ -165,13 +161,8 @@ func _open_popup(title: String) -> VBoxContainer:
 	var center: CenterContainer = CenterContainer.new()
 	_popup.add_child(center)
 	UIKit.fill(center)
+	# The paper panel comes from the shared theme (PaperKit.theme).
 	var panel: PanelContainer = PanelContainer.new()
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = POPUP_BG
-	style.border_color = POPUP_BORDER
-	style.set_border_width_all(POPUP_BORDER_PX)
-	style.set_corner_radius_all(POPUP_RADIUS_PX)
-	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 	var margin: MarginContainer = MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
@@ -186,7 +177,7 @@ func _open_popup(title: String) -> VBoxContainer:
 
 ## Error line plus the bottom button row (Cancel/Close on the right). Returns the row.
 func _finish_popup(box: VBoxContainer, close_key: String) -> HBoxContainer:
-	_popup_error = UIKit.make_label("", UIKit.FONT_SIZE, Color(1.0, 0.6, 0.5))
+	_popup_error = UIKit.make_label("", UIKit.FONT_SIZE, PaperKit.ERROR_INK)
 	_popup_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_popup_error)
 	var row: HBoxContainer = HBoxContainer.new()
@@ -238,7 +229,7 @@ func _open_scan_popup() -> void:
 	box.add_child(text)
 	_scan_stats = UIKit.make_label("")
 	box.add_child(_scan_stats)
-	_scan_status = UIKit.make_label("", UIKit.FONT_SIZE, Color(0.7, 0.85, 0.75))
+	_scan_status = UIKit.make_label("", UIKit.FONT_SIZE, PaperKit.SOFT_INK)
 	_scan_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_scan_status.visible = false
 	box.add_child(_scan_status)

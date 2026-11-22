@@ -5,9 +5,10 @@ extends Control
 ## a meeting, which stage it is in. The server sends no world and no players to an out seat.
 
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
-const BACKDROP: Color = Color(0.04, 0.07, 0.06, 1.0)
-const METER_COLOR: Color = Color(0.85, 0.5, 0.2)
-const MUTED: Color = Color(0.7, 0.8, 0.75)
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
+const BACKDROP: Color = Color(0.0, 0.0, 0.0, 0.55)
+const METER_COLOR: Color = Color(0.45, 0.7, 0.3)
+const MUTED: Color = PaperKit.SOFT_INK
 const TITLE_SIZE: int = 28
 const METER_WIDTH: float = 220.0
 ## The ghost chat panel sits at the right edge (ghost_chat_panel.gd PANEL_WIDTH plus its margin): the
@@ -23,6 +24,7 @@ var _time: Label
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	theme = UIKit.theme()
 	UIKit.fill(self)
 	UIKit.background(self, BACKDROP)
 	var box: VBoxContainer = UIKit.make_vbox(6)
@@ -31,6 +33,19 @@ func _ready() -> void:
 	add_child(box)
 	UIKit.fill(box)
 	box.offset_right = -GHOST_PANEL_RESERVED_PX
+	# The words sit on the purple taped note (cream ink), over a dimmed map.
+	var center: CenterContainer = CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
+	UIKit.fill(center)
+	center.offset_right = -GHOST_PANEL_RESERVED_PX
+	var note: PanelContainer = PanelContainer.new()
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	note.add_theme_stylebox_override("panel", PaperKit.box("note_purple.png", 24.0, Vector2(30.0, 26.0)))
+	center.add_child(note)
+	remove_child(box)
+	UIKit.fill(box)
+	note.add_child(box)
 	var title: Label = UIKit.make_label(tr("SPECTATOR_TITLE"), TITLE_SIZE)
 	_cause = UIKit.make_label("")
 	_meter_label = UIKit.make_label("", 14, MUTED)
@@ -45,6 +60,10 @@ func _ready() -> void:
 	# The bar sits under its label, centred.
 	box.add_child(_meter_bar)
 	box.move_child(_meter_bar, _meter_label.get_index() + 1)
+	for l in [title, _cause, _phase]:
+		(l as Label).add_theme_color_override("font_color", PaperKit.CREAM)
+	for l in [_meter_label, _time, hint]:
+		(l as Label).add_theme_color_override("font_color", PaperKit.CREAM.darkened(0.15))
 
 
 func _make_meter_bar() -> ProgressBar:
@@ -57,7 +76,12 @@ func _make_meter_bar() -> ProgressBar:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var fill: StyleBoxFlat = StyleBoxFlat.new()
 	fill.bg_color = METER_COLOR
+	fill.set_corner_radius_all(5)
 	bar.add_theme_stylebox_override("fill", fill)
+	var track: StyleBoxFlat = StyleBoxFlat.new()
+	track.bg_color = PaperKit.CREAM
+	track.set_corner_radius_all(5)
+	bar.add_theme_stylebox_override("background", track)
 	return bar
 
 

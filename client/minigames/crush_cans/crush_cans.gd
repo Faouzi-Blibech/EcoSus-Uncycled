@@ -42,6 +42,7 @@ func _build_cans() -> void:
 		b.custom_minimum_size = box
 		b.position = Vector2(gap + (i % per_row) * (box.x + gap), ROW_Y + row * (box.y + GAP))
 		b.pivot_offset = Vector2(box.x * 0.5, box.y)
+		dress(b, "can")
 		b.pressed.connect(crush.bind(i))
 		add_child(b)
 		_cans.append(b)
@@ -55,7 +56,11 @@ func crush(index: int) -> void:
 	if b.disabled:
 		return
 	b.disabled = true
-	b.text = tr("MG_CANS_FLAT")
+	# With art the can is squashed (and shows can_flat.png when there is one); without, it says so.
+	if b.has_meta("art"):
+		dress(b, "can_flat")
+	else:
+		b.text = tr("MG_CANS_FLAT")
 	b.scale.y = FLAT_SCALE_Y
 	_remaining -= 1
 	if _remaining == 0:

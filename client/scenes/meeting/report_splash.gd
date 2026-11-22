@@ -34,7 +34,7 @@ func setup(victim_color: Color, title: String, subtitle: String) -> void:
 	_title = UIKit.make_label(title, 26, TITLE_COLOR)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_title)
-	_sub = UIKit.make_label(subtitle, 14)
+	_sub = UIKit.make_label(subtitle, 14, Color.WHITE)
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_sub)
 

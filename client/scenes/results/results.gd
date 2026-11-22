@@ -5,16 +5,18 @@ extends Control
 
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const VoteRules := preload("res://scenes/meeting/vote_rules.gd")
 
 ## The server brings the room back to the lobby after tuning match.return_to_lobby_s; this default
 ## only applies when the welcome tuning lacks the key. Display only: the real switch is the lobby message.
 const DEFAULT_LOBBY_DELAY_S: float = 15.0
-const MUTED: Color = Color(0.7, 0.8, 0.75)
-const WIN_COLOR: Color = Color(0.55, 0.9, 0.55)
-const LOSE_COLOR: Color = Color(0.95, 0.6, 0.45)
-const CARD_BG: Color = Color(0.12, 0.22, 0.16)
-const CARD_BORDER: Color = Color(0.35, 0.65, 0.4)
+## Ink colours on the paper page.
+const MUTED: Color = PaperKit.SOFT_INK
+const WIN_COLOR: Color = Color(0.2, 0.45, 0.18)
+const LOSE_COLOR: Color = Color(0.68, 0.27, 0.15)
+## The fact note: wide enough for two lines, never a thin strip.
+const FACT_CARD_SIZE: Vector2 = Vector2(440.0, 78.0)
 
 var _countdown: Label
 var _left_s: float = DEFAULT_LOBBY_DELAY_S
@@ -23,7 +25,7 @@ var _left_s: float = DEFAULT_LOBBY_DELAY_S
 func _ready() -> void:
 	theme = UIKit.theme()
 	UIKit.fill(self)
-	UIKit.background(self)
+	PaperKit.background(self)
 	var over: Dictionary = Session.last_game_over
 	_left_s = lobby_delay_s(Session.tuning)
 
@@ -36,10 +38,10 @@ func _ready() -> void:
 	margin.add_child(root)
 
 	var winner: String = str(over.get("winner", ""))
-	var title: Label = UIKit.make_label(_tr_or("RESULT_WINNER_", winner, "RESULT_REASON_UNKNOWN"), 24, WIN_COLOR if winner == "citizens" else LOSE_COLOR)
+	var title: Label = UIKit.make_label(_tr_or("RESULT_WINNER_", winner, "RESULT_REASON_UNKNOWN"), 32, WIN_COLOR if winner == "citizens" else LOSE_COLOR)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(title)
-	var reason: Label = UIKit.make_label(_tr_or("RESULT_", str(over.get("reason", "")), "RESULT_REASON_UNKNOWN"), 14, MUTED)
+	var reason: Label = UIKit.make_label(_tr_or("RESULT_", str(over.get("reason", "")), "RESULT_REASON_UNKNOWN"), 17, MUTED)
 	reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(reason)
 
@@ -53,7 +55,7 @@ func _ready() -> void:
 	var card: Control = _fact_card(over)
 	if card != null:
 		root.add_child(card)
-	_countdown = UIKit.make_label("", 14)
+	_countdown = UIKit.make_label("", 15, MUTED)
 	_countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(_countdown)
 
@@ -98,7 +100,7 @@ func _roles_column(roles: Dictionary) -> VBoxContainer:
 	seats.sort()
 	for seat in seats:
 		var role: String = str(roles.get(str(seat), roles.get(seat, "")))
-		var line: Label = UIKit.make_label(tr("RESULT_ROLE_LINE") % [_name_of(seat), _tr_or("ROLE_", role, "RESULT_ROLE_UNKNOWN")], 13, Session.seat_color(seat))
+		var line: Label = UIKit.make_label(tr("RESULT_ROLE_LINE") % [_name_of(seat), _tr_or("ROLE_", role, "RESULT_ROLE_UNKNOWN")], 16, PaperKit.seat_ink(Session.seat_color(seat)))
 		grid.add_child(line)
 	return col
 
@@ -119,7 +121,7 @@ func _timeline_column(timeline: Array) -> VBoxContainer:
 	for entry in timeline:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
-		var l: Label = UIKit.make_label(_timeline_line(entry), 12)
+		var l: Label = UIKit.make_label(_timeline_line(entry), 15)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		list.add_child(l)
@@ -162,21 +164,18 @@ func _fact_card(over: Dictionary) -> Control:
 	var debrief: String = debrief_text(over)
 	if fact.is_empty() and debrief.is_empty():
 		return null
+	# The fact sits on the kit's taped mint note.
 	var panel: PanelContainer = PanelContainer.new()
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = CARD_BG
-	style.border_color = CARD_BORDER
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(8)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", PaperKit.box("note_mint.png", 22.0, Vector2(24.0, 16.0)))
+	panel.custom_minimum_size = FACT_CARD_SIZE
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var lines: VBoxContainer = UIKit.make_vbox(4)
 	panel.add_child(lines)
 	if not fact.is_empty():
-		lines.add_child(UIKit.make_label(tr("RESULT_FACT_LABEL"), 12, WIN_COLOR))
-		lines.add_child(_wrapped(fact, 12, Color.WHITE))
+		lines.add_child(UIKit.make_label(tr("RESULT_FACT_LABEL"), 15, WIN_COLOR))
+		lines.add_child(_wrapped(fact, 15, PaperKit.INK))
 	if not debrief.is_empty():
-		lines.add_child(_wrapped(debrief, 12, MUTED))
+		lines.add_child(_wrapped(debrief, 14, MUTED))
 	return panel
 
 

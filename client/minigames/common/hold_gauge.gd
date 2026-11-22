@@ -62,7 +62,7 @@ func _gui_input(event: InputEvent) -> void:
 
 func _draw() -> void:
 	var h: float = size.y
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.15, 0.15, 0.15))
-	draw_rect(Rect2(0.0, h * (1.0 - band_hi), size.x, h * (band_hi - band_lo)), Color(0.2, 0.7, 0.3))
-	var fill: Color = Color(0.3, 0.85, 0.4, 0.8) if locked else Color(0.9, 0.9, 0.9, 0.7)
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.42, 0.36, 0.3))
+	draw_rect(Rect2(0.0, h * (1.0 - band_hi), size.x, h * (band_hi - band_lo)), Color(0.45, 0.7, 0.3))
+	var fill: Color = Color(0.62, 0.85, 0.45, 0.9) if locked else Color(0.97, 0.94, 0.85, 0.85)
 	draw_rect(Rect2(0.0, h * (1.0 - value), size.x, h * value), fill)
