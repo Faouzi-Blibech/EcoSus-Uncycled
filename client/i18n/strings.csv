@@ -1,4 +1,5 @@
 keys,en,fr,ar
+CHAR_LOCKED,That character is still locked. Keep your scan streak going!,Ce personnage est encore verrouillé. Continue ta série de scans !,هذه الشخصية ما زالت مقفلة. واصل سلسلة المسح!
 BOOT_TITLE,Uncycled,Uncycled,Uncycled
 BOOT_CONNECTING,Connecting to the server...,Connexion au serveur...,جارٍ الاتصال بالخادم...
 BOOT_OFFLINE,"Cannot reach the game server. Check the address in Settings.\n%s","Impossible de joindre le serveur de jeu. Vérifie l'adresse dans les Paramètres.\n%s",تعذّر الوصول إلى خادم اللعبة. تحقّق من العنوان في الإعدادات.\n%s
@@ -89,6 +90,8 @@ ITEM_APPLE_CORE,Apple core,Trognon de pomme,قلب تفاحة
 ITEM_BANANA_PEEL,Banana peel,Peau de banane,قشرة موز
 ITEM_EGGSHELL,Eggshell,Coquille d'oeuf,قشرة بيض
 MEETING_CAUSE_REPORT,%s found a fallen player,%s a trouvé un joueur à terre,%s وجد لاعبًا سقط
+MEETING_SPLASH_REPORT,Fallen player reported!,Joueur à terre signalé !,تم الإبلاغ عن لاعب سقط!
+MEETING_SPLASH_FOUND,%s found %s,%s a trouvé %s,%s وجد %s
 MEETING_CAUSE_EMERGENCY,%s called an emergency meeting,%s a lancé une réunion d'urgence,%s دعا إلى اجتماع طارئ
 MEETING_CLUES,Clues,Indices,أدلة
 MEETING_NO_CLUES,No clues.,Aucun indice.,لا توجد أدلة.

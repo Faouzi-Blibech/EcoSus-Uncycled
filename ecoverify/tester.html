@@ -48,6 +48,17 @@
       <p id="player"></p>
       <div id="resultBox"></div>
     </div>
+    <div class="card" id="phoneCard">
+      <h2 style="margin:0 0 6px;font-size:18px;color:#38bdf8;">📱 Test on my phone</h2>
+      <p style="margin:0 0 10px;font-size:13px;color:#94a3b8;">Your phone must be on the same Wi-Fi as this PC. Tap the button, then point your phone's camera at the QR code and open the link.</p>
+      <p id="phoneWarn" style="display:none;margin:0 0 10px;font-size:13px;color:#fbbf24;"></p>
+      <button class="btn-blue" id="phoneBtn" style="width:100%;">Make a scan link for my phone</button>
+      <div id="phoneOut" style="display:none;text-align:center;margin-top:12px;">
+        <img id="phoneQr" alt="QR code of the scan link" style="width:220px;height:220px;background:#fff;padding:8px;border-radius:8px;">
+        <p style="font-size:12px;word-break:break-all;margin:8px 0 0;"><a id="phoneLink" style="color:#38bdf8;" target="_blank"></a></p>
+        <p style="font-size:12px;color:#94a3b8;margin:6px 0 0;">The link works once and expires after 2 minutes: make a new one when needed.</p>
+      </div>
+    </div>
     <details>
       <summary>📖 Recycling guide (streams, items, CO₂)</summary>
       <div id="streamGrid"></div>
@@ -75,6 +86,27 @@
         ? 'EXIF freshness check is OFF on this server (UNCYCLED_DEV_SKIP_EXIF=1, local testing).'
         : 'EXIF freshness check is ON: webcam shots and old files will be rejected. Start the server with UNCYCLED_DEV_SKIP_EXIF=1 to test here.';
     });
+
+    // ── Test on my phone: a scan link + QR for this browser's player ──
+    const LOCAL = ['localhost', '127.0.0.1', '[::1]'];
+    if (LOCAL.includes(location.hostname)) {
+      const w = document.getElementById('phoneWarn');
+      w.style.display = 'block';
+      w.textContent = 'This page is open as "' + location.hostname + '", which your phone cannot reach. Open it with this PC’s Wi-Fi address instead, e.g. http://192.168.1.20:' + (location.port || '80') + ' (find it with ipconfig, "IPv4 Address").';
+    }
+    document.getElementById('phoneBtn').onclick = async () => {
+      try {
+        const r = await fetch('/scan/start', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                               body: JSON.stringify({ player_id: playerId }) });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || r.status);
+        document.getElementById('phoneQr').src = d.qr_url;
+        const a = document.getElementById('phoneLink'); a.href = d.url; a.textContent = d.url;
+        document.getElementById('phoneOut').style.display = 'block';
+      } catch (err) {
+        showBox('fail', '⚠️ Could not make a scan link: ' + esc(err.message));
+      }
+    };
 
     // ── Guide ──
     const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

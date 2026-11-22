@@ -135,7 +135,7 @@ class ScanEndpointTests(unittest.TestCase):
         self.assertTrue(body["verified"], body["message"])
         p = body["profile"]
         self.assertEqual((p["points"], p["streak"], p["scans_today"]), (10, 1, 1))
-        self.assertEqual(p["new_skins"], ["eco_novice"])
+        self.assertEqual(p["new_skins"], [s["id"] for s in config.SKINS if s["required_streak"] <= 1])
         self.assertEqual(self.upload(token, seed=2).status_code, 410)
 
     def test_rejected_photo_gives_the_link_back(self):

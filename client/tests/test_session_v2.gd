@@ -43,7 +43,7 @@ func _trasher_snapshot() -> Dictionary:
 
 
 func test_client_speaks_protocol_3() -> bool:
-	assert_eq(Net.PROTOCOL_VERSION, 3, "protocol version sent in hello")
+	assert_eq(Net.PROTOCOL_VERSION, 4, "protocol version sent in hello")
 	return true
 
 

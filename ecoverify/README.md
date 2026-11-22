@@ -79,10 +79,21 @@ the sample photos bundled with Ultralytics. The smoke test makes a new random pl
 
 ## Phone
 
-1. Find this PC's LAN IP (`ipconfig`, IPv4 of the wifi adapter) and set it in
-   `mobile/services/api.js` (`API_BASE_URL`), e.g. `http://192.168.1.20:8000`.
-2. Allow port 8000 through Windows Firewall when asked (private network).
-3. `npx expo start`, scan the QR code with Expo Go, photograph a bottle.
+Easiest (no app to install): the browser scan page.
+
+1. Phone and PC on the same Wi-Fi (or the PC on the phone's hotspot).
+2. Start the service (`docker compose up -d`) and find the PC's Wi-Fi address: `ipconfig`, line
+   "IPv4 Address" under the Wi-Fi adapter (e.g. `172.20.10.3`).
+3. On the PC, open `http://<that address>:8000` (not `localhost`: the phone cannot reach that).
+4. "📱 Test on my phone" -> "Make a scan link for my phone", then point the phone's camera at the QR code
+   and open the link. Take a photo of the item on the page that opens.
+5. If the phone cannot open the page, allow Docker / port 8000 through Windows Firewall on private networks.
+
+The link works once and expires after 2 minutes. The browser tester runs with
+`UNCYCLED_DEV_SKIP_EXIF=1` in `docker-compose.yml`; the scan page does not need it.
+
+Mobile app (Expo): set the PC address in `mobile/services/api.js` (`API_BASE_URL`), then
+`npx expo start` and scan its QR code with Expo Go.
 
 ## Scan links (the game's scan button)
 

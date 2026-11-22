@@ -33,6 +33,9 @@ const CHOICE_SIZE: Vector2 = Vector2(56.0, 48.0)
 const BANNER_WIDTH_PX: float = 220.0
 ## Width of the button grid (two 64 px slots and the gap), used to put the choices beside it.
 const GRID_WIDTH_PX: float = 134.0
+## REPORT pulses while a body is in reach (scale and red tint, 0..1 by a sine).
+const REPORT_PULSE_SCALE: float = 0.1
+const REPORT_PULSE_TINT: Color = Color(1.0, 0.45, 0.4)
 
 var _round: RoundScene = null
 var _root: Control
@@ -494,6 +497,7 @@ func _update_buttons() -> void:
 	_states = states
 	_set_simple(states, "use")
 	_set_simple(states, "report")
+	_pulse_report()
 	_set_cooldown(states, "repollute", "trasher", "repollute_cooldown_s")
 	_update_ability(Net.as_dict(states["ability"]))
 	_heal_button.visible = bool(states["heal"])
@@ -560,6 +564,16 @@ func _count_fire_consoles() -> int:
 			if m.kind == "fire_fix":
 				_fire_total += 1
 	return maxi(_fire_total, 0)
+
+
+func _pulse_report() -> void:
+	var b: ActionButton = _buttons["report"] as ActionButton
+	var k: float = 0.0
+	if b.visible:
+		k = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) / 1000.0 * 6.0)
+	b.pivot_offset = b.size * 0.5
+	b.scale = Vector2.ONE * (1.0 + REPORT_PULSE_SCALE * k)
+	b.self_modulate = Color.WHITE.lerp(REPORT_PULSE_TINT, k)
 
 
 func _set_simple(states: Dictionary, action: String) -> void:

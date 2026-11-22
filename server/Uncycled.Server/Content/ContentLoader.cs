@@ -18,7 +18,8 @@ public sealed class ContentBundle
         MapData map,
         PhraseCatalogue? phrases = null,
         ChatFilter? filter = null,
-        ChatWords? words = null)
+        ChatWords? words = null,
+        IReadOnlySet<string>? skinIds = null)
     {
         Config = config;
         TuningJson = tuningJson;
@@ -28,6 +29,7 @@ public sealed class ContentBundle
         Phrases = phrases;
         Filter = filter ?? ChatFilter.Empty;
         Words = words ?? ChatWords.Empty;
+        SkinIds = skinIds ?? new HashSet<string>();
     }
 
     public MatchConfig Config { get; }
@@ -50,6 +52,10 @@ public sealed class ContentBundle
 
     /// <summary>Words the bots look for in typed chat, from chat_words.json (Empty: the bots read no typed line).</summary>
     public ChatWords Words { get; }
+
+    /// <summary>Skin ids a seat may pick (content/skins.json; data, so the skins change without code).
+    /// The empty id, the default character, is always allowed.</summary>
+    public IReadOnlySet<string> SkinIds { get; }
 
     public string MapId => Map.Id;
 
@@ -111,7 +117,29 @@ public static class ContentLoader
         ChatFilter filter = ChatFilter.Parse(File.ReadAllText(Path.Combine(contentDir, "chat_filter.json")));
         string wordsPath = Path.Combine(contentDir, "chat_words.json");
         ChatWords words = File.Exists(wordsPath) ? ChatWords.Parse(File.ReadAllText(wordsPath)).ForMap(map.Zones.Select(z => z.Id)) : ChatWords.Empty;
-        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter, words);
+        string skinsPath = Path.Combine(contentDir, "skins.json");
+        IReadOnlySet<string> skins = File.Exists(skinsPath) ? ReadSkinIds(File.ReadAllText(skinsPath)) : new HashSet<string>();
+        return new ContentBundle(config, tuningText, tasks, tasksArray.GetRawText(), map, phrases, filter, words, skins);
+    }
+
+    /// <summary>The "id" of every entry in skins.json's "skins" array.</summary>
+    public static IReadOnlySet<string> ReadSkinIds(string skinsJson)
+    {
+        using JsonDocument doc = JsonDocument.Parse(skinsJson);
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        if (doc.RootElement.TryGetProperty("skins", out JsonElement list) && list.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement s in list.EnumerateArray())
+            {
+                if (s.ValueKind == JsonValueKind.Object && s.TryGetProperty("id", out JsonElement id)
+                    && id.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(id.GetString()))
+                {
+                    ids.Add(id.GetString()!);
+                }
+            }
+        }
+
+        return ids;
     }
 
     // ---------- tuning ----------
