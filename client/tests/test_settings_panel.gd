@@ -30,3 +30,15 @@ func test_scan_address_field_saves_a_cleaned_address() -> bool:
 	Settings.scan_url = before[0]
 	Settings.server_url = before[1]
 	return true
+
+
+## Settings links to the community subreddit.
+func test_community_button_points_at_the_subreddit() -> bool:
+	var p: Control = track(SettingsPanel.new()) as Control
+	(Engine.get_main_loop() as SceneTree).current_scene.add_child(p)
+	var found: bool = false
+	for b in p.find_children("*", "Button", true, false):
+		if (b as Button).tooltip_text == "https://www.reddit.com/r/EcoSus/":
+			found = true
+	assert_true(found, "a button opens r/EcoSus")
+	return true
