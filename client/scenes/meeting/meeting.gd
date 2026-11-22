@@ -5,6 +5,7 @@ extends Control
 
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const VoteRules := preload("res://scenes/meeting/vote_rules.gd")
 const Phrases := preload("res://content/phrases.gd")
 const PhrasePicker := preload("res://scenes/meeting/phrase_picker.gd")
@@ -15,7 +16,7 @@ const CARD_SIZE: Vector2 = Vector2(150.0, UIKit.MIN_TOUCH)
 const ICON_SIZE: int = 32
 const ICON_PATH: String = "res://assets/icons/seat_%d.png"
 const WASTE_ICON_PATH: String = "res://assets/waste/%s.png"
-const MUTED: Color = Color(0.7, 0.8, 0.75)
+const MUTED: Color = PaperKit.SOFT_INK
 const OUT_TINT: Color = Color(0.5, 0.5, 0.5, 0.6)
 ## How long a refused chat line keeps its note under the chat (one label, so no spam).
 const FLASH_S: float = 2.0
@@ -70,7 +71,7 @@ var _skip_btn: Button
 func _ready() -> void:
 	theme = UIKit.theme()
 	UIKit.fill(self)
-	UIKit.background(self)
+	PaperKit.background(self)
 
 	_margin = MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
@@ -401,7 +402,7 @@ func _clue_card(clue: Dictionary) -> Control:
 	return panel
 
 
-func _clue_line(text: String, size: int, color: Color = Color.WHITE) -> Label:
+func _clue_line(text: String, size: int, color: Color = PaperKit.INK) -> Label:
 	var label: Label = UIKit.make_label(text, size, color)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -447,7 +448,7 @@ func _seat_card(seat: int, has_voted: bool, enabled: bool) -> Button:
 	btn.custom_minimum_size = CARD_SIZE
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.toggle_mode = true
-	var tint: Color = Session.seat_color(seat)
+	var tint: Color = PaperKit.seat_ink(Session.seat_color(seat))
 	# Only real seat art: a missing icon would show as a plain colour square beside the name.
 	var icon_path: String = ICON_PATH % int(Session.seat_info(seat).get("color", 0))
 	if ResourceLoader.exists(icon_path):
@@ -550,7 +551,7 @@ func _add_chat(data: Dictionary) -> void:
 		text = Phrases.render(str(data.get("id", "")), Net.as_array(data.get("args")), Callable(self, "_name_of"))
 	# A Label shows the text as typed: no BBCode, and the text is an argument of the format, never the format.
 	var label: Label = UIKit.make_label(tr("MEETING_GHOST_LINE" if ghost else "MEETING_CHAT_LINE") % [_name_of(seat), text], 12)
-	label.add_theme_color_override("font_color", Session.seat_color(seat).lerp(MUTED, 0.4) if ghost else Session.seat_color(seat))
+	label.add_theme_color_override("font_color", MUTED if ghost else PaperKit.seat_ink(Session.seat_color(seat)))
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_append_line(label)
 

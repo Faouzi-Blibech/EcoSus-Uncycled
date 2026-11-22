@@ -4,6 +4,7 @@ extends Control
 
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
+const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 
 var _title: Label
 var _meter: Label
@@ -12,7 +13,7 @@ var _meter: Label
 func _ready() -> void:
 	theme = UIKit.theme()
 	UIKit.fill(self)
-	UIKit.background(self)
+	PaperKit.background(self)
 
 	var center: CenterContainer = CenterContainer.new()
 	add_child(center)
