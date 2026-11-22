@@ -84,12 +84,15 @@ namespace Uncycled.Bots.Neural
             private readonly float _temperature;
             private readonly float[] _obs = new float[ObservationBuilderV2.Size];
             private readonly PolicyDriver _driver = new PolicyDriver();
+            private readonly ReportRule _report;
             private int _index;
+            private bool _forced;
 
             public NeuralCore(IPolicy policy, BotsSettings settings, IRandom rng, IReadOnlyList<TaskTypeDef>? taskTypes)
                 : base(settings, rng, taskTypes)
             {
                 _policy = policy;
+                _report = new ReportRule(settings, rng);
                 // skill 1 = always the network's best action, lower skill = more sampling
                 _temperature = Math.Min(1f, Math.Max(0f, 1f - settings.Skill));
             }
@@ -100,6 +103,21 @@ namespace Uncycled.Bots.Neural
 
             internal override Choice Choose(SeatView view, bool[] mask)
             {
+                // a Cleaner that sees a fresh body reports it, whatever the network would pick: the rule runs from the
+                // sighting to the report (the base class adds the reaction delay), then the network chooses again
+                if (_report.Wants(view, Mem, Mem.Map))
+                {
+                    _forced = true;
+                    if (Exec.Busy && Exec.Current == BotAction.ReportNearest)
+                    {
+                        return Choice.Keep;
+                    }
+
+                    _report.NoteStart(view);
+                    return Choice.Now(BotAction.ReportNearest);
+                }
+
+                _forced = false;
                 // the scripted FullMask is not the network's: it picks among the v2 policy list, valid ones only
                 ObservationBuilderV2.Build(view, Mem, Mem.Map, Engine!.Config, view.MatchTime, _obs);
                 bool[] policyMask = PolicyActionsV2.Mask(view, Mem, Mem.Map);
@@ -119,6 +137,12 @@ namespace Uncycled.Bots.Neural
             {
                 // the shared driver (as the training host's MatchRunner uses): the same index while its action still runs
                 // keeps the running target; any other index resolves afresh. Prepare only follows a Choose.
+                if (_forced)
+                {
+                    new PolicyChoice(action).ApplyTo(Exec);
+                    return;
+                }
+
                 _driver.Prepare(_index, view, Mem, Mem.Map, Exec);
             }
         }
