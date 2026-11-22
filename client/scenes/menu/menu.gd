@@ -8,6 +8,7 @@ const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const SettingsPanel := preload("res://ui/widgets/settings_panel.gd")
 const LanguagePicker := preload("res://ui/widgets/language_picker.gd")
+const SkinShop := preload("res://ui/widgets/skin_shop.gd")
 
 const ART_DIR: String = "res://assets/ui/home/"
 
@@ -201,23 +202,30 @@ func _close_popup() -> void:
 
 
 func _open_profile_popup() -> void:
+	# The profile is the skin shop: name (Save, Close) on top, then a card per skin.
 	var box: VBoxContainer = _open_popup(tr("MENU_PROFILE"))
-	box.add_child(UIKit.make_label(tr("SETTINGS_NAME")))
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
 	_name_edit = UIKit.make_line_edit(tr("MENU_NAME_PLACEHOLDER"), Settings.player_name, 16)
+	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name_edit.text_submitted.connect(func(_t: String) -> void: _on_profile_save())
-	box.add_child(_name_edit)
-	var skins: Label = UIKit.make_label(tr("MENU_PROFILE_SKINS"))
-	skins.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(skins)
-	if Profile.loaded:
-		box.add_child(UIKit.make_label(scan_stats_text(Profile.points, Profile.streak)))
-	var row: HBoxContainer = _finish_popup(box, "COMMON_CANCEL")
-	var save_btn: Button = UIKit.make_button(tr("COMMON_SAVE"))
-	save_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_name_edit)
+	var save_btn: Button = UIKit.make_button(tr("COMMON_SAVE"), 96.0)
 	save_btn.pressed.connect(_on_profile_save)
 	row.add_child(save_btn)
-	row.move_child(save_btn, 0)
-	_name_edit.grab_focus()
+	var close_btn: Button = UIKit.make_button(tr("COMMON_CLOSE"), 96.0, "cream")
+	close_btn.pressed.connect(_close_popup)
+	row.add_child(close_btn)
+	box.add_child(SkinShop.new())
+	var hint: String = tr("MENU_PROFILE_SKINS")
+	if Profile.loaded:
+		hint = scan_stats_text(Profile.points, Profile.streak) + "  ·  " + hint
+	var skins: Label = UIKit.make_label(hint, 12, PaperKit.SOFT_INK)
+	skins.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(skins)
+	_popup_error = UIKit.make_label("", 12, PaperKit.ERROR_INK)
+	box.add_child(_popup_error)
 
 
 ## Scan: points and streak from the photo service, a button that starts a scan (the web build

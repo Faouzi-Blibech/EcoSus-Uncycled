@@ -24,6 +24,13 @@ MENU_CREATE_GAME,Create Game,Créer,إنشاء لعبة,Skapa spel
 MENU_JOIN_GAME,Join Game,Rejoindre,انضمام إلى لعبة,Gå med
 MENU_JOIN_TITLE,Enter the room code,Entre le code de la salle,أدخل رمز الغرفة,Ange rumskoden
 MENU_PROFILE,Profile,Profil,الملف الشخصي,Profil
+SHOP_WEAR,Wear,Porter,ارتدِ,Bär
+SHOP_WEARING,Wearing,Porté,ترتديه,Bärs
+SHOP_STREAK,%d/%d days,%d/%d jours,%d/%d أيام,%d/%d dagar
+RARITY_STARTER,Starter,Départ,بداية,Start
+RARITY_COMMON,Common,Commun,عادي,Vanlig
+RARITY_UNCOMMON,Uncommon,Peu commun,غير شائع,Ovanlig
+RARITY_RARE,Rare,Rare,نادر,Sällsynt
 MENU_PROFILE_SKINS,Skins unlock with your daily scan streak.,Les skins se débloquent avec ta série de scans quotidiens.,تُفتح الأزياء مع سلسلة المسح اليومية.,Utseenden låses upp med din dagliga skanningsserie.
 MENU_SCAN,Scan & earn,Scanne et gagne,امسح واربح,Skanna och tjäna
 "MENU_SCAN_TEXT","Photograph a real recyclable item to earn points, keep your daily streak and unlock skins.","Photographie un vrai objet recyclable pour gagner des points, garder ta série quotidienne et débloquer des skins.","صوّر غرضًا حقيقيًا قابلًا لإعادة التدوير لتربح نقاطًا وتحافظ على سلسلتك اليومية وتفتح أزياء جديدة.","Fotografera ett riktigt återvinningsbart föremål för att tjäna poäng, hålla din dagliga serie och låsa upp utseenden."
