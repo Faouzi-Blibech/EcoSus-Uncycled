@@ -66,9 +66,7 @@ namespace Uncycled.Bots
 
             mask[(int)BotAction.ReportNearest] = ActionQuery.NearestPile(view, ActionQuery.IsFresh) != null;
 
-            bool emergencyReady = !fire
-                && view.EmergenciesLeft > 0
-                && mem.SinceMeeting(view.MatchTime) + CooldownEps >= cfg.EmergencyMinSinceMeetingS
+            bool emergencyReady = EmergencyAllowed(view, mem)
                 && ActionQuery.ConsoleInRange(view, map, ConsoleKind.Emergency) != null;
             mask[(int)BotAction.CallMeeting] = emergencyReady;
 
@@ -95,6 +93,12 @@ namespace Uncycled.Bots
 
             return mask;
         }
+
+        /// <summary>The engine's rules for an emergency call, range aside: no fire, a call left, the meeting cooldown over.</summary>
+        public static bool EmergencyAllowed(SeatView view, BotMemory mem) =>
+            !ActionQuery.FireActive(view)
+            && view.EmergenciesLeft > 0
+            && mem.SinceMeeting(view.MatchTime) + CooldownEps >= mem.Config.EmergencyMinSinceMeetingS;
 
         /// <summary>
         /// While a gas warning runs, a Cleaner without a mask may not choose a spot, console, zone, pile or player to

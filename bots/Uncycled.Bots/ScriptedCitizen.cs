@@ -10,7 +10,7 @@ namespace Uncycled.Bots
 {
     /// <summary>
     /// Scripted Cleaner (v2): leave a gas-warned room, heal yourself or call the free meeting when infected, pick from an open
-    /// upgrade offer, fix a jammed machine, repair smog, report a fresh body, bring a full bag to the
+    /// upgrade offer, call an emergency meeting after seeing a Trasher act (EmergencyRule), fix a jammed machine, repair smog, report a fresh body, bring a full bag to the
     /// machine, clean the nearest dirty spot, wander when every spot is clean. Votes by suspicion.
     /// </summary>
     public sealed class ScriptedCitizen : ScriptedBrain
@@ -23,11 +23,26 @@ namespace Uncycled.Bots
         private const float EarlyDeliverChance = 0.2f;
 
         private readonly BotsSettings _settings;
+        private readonly EmergencyRule _emergency;
 
         public ScriptedCitizen(BotsSettings settings, IRandom rng, IReadOnlyList<TaskTypeDef>? taskTypes = null)
             : base(settings, rng, taskTypes)
         {
             _settings = settings;
+            _emergency = new EmergencyRule(settings, rng);
+        }
+
+        internal override void Watch(SeatView view) => _emergency.Watch(view, Mem, Mem.Map);
+
+        internal override bool StillValid(BotAction action, SeatView view, bool[] fullMask) =>
+            fullMask[(int)action] || (action == BotAction.CallMeeting && _emergency.Wanted && _emergency.Allowed(view, Mem, Mem.Map));
+
+        internal override void Started(BotAction action, SeatView view)
+        {
+            if (action == BotAction.CallMeeting && _emergency.Wanted)
+            {
+                _emergency.NoteStart(Exec);
+            }
         }
 
         internal override Choice Choose(SeatView view, bool[] mask)
@@ -64,6 +79,12 @@ namespace Uncycled.Bots
             if (mask[(int)BotAction.PickUpgrade])
             {
                 return Choice.Now(BotAction.PickUpgrade);
+            }
+
+            // 2b. a Trasher act seen and the roll passed: walk to the emergency table and call a meeting (a fresh body is reported instead, below)
+            if (!mask[(int)BotAction.ReportNearest] && _emergency.Active(view, Mem, map, Exec))
+            {
+                return Exec.Busy && Exec.Current == BotAction.CallMeeting ? Choice.Keep : Choice.Now(BotAction.CallMeeting);
             }
 
             // 3. the machine is jammed: fix it when it is close or while carrying bags

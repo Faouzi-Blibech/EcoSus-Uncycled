@@ -196,6 +196,13 @@ namespace Uncycled.Train
                     continue;
                 }
 
+                if (_agents[a].Emergency.Holds(_engine.ViewFor(_agents[a].Seat), _agents[a].Memory, _engine.Map, _agents[a].Executor))
+                {
+                    // the emergency rule has the seat (a Cleaner saw a Trasher act and passed its roll): same treatment as the report rule
+                    _agents[a].Emergency.Step(_ticksPerDecision * TickDt, _engine.ViewFor(_agents[a].Seat), _agents[a].Memory, _engine.Map, _agents[a].Executor, _engine.MatchTime);
+                    continue;
+                }
+
                 asked++;
                 int action = actions[a];
                 if (OnlyStay(_masks[a]))
@@ -252,9 +259,11 @@ namespace Uncycled.Train
             _prepared = false;
         }
 
-        /// <summary>A frame that is no decision: a committed task step, or the report rule has the seat (Stay only, no reward, no sample).</summary>
+        /// <summary>A frame that is no decision: a committed task step, or the report or emergency rule has the seat (Stay only, no reward, no sample).</summary>
         private bool IsPlaceholder(Agent agent) =>
-            agent.Executor.Committed || agent.Report.Holds(_engine.ViewFor(agent.Seat), agent.Memory, _engine.Map, agent.Executor);
+            agent.Executor.Committed
+            || agent.Report.Holds(_engine.ViewFor(agent.Seat), agent.Memory, _engine.Map, agent.Executor)
+            || agent.Emergency.Holds(_engine.ViewFor(agent.Seat), agent.Memory, _engine.Map, agent.Executor);
 
         private static bool OnlyStay(bool[] mask)
         {
@@ -453,6 +462,7 @@ namespace Uncycled.Train
             {
                 SeatView view = _engine.ViewFor(agent.Seat);
                 agent.Memory.Observe(view, now, _engine.Witnesses.SeenBy(agent.Seat));
+                agent.Emergency.Watch(view, agent.Memory, _engine.Map);
                 agent.Voter.Step(_engine, agent.Seat, view, agent.Memory);
                 agent.Executor.Step(_engine, agent.Seat, view, TickDt, now, agent.Send);
             }
@@ -567,6 +577,7 @@ namespace Uncycled.Train
                 Role = role;
                 Memory = new BotMemory(content.Map, content.Config);
                 Report = new ReportRule(settings, rng);
+                Emergency = new EmergencyRule(settings, rng);
                 Executor = new ActionExecutor(new Navigator(content.Map.Walk, content.Config.SpeedTilesPerS), new MoveSender())
                 {
                     Memory = Memory,
@@ -597,6 +608,9 @@ namespace Uncycled.Train
 
             /// <summary>A network Cleaner that sees a body reports it (Trashers are not forced).</summary>
             public ReportRule Report { get; }
+
+            /// <summary>A network Cleaner that saw a Trasher act and passed its roll walks to the emergency table and calls a meeting.</summary>
+            public EmergencyRule Emergency { get; }
 
             public MeetingVoter Voter { get; set; } = null!;
 
