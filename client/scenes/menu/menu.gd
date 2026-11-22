@@ -1,12 +1,13 @@
 extends Control
-## Home page: two big art buttons (Create Game, Join Game) and three small ones (profile, scan,
-## settings). Create and Join open their own pages; a missing name opens the profile popup first.
+## Home page: two big art buttons (Create Game, Join Game) and four small ones (profile, scan,
+## settings, language flag). Create and Join open their own pages; a missing name opens the profile popup first.
 ## Layout follows the designers' 1920x1080 mockup at 1/3 scale on a centred 640x360 stage.
 
 const Router := preload("res://scenes/router.gd")
 const UIKit := preload("res://ui/widgets/ui_kit.gd")
 const PaperKit := preload("res://ui/widgets/paper_kit.gd")
 const SettingsPanel := preload("res://ui/widgets/settings_panel.gd")
+const LanguagePicker := preload("res://ui/widgets/language_picker.gd")
 
 const ART_DIR: String = "res://assets/ui/home/"
 
@@ -76,6 +77,9 @@ func _ready() -> void:
 	var settings_btn: TextureButton = PaperKit.icon_button(self, ART_DIR + "settings.png", tr("COMMON_SETTINGS"))
 	settings_btn.pressed.connect(_open_settings)
 	PaperKit.pin_icon(settings_btn, true, 0)
+	var lang_btn: TextureButton = _make_flag_button()
+	lang_btn.pressed.connect(_open_language_popup)
+	PaperKit.pin_icon(lang_btn, true, 1)
 
 	if Session.pending_notice != "":
 		_status.text = tr(Session.pending_notice)
@@ -100,6 +104,38 @@ func _make_art_button(parent: Control, file: String, rect: Rect2, caption: Strin
 	PaperKit.place(label, Rect2(rect.position.x, CAPTION_TOP, rect.size.x, CAPTION_HEIGHT))
 	parent.add_child(label)
 	return btn
+
+
+## The current language's flag, under the settings button: tap to switch language.
+func _make_flag_button() -> TextureButton:
+	var btn: TextureButton = TextureButton.new()
+	btn.texture_normal = FlagArt.texture(Settings.language)
+	btn.ignore_texture_size = true
+	btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	btn.tooltip_text = tr("SETTINGS_LANGUAGE")
+	add_child(btn)
+	PaperKit.add_shadow(btn, btn.texture_normal)
+	PaperKit.add_press_squash(btn)
+	return btn
+
+
+func _open_language_popup() -> void:
+	var box: VBoxContainer = _open_popup(tr("SETTINGS_LANGUAGE"))
+	var picker: LanguagePicker = LanguagePicker.new()
+	picker.picked.connect(_on_language_picked)
+	box.add_child(picker)
+	_finish_popup(box, "COMMON_CLOSE")
+
+
+## Saves the language and rebuilds the page in it.
+func _on_language_picked(code: String) -> void:
+	if code == Settings.language:
+		_close_popup()
+		return
+	Settings.language = code
+	Settings.apply_language()
+	Settings.save()
+	get_tree().reload_current_scene()
 
 
 func _has_name() -> bool:
