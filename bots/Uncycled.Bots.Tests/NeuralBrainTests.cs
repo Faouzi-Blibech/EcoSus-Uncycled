@@ -241,7 +241,7 @@ namespace Uncycled.Bots.Tests
             }
 
             using JsonDocument bots = JsonDocument.Parse(File.ReadAllText(Path.Combine(models, "..", "bots.json")));
-            Assert.Equal("scripted", bots.RootElement.GetProperty("brain").GetString());
+            Assert.Equal("neural_polluter", bots.RootElement.GetProperty("brain").GetString());
         }
 
         [Fact]

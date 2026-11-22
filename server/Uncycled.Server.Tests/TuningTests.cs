@@ -101,7 +101,7 @@ namespace Uncycled.Server.Tests
 
             MatchConfig real = ContentLoader.Load(ContentLoader.ResolveDir(null)).Config;
             Assert.Equal((20f, 3, 10f, 4f), (real.RepolluteCooldownS, real.UnlockAfter, real.TrasherStartCooldownS, real.MachineFixS));
-            Assert.Equal((30f, 90f, 3f), (real.VirusCooldownS, real.GasCooldownS, real.GasWarningS));
+            Assert.Equal((30f, 90f, 5f), (real.VirusCooldownS, real.GasCooldownS, real.GasWarningS));
         }
 
         [Fact]
