@@ -26,6 +26,9 @@ public sealed class Seat
 
     public byte Color { get; set; }
 
+    /// <summary>Picked skin id from content/skins.json; "" is the default character.</summary>
+    public string Skin { get; set; } = "";
+
     public SeatControl Control { get; set; } = SeatControl.Empty;
 
     /// <summary>Reconnect token. Null for bots and empty seats.</summary>
@@ -39,6 +42,7 @@ public sealed class Seat
     {
         Name = "";
         Color = 0;
+        Skin = "";
         Control = SeatControl.Empty;
         Token = null;
         Conn = null;

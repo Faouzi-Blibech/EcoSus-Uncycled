@@ -492,6 +492,9 @@ public sealed class Room
             case "set_color":
                 HandleSetColor(seat, conn, msg);
                 return;
+            case "set_skin":
+                HandleSetSkin(seat, conn, msg);
+                return;
             case "set_size":
                 HandleSetSize(seat, conn, msg);
                 return;
@@ -557,6 +560,33 @@ public sealed class Room
         }
 
         seat.Color = (byte)color;
+        BroadcastLobby();
+    }
+
+    /// <summary>Lobby only. The id must be in content/skins.json, or "" for the default character.
+    /// The server trusts the client's unlocks (hackathon scope: no profile check).</summary>
+    private void HandleSetSkin(Seat seat, Connection conn, ClientMessage msg)
+    {
+        if (_engine != null)
+        {
+            conn.Enqueue(Codec.Rejected("set_skin", "wrong_phase"));
+            return;
+        }
+
+        string? skin = Codec.GetString(msg.Root, "skin");
+        if (skin == null)
+        {
+            conn.Enqueue(Codec.Error("bad_field", "set_skin"));
+            return;
+        }
+
+        if (skin.Length > 0 && !_content.SkinIds.Contains(skin))
+        {
+            conn.Enqueue(Codec.Rejected("set_skin", "target_invalid"));
+            return;
+        }
+
+        seat.Skin = skin;
         BroadcastLobby();
     }
 
