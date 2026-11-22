@@ -620,7 +620,8 @@ func _refresh_chat() -> void:
 ## bottom margin by it. The web build reports 0, so touch devices use the compact layout instead.
 func _keep_box_above_keyboard() -> void:
 	var lift: float = 0.0
-	if _text_edit.has_focus() and not _compact:
+	# Only where a soft keyboard exists: elsewhere the call warns every frame (desktop).
+	if _text_edit.has_focus() and not _compact and DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
 		lift = ChatRules.lift_px(DisplayServer.virtual_keyboard_get_height(), DisplayServer.window_get_size().y,
 				get_viewport_rect().size.y)
 	if not is_equal_approx(lift, _lift):
@@ -672,7 +673,8 @@ func _on_done() -> void:
 	if _text_edit.has_focus():
 		_text_edit.release_focus()
 	_set_compact(false)
-	DisplayServer.virtual_keyboard_hide()
+	if DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+		DisplayServer.virtual_keyboard_hide()
 
 
 ## The compact typing layout: the soft keyboard covers the bottom half of a landscape phone and
