@@ -89,6 +89,14 @@ static func open_mode(is_web: bool, _is_mobile: bool) -> String:
 	return "same_tab" if is_web else "browser"
 
 
+## True while a request is on its way. A finished request can leave its connection open
+## (STATUS_CONNECTED, keep-alive): that is not busy, or every later refresh would be skipped and the
+## menu would never see the new points after a photo.
+static func is_busy(status: int) -> bool:
+	return status in [HTTPClient.STATUS_RESOLVING, HTTPClient.STATUS_CONNECTING,
+		HTTPClient.STATUS_REQUESTING, HTTPClient.STATUS_BODY]
+
+
 ## True when the newer /profile shows a scan the older one did not.
 static func scan_counted(before: Dictionary, after: Dictionary) -> bool:
 	for key in ["points", "streak", "scans_today"]:
@@ -120,14 +128,14 @@ func choose_skin(id: String) -> void:
 
 
 func refresh() -> void:
-	if _get.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+	if is_busy(_get.get_http_client_status()):
 		return
 	_get.request("%s/profile/%s" % [Settings.scan_url, player_id])
 
 
 ## Asks the service for a single-use scan link, then opens it (see open_mode).
 func start_scan() -> void:
-	if _post.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+	if is_busy(_post.get_http_client_status()):
 		return
 	_before = _snapshot()
 	var body: String = JSON.stringify({"player_id": player_id})

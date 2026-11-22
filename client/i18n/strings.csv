@@ -30,7 +30,7 @@ MENU_SCAN,Scan & earn,Scanne et gagne,امسح واربح
 MENU_SCAN_STATS,"Points %d, streak %d","Points %d, série %d","النقاط %d، السلسلة %d"
 MENU_SCAN_START,Scan an item,Scanner un objet,امسح غرضًا
 MENU_SCAN_WAIT,Getting a scan link...,Création du lien de scan...,جارٍ تجهيز رابط المسح...
-MENU_SCAN_OPENED,"Take the photo on the camera page, then come back here.","Prends la photo sur la page caméra, puis reviens ici.",التقط الصورة في صفحة الكاميرا ثم عد إلى هنا.
+MENU_SCAN_OPENED,"Take the photo, then come back.","Prends la photo, puis reviens.",التقط الصورة ثم عد.
 MENU_SCAN_DONE,Scan saved!,Scan enregistré !,تم حفظ المسح!
 MENU_SCAN_OFFLINE,The scan service is not reachable right now.,Le service de scan est injoignable pour le moment.,خدمة المسح غير متاحة حاليًا.
 MENU_CODE_PLACEHOLDER,Code,Code,الرمز

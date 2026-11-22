@@ -71,3 +71,15 @@ func test_scan_changed_when_points_or_streak_move() -> bool:
 	assert_true(script.scan_counted({"points": 30, "streak": 1}, {"points": 30, "streak": 2}), "streak up")
 	assert_true(script.scan_counted({"points": 30, "scans_today": 3}, {"points": 30, "scans_today": 4}), "a 4th scan scores no points but counts")
 	return true
+
+
+## Regression: after the first /profile reply the connection stays open (STATUS_CONNECTED); counting
+## that as busy skipped every later refresh, so the menu never saw the points from the phone's photo.
+func test_an_open_finished_connection_is_not_busy() -> bool:
+	var script: GDScript = load("res://autoload/profile.gd")
+	assert_true(not script.is_busy(HTTPClient.STATUS_CONNECTED), "finished, kept open")
+	assert_true(not script.is_busy(HTTPClient.STATUS_DISCONNECTED), "idle")
+	assert_true(not script.is_busy(HTTPClient.STATUS_CANT_CONNECT), "failed: may retry")
+	assert_true(script.is_busy(HTTPClient.STATUS_REQUESTING), "sending")
+	assert_true(script.is_busy(HTTPClient.STATUS_BODY), "receiving")
+	return true
