@@ -188,7 +188,7 @@ namespace Uncycled.Bots.Tests
             Assert.Equal(MatchPhase.Playing, m.Engine.Phase);
 
             // meeting 2, called at the button by another seat
-            m.TickFor(16f);
+            m.TickFor(m.Config.EmergencyMinSinceMeetingS + 1f); // the button takes calls this long after the start or a meeting
             byte caller = m.Engine.Players.First(p => p.IsActive && p.Seat != bot && p.Role == Role.Citizen).Seat;
             var driver = new BotDriver(m, caller);
             driver.Begin(BotAction.GoEmergency);

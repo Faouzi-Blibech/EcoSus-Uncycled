@@ -239,7 +239,7 @@ namespace Uncycled.Bots.Tests
             var bot = new SyntheticBot(m, Role.Citizen, new Vec2(9.5f, 2.5f), SyntheticBot.TinyMap(12, 5, null, consoles));
             bot.MatchTime = 0.5f;
             bot.Observe();
-            bot.MatchTime = 30f;
+            bot.MatchTime = m.Config.EmergencyMinSinceMeetingS + 15f;
             Assert.True(bot.Mask()[(int)BotAction.CallMeeting]);
 
             bot.Begin(BotAction.CallMeeting);
@@ -308,7 +308,7 @@ namespace Uncycled.Bots.Tests
             bot.Observe();
             Assert.False(bot.Mask()[(int)BotAction.CallMeeting]);
 
-            bot.MatchTime = 136f;
+            bot.MatchTime = 120f + m.Config.EmergencyMinSinceMeetingS + 1f;
             bot.Observe();
             Assert.True(bot.Mask()[(int)BotAction.CallMeeting]);
         }

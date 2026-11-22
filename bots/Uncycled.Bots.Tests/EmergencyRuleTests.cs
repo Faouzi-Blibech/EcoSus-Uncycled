@@ -375,7 +375,9 @@ namespace Uncycled.Bots.Tests
         private static byte[] AdvanceToQuiet(MatchRunner r)
         {
             var buf = new byte[r.AgentCount * r.FrameSize];
-            for (int d = 0; d < 600 && !(r.Phase == MatchPhase.Playing && r.MatchTime > 20f); d++)
+            // quiet = playing, a little after the emergency button starts taking calls
+            float quiet = r.Engine.Config.EmergencyMinSinceMeetingS + 5f;
+            for (int d = 0; d < 600 && !(r.Phase == MatchPhase.Playing && r.MatchTime > quiet); d++)
             {
                 r.WriteFrames(buf);
                 r.Advance(new int[r.AgentCount]);

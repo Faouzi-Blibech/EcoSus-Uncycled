@@ -297,14 +297,14 @@ namespace Uncycled.Bots.Tests
         private const string ContentLoaderDefaultMap = Uncycled.Server.Content.ContentLoader.DefaultMapId;
 
         [Theory]
-        [InlineData("7")]
+        [InlineData("3")]
         [InlineData("12")]
         public void Seats_NotARoomSize_IsRejectedWithTheAllowedSizes(string seats)
         {
             HostOptions o = HostOptions.Parse(new[] { "--seats", seats });
             ArgumentException e = Assert.Throws<ArgumentException>(() => o.LoadContent());
             Assert.Contains("--seats " + seats, e.Message);
-            Assert.Contains("6, 8, 10", e.Message);
+            Assert.Contains("4, 5, 6, 7, 8", e.Message);
         }
 
         [Fact]
