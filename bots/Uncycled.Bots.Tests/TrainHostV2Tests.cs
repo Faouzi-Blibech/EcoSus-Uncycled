@@ -228,7 +228,7 @@ namespace Uncycled.Bots.Tests
         [Fact]
         public void V1Opponent_IsRefused()
         {
-            string tinyV1 = Path.Combine(AppContext.BaseDirectory, "fixtures", "tiny.onnx");
+            string tinyV1 = Path.Combine(AppContext.BaseDirectory, "fixtures", "tiny_v1.onnx");
             Assert.True(File.Exists(tinyV1));
             ContentBundle content = ContentLoader.Load(ContentDir);
 

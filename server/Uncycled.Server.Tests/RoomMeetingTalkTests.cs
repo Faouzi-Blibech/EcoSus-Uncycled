@@ -135,6 +135,31 @@ namespace Uncycled.Server.Tests
         }
 
         [Fact]
+        public void Room_ATypedLineByAHuman_IsReadIntoTheMeetingLog()
+        {
+            using var kit = new MeetingKit(new NeverDecider(), new MeetingDecisionLog(_ => { }));
+            RoomRig rig = NewRig(kit);
+            rig.JoinAndStart();
+            MatchEngine e = rig.Engine;
+            PlayerState trasher = e.Players.First(p => p.IsPolluter && p.Seat != 0);
+            e.Piles.AddDump(trasher.Position, e.Map.ZoneAt(trasher.Position), e.MatchTime, trasher.Signature!.Value, trasher.Seat);
+            int maxSteps = (int)((rig.Content.Config.DeadlineS * 3f + 300f) / RoomRig.Dt);
+            for (int i = 0; i < maxSteps && e.Phase != MatchPhase.Meeting && e.Phase != MatchPhase.Ended; i++)
+            {
+                rig.Step();
+            }
+
+            Assert.Equal(MatchPhase.Meeting, e.Phase);
+            PlayerState target = e.Players.First(p => p.Seat != 0 && p.IsActive);
+
+            CommandResult said = e.Apply(0, new ChatTextCommand(target.Name + " is sus"));
+            rig.Step();
+
+            Assert.True(said.IsOk, said.ToString());
+            Assert.Contains(rig.Room.MeetingChat!.Acts, a => a.Speaker == 0 && a.PhraseId == "sus" && a.Seat == target.Seat);
+        }
+
+        [Fact]
         public async Task Room_MeetingNeverWaitsForTheModel()
         {
             var lines = new ConcurrentQueue<string>();

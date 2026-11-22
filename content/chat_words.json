@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "note": "Words the bots look for in a typed chat line. A line becomes the same act as a chat phrase (sus, saw_dump, saw_hit, near_pile, i_was, with, not_me, lying, vote, skip_no_proof). Matching is whole-word and case-insensitive; an entry may be several words. A seat is meant only when its display name is in the sentence (exactly one seat). Add another language as a new key under lang and its zone words under zones; every language key applies to every line.",
+  "lang": {
+    "en": {
+      "accuse": ["sus", "suspicious", "suspect", "suspected", "guilty", "polluter", "trasher", "fishy", "shady", "is the trasher", "is a trasher", "is a polluter"],
+      "saw_dump": ["dump", "dumped", "dumping", "repollute", "re-pollute", "re pollute", "repolluted", "re-polluted", "re polluted", "repolluting", "re-polluting", "made it dirty", "made the spot dirty", "made a spot dirty", "dirtied", "dirtying", "trashed"],
+      "saw_hit": ["hit", "hits", "poison", "poisons", "poisoning", "gas", "gases", "infect", "infects", "infecting", "kill", "kills", "planted a virus", "plant a virus", "poisoned someone", "poisoned somebody", "gassed someone", "gassed somebody", "infected someone", "infected somebody", "killed someone", "killed somebody"],
+      "near_pile": ["near the pile", "near a pile", "next to the pile", "next to a pile", "by the pile", "near the body", "near a body", "next to the body", "next to a body", "by the body", "near the waste", "next to the waste"],
+      "alibi": ["i was in", "i was at", "i was inside", "i am in", "im in"],
+      "with": ["i was with", "i am with", "im with"],
+      "deny": ["not me", "wasn't me", "wasnt me", "was not me", "it wasn't me", "it wasnt me", "i didn't do it", "i didnt do it", "i did nothing"],
+      "lying": ["liar", "lying", "lies", "lie", "lied"],
+      "vote": ["vote", "voting"],
+      "skip": ["skip", "skipping"],
+      "hedge": ["maybe", "perhaps", "might", "could", "probably", "possibly", "if", "think", "guess", "suppose", "believe", "thought", "told", "tell", "said", "says", "say", "heard", "hear", "rumor", "rumour", "apparently", "reportedly", "people"],
+      "passive": ["was", "were", "got", "get", "gets", "been", "being", "be", "is", "are"],
+      "negation": ["not", "isn't", "isnt", "wasn't", "wasnt", "never", "no", "don't", "dont", "doesn't", "doesnt", "didn't", "didnt", "aren't", "arent", "won't", "wont", "cant", "can't", "nobody", "neither"]
+    }
+  },
+  "zones": {
+    "depot": ["depot", "the depot", "warehouse", "storage"],
+    "garden": ["garden", "the garden", "park", "greenhouse"],
+    "market": ["market", "the market", "shop", "store"],
+    "office": ["office", "the office"],
+    "club": ["club", "the club", "club room", "the club room"],
+    "amphi": ["amphi", "the amphi", "amphitheatre", "the amphitheatre", "amphitheater", "the amphitheater"],
+    "hallway": ["hallway", "the hallway", "corridor", "the corridor"],
+    "lounge": ["lounge", "the lounge"],
+    "parking": ["parking", "the parking", "parking lot", "the parking lot"]
+  }
+}

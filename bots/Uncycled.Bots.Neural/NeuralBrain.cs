@@ -47,6 +47,9 @@ namespace Uncycled.Bots.Neural
             }
         }
 
+        /// <summary>The action the executor last began (what the network's choice became), for tests.</summary>
+        internal BotAction CurrentAction => _core.CurrentAction;
+
         public byte? Accusation =>UsingFallback ? (_fallback as IAccuser)?.Accusation : _core.Accusation;
 
         public void OnMeetingEnded(MeetingOutcome outcome)
@@ -79,7 +82,9 @@ namespace Uncycled.Bots.Neural
         {
             private readonly IPolicy _policy;
             private readonly float _temperature;
-            private readonly float[] _obs = new float[ObservationBuilder.Size];
+            private readonly float[] _obs = new float[ObservationBuilderV2.Size];
+            private readonly PolicyDriver _driver = new PolicyDriver();
+            private int _index;
 
             public NeuralCore(IPolicy policy, BotsSettings settings, IRandom rng, IReadOnlyList<TaskTypeDef>? taskTypes)
                 : base(settings, rng, taskTypes)
@@ -91,20 +96,30 @@ namespace Uncycled.Bots.Neural
 
             public MatchEngine? Engine { get; set; }
 
+            public BotAction CurrentAction => Exec.Current;
+
             internal override Choice Choose(SeatView view, bool[] mask)
             {
-                ObservationBuilder.Build(view, Mem, Mem.Map, Engine!.Config, view.MatchTime, _obs);
-                // the network knows the first ActionCatalogue.Count actions only; the v2 actions are scripted-only
-                var known = new bool[ActionCatalogue.Count];
-                Array.Copy(mask, known, ActionCatalogue.Count);
-                int action = _policy.Act(_obs, known, _temperature, Rng);
-                if (action < 0 || action >= known.Length || !known[action])
+                // the scripted FullMask is not the network's: it picks among the v2 policy list, valid ones only
+                ObservationBuilderV2.Build(view, Mem, Mem.Map, Engine!.Config, view.MatchTime, _obs);
+                bool[] policyMask = PolicyActionsV2.Mask(view, Mem, Mem.Map);
+                int index = _policy.Act(_obs, policyMask, _temperature, Rng);
+                if (index < 0 || index >= policyMask.Length || !policyMask[index])
                 {
-                    throw new InvalidOperationException("the policy chose invalid action " + action);
+                    throw new InvalidOperationException("the policy chose invalid action " + index);
                 }
 
-                // Urgent: the network may change its mind while an action runs (the same action again just continues).
-                return Choice.Now((BotAction)action);
+                // the action to start; the hints (spot, upgrade, ability, room, zone) are resolved by the driver in Prepare,
+                // when the action begins. Urgent: the network may change its mind while an action runs.
+                _index = index;
+                return Choice.Now(PolicyActionsV2.Resolve(index, view, Mem, Mem.Map).Action);
+            }
+
+            internal override void Prepare(BotAction action, SeatView view)
+            {
+                // the shared driver (as the training host's MatchRunner uses): the same index while its action still runs
+                // keeps the running target; any other index resolves afresh. Prepare only follows a Choose.
+                _driver.Prepare(_index, view, Mem, Mem.Map, Exec);
             }
         }
     }
