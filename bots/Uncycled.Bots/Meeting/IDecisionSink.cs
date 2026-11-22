@@ -5,4 +5,10 @@ namespace Uncycled.Bots.Meeting
     {
         void Sent(MeetingState state, MeetingDecision sent);
     }
+
+    /// <summary>An IDecisionSink that also hears which bot seat called an emergency meeting and why (trigger: repollute, jam, gas, or other).</summary>
+    public interface IEmergencyCallSink
+    {
+        void EmergencyCall(string matchId, byte seat, string trigger, string? zone);
+    }
 }

@@ -13,8 +13,8 @@ namespace Sim.Tests
     {
         private static readonly string[] ExpectedIds =
         {
-            "sus", "saw_dump", "saw_hit", "near_pile", "i_was", "with", "where",
-            "agree", "doubt", "not_me", "lying", "skip_no_proof", "vote", "hmm", "idk",
+            "sus", "saw_dump", "saw_hit", "near_pile", "saw_near", "i_was", "with", "where",
+            "agree", "doubt", "not_me", "lying", "saw_jam", "saw_gas", "skip_no_proof", "vote", "hmm", "idk",
         };
 
         private static string ShippedFile()

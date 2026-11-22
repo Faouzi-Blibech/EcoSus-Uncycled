@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Sim.Core;
 using Sim.Match;
+using Sim.Uncycled;
+using Sim.World;
 using Uncycled.Bots;
 using Uncycled.Bots.Meeting;
 using Uncycled.Bots.Neural;
@@ -157,6 +159,61 @@ namespace Uncycled.Server.Tests
 
             Assert.True(said.IsOk, said.ToString());
             Assert.Contains(rig.Room.MeetingChat!.Acts, a => a.Speaker == 0 && a.PhraseId == "sus" && a.Seat == target.Seat);
+        }
+
+        private sealed class SleepingBrain : IBotBrain
+        {
+            public void Think(MatchEngine engine, byte seat, float dt, Action<ICommand> send)
+            {
+            }
+        }
+
+        [Fact]
+        public void Room_ABotThatSawTheMachineJam_LogsItsEmergencyCallWithTheTrigger()
+        {
+            var lines = new ConcurrentQueue<string>();
+            using var kit = new MeetingKit(new RuleDecider(), new MeetingDecisionLog(lines.Enqueue));
+            var settings = new BotsSettings { EmergencyOnWitnessChance = 1f };
+            // the Trashers do nothing by themselves: the test jams the machine, so every Cleaner's call has one cause
+            var rig = new RoomRig(c => new BotBrains(
+                settings,
+                RoomRig.EmptyModelsDir(),
+                c.Tasks,
+                new CountingLog(),
+                (role, rng) => role == Role.Polluter ? new SleepingBrain() : BrainFactory.Scripted(role, settings, rng, c.Tasks),
+                meeting: kit));
+            rig.JoinAndStart();
+            MatchEngine e = rig.Engine;
+            rig.Run(rig.Content.Config.EmergencyMinSinceMeetingS + rig.Content.Config.TrasherStartCooldownS + 2f);
+
+            Vec2 machine = e.Map.ConsolesOfKind(ConsoleKind.Machine)[0].Position;
+            byte trasher = e.Players.First(p => p.IsPolluter && p.Seat != 0).Seat;
+
+            // the Trasher jams the machine as soon as its sabotage cooldown ends: until then every Cleaner is kept at the machine, so all of them see it go up
+            for (int i = 0; i < 12000 && e.Phase == MatchPhase.Playing; i++)
+            {
+                if (!e.Machine.Jammed)
+                {
+                    foreach (PlayerState p in e.Players)
+                    {
+                        if (!p.IsPolluter)
+                        {
+                            p.Position = new Vec2(machine.X + 1.5f, machine.Y);
+                        }
+                    }
+
+                    e.Apply(trasher, new SabotageCommand(SabotageKind.Machine));
+                }
+
+                rig.Step();
+            }
+
+            Assert.Equal(MatchPhase.Meeting, e.Phase);
+            rig.Run(1f);
+            string line = Assert.Single(lines, l => l.Contains("\"call\":\"emergency\""));
+            Assert.Contains("\"trigger\":\"jam\"", line);
+            Assert.Contains("\"zone\":\"" + e.Map.ZoneAt(machine) + "\"", line);
+            Assert.Contains("\"seat\":" + e.Meeting!.CalledBy, line);
         }
 
         [Fact]

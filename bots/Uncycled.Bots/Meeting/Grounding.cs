@@ -92,13 +92,13 @@ namespace Uncycled.Bots.Meeting
                 return zone != null && !IsRepeat(s.Chat, s.Self, "i_was", null, zone) ? MeetingDecision.Say(src, "i_was", null, zone) : MeetingDecision.Quiet(src);
             }
 
-            if (repeat.Seat == null || (id != "sus" && id != EvidenceItem.SawDump && id != EvidenceItem.SawHit && id != EvidenceItem.NearPile))
+            if (repeat.Seat == null || (id != "sus" && id != EvidenceItem.SawDump && id != EvidenceItem.SawHit && id != EvidenceItem.NearPile && id != EvidenceItem.SawNear))
             {
                 return MeetingDecision.Quiet(src);
             }
 
             byte target = repeat.Seat.Value;
-            foreach (string kind in new[] { EvidenceItem.SawDump, EvidenceItem.SawHit, EvidenceItem.NearPile })
+            foreach (string kind in new[] { EvidenceItem.SawDump, EvidenceItem.SawHit, EvidenceItem.NearPile, EvidenceItem.SawNear })
             {
                 foreach (EvidenceItem e in s.Evidence)
                 {
@@ -192,7 +192,13 @@ namespace Uncycled.Bots.Meeting
                 case "saw_dump":
                 case "saw_hit":
                 case "near_pile":
+                case "saw_near":
                     return CheckAccuse(d.PhraseId!, seat, zone, zoneOk, s, src);
+
+                case "saw_jam":
+                case "saw_gas":
+                    // only what this bot saw go up in its own sight, with the zone it saw it in
+                    return zone != null && Holds(s, d.PhraseId!, null, zone) ? MeetingDecision.Say(src, d.PhraseId!, null, zone) : Hmm(src);
 
                 case "i_was":
                     return CheckAlibi(zone, zoneOk, s, src);

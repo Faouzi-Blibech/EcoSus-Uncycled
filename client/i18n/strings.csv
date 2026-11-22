@@ -259,6 +259,7 @@ CHAT_SUS,I suspect %s.,Je soupçonne %s.,أشتبه في %s.,Jag misstänker %s.
 CHAT_SAW_DUMP,I saw %s re-pollute a clean spot in %s.,J'ai vu %s repolluer un endroit propre en zone %s.,رأيت %s يعيد تلويث موقع نظيف في منطقة %s.,Jag såg %s smutsa ner en ren plats i %s.
 CHAT_SAW_HIT,I saw %s gas or infect someone in %s.,J'ai vu %s gazer ou infecter quelqu'un en zone %s.,رأيت %s يصيب أحدًا بالغاز أو بالفيروس في منطقة %s.,Jag såg %s gasa eller smitta någon i %s.
 CHAT_NEAR_PILE,I saw %s in %s around the time of the death.,J'ai vu %s en zone %s au moment de la mort.,رأيت %s في منطقة %s وقت الوفاة.,Jag såg %s i %s ungefär när det hände.
+CHAT_SAW_NEAR,I saw %s close by in %s.,J'ai vu %s tout près en zone %s.,رأيت %s قريبًا في منطقة %s.,Jag såg %s i närheten i %s.
 CHAT_I_WAS,I was in %s.,J'étais en zone %s.,كنت في منطقة %s.,Jag var i %s.
 CHAT_WITH,I was with %s in %s.,J'étais avec %s en zone %s.,كنت مع %s في منطقة %s.,Jag var med %s i %s.
 CHAT_WHERE,Where was %s?,Où était %s ?,أين كان %s؟,Var var %s?
@@ -266,6 +267,8 @@ CHAT_AGREE,I agree with %s.,Je suis d'accord avec %s.,أتفق مع %s.,Jag hål
 CHAT_DOUBT,I doubt %s.,Je doute de %s.,أشك في %s.,Jag tvivlar på %s.
 CHAT_NOT_ME,It wasn't me.,Ce n'était pas moi.,لم أكن أنا.,Det var inte jag.
 CHAT_LYING,I think %s is lying.,Je pense que %s ment.,أعتقد أن %s يكذب.,Jag tror att %s ljuger.
+CHAT_SAW_JAM,I saw the machine get jammed in %s.,J'ai vu la machine se bloquer en zone %s.,رأيت الآلة تتعطل في منطقة %s.,Jag såg maskinen låsa sig i %s.
+CHAT_SAW_GAS,I saw a gas warning start in %s.,J'ai vu une alerte de gaz commencer en zone %s.,رأيت تحذير الغاز يبدأ في منطقة %s.,Jag såg en gasvarning starta i %s.
 CHAT_SKIP_NO_PROOF,No proof. I will skip.,Pas de preuve. Je passe.,لا يوجد دليل. سأتخطّى.,Inga bevis. Jag avstår.
 CHAT_VOTE,I will vote for %s.,Je vais voter pour %s.,سأصوّت لـ %s.,Jag röstar på %s.
 CHAT_HMM,Hmm...,Hmm...,همم...,Hmm...

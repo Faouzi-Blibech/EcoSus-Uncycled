@@ -65,6 +65,7 @@ namespace Uncycled.Bots.Meeting
             return new MeetingState
             {
                 Self = self,
+                CalledBy = meeting.CalledBy,
                 Role = view.Me.Role,
                 Partners = new List<byte>(view.Me.Partners),
                 Living = living,
@@ -91,6 +92,19 @@ namespace Uncycled.Bots.Meeting
                 if (r.Actor != self)
                 {
                     items.Add(new EvidenceItem(r.Act == ActKind.Hit ? EvidenceItem.SawHit : EvidenceItem.SawDump, r.Actor, r.ZoneId, r.At));
+                }
+            }
+
+            // an alarm that went up in this bot's sight (the machine jam, a gas warning) and the seats it saw close by then
+            foreach (AlarmSighting a in mem.RecentAlarms(view))
+            {
+                items.Add(new EvidenceItem(a.Kind == AlarmSighting.Jam ? EvidenceItem.SawJam : EvidenceItem.SawGas, null, a.Zone, a.Time));
+                foreach (byte seat in a.Near)
+                {
+                    if (seat != self && !mem.IsKnownOut(seat))
+                    {
+                        items.Add(new EvidenceItem(EvidenceItem.SawNear, seat, a.Zone, a.Time));
+                    }
                 }
             }
 

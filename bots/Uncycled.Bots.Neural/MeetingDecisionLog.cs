@@ -17,7 +17,7 @@ namespace Uncycled.Bots.Neural
     /// auth failure). The sink gets complete lines; never pass it secrets: nothing from the request headers is
     /// logged. ToFile queues the lines and writes them on a background task, so the room tick never waits on disk.
     /// </summary>
-    public sealed class MeetingDecisionLog : IDecisionSink, IDisposable
+    public sealed class MeetingDecisionLog : IDecisionSink, IEmergencyCallSink, IDisposable
     {
         private readonly Action<string> _writeLine;
         private readonly Channel<string>? _queue;
@@ -128,6 +128,22 @@ namespace Uncycled.Bots.Neural
                 }
             });
         }
+        /// <summary>One line per bot emergency call: the seat, why it called (repollute, jam, gas, other) and the zone.</summary>
+        public void EmergencyCall(string matchId, byte seat, string trigger, string? zone)
+        {
+            Write(w =>
+            {
+                w.WriteString("match", matchId);
+                w.WriteNumber("seat", seat);
+                w.WriteString("call", "emergency");
+                w.WriteString("trigger", trigger);
+                if (zone != null)
+                {
+                    w.WriteString("zone", zone);
+                }
+            });
+        }
+
         public void Note(string message)
         {
             Write(w => w.WriteString("note", message));

@@ -25,6 +25,32 @@ namespace Uncycled.Bots
         public Vec2 Position { get; }
     }
 
+    /// <summary>A public alarm (the machine jammed, a gas warning) that went up while this seat had what it hits in sight, with the seats it saw close to it then.</summary>
+    public sealed class AlarmSighting
+    {
+        public const string Jam = "jam";
+        public const string Gas = "gas";
+
+        public AlarmSighting(string kind, string zone, float time, IReadOnlyList<byte> near)
+        {
+            Kind = kind;
+            Zone = zone;
+            Time = time;
+            Near = near;
+        }
+
+        /// <summary>jam or gas.</summary>
+        public string Kind { get; }
+
+        /// <summary>The map zone of the machine, or of the warned gas room.</summary>
+        public string Zone { get; }
+
+        public float Time { get; }
+
+        /// <summary>Seats in this seat's own view close to the machine (within its vision) or inside the gas room when the alarm went up.</summary>
+        public IReadOnlyList<byte> Near { get; }
+    }
+
     /// <summary>
     /// What one bot seat remembers: who it saw, where and when, and the hits and dumps it witnessed.
     /// Fed only with its own SeatView and WitnessLog.SeenBy(self), so it never holds hidden state.
@@ -71,6 +97,90 @@ namespace Uncycled.Bots
         public MatchConfig Config { get; }
 
         public IReadOnlyList<WitnessRecord> Witnessed => _witnessed;
+
+        /// <summary>Seconds an alarm sighting stays a thing to talk about in a meeting.</summary>
+        public const float AlarmEvidenceS = 90f;
+
+        private readonly List<AlarmSighting> _alarms = new List<AlarmSighting>();
+        private bool _alarmInit;
+        private bool _prevJamLook;
+        private bool _prevGasLook;
+
+        /// <summary>The machine jams and gas warnings that went up in this seat's sight, with who it saw close by (same sight test as EmergencyRule).</summary>
+        public IReadOnlyList<AlarmSighting> Alarms => _alarms;
+
+        /// <summary>What the last emergency call this seat decided on was about (EmergencyRule.TriggerJam, TriggerGas, TriggerRepollute); null when none was.</summary>
+        public string? EmergencyTrigger { get; set; }
+
+        /// <summary>The zone of that trigger.</summary>
+        public string? EmergencyZone { get; set; }
+
+        /// <summary>The alarm sightings of a Cleaner that are still fresh at view time (none for a Trasher: it made the alarm).</summary>
+        public IReadOnlyList<AlarmSighting> RecentAlarms(SeatView view)
+        {
+            if (view.Me.Role != Role.Citizen)
+            {
+                return Array.Empty<AlarmSighting>();
+            }
+
+            float from = (MeetingStartedAt ?? view.MatchTime) - AlarmEvidenceS;
+            var fresh = new List<AlarmSighting>();
+            foreach (AlarmSighting a in _alarms)
+            {
+                if (a.Time >= from)
+                {
+                    fresh.Add(a);
+                }
+            }
+
+            return fresh;
+        }
+
+        private void NoteAlarms(SeatView view, float matchTime)
+        {
+            bool jam = view.MachineJammed;
+            bool gas = view.Gas != null;
+            bool first = !_alarmInit;
+            _alarmInit = true;
+            bool jamUp = jam && !_prevJamLook;
+            bool gasUp = gas && !_prevGasLook;
+            _prevJamLook = jam;
+            _prevGasLook = gas;
+            if (first)
+            {
+                return; // what a seat took over mid-match already knows is no new alarm
+            }
+
+            if (jamUp && EmergencyRule.SeesMachine(view, Map))
+            {
+                Sim.World.ConsoleDef machine = ActionQuery.MachineConsole(Map)!;
+                var near = new List<byte>();
+                foreach (PlayerView p in view.Players)
+                {
+                    if (!p.IsOut && p.Seat != view.Me.Seat && Vec2.Distance(p.Position, machine.Position) <= view.Me.Vision)
+                    {
+                        near.Add(p.Seat);
+                    }
+                }
+
+                _alarms.Add(new AlarmSighting(AlarmSighting.Jam, EmergencyRule.MachineZone(Map), matchTime, near));
+            }
+
+            if (gasUp && EmergencyRule.SeesGasRoom(view, Map))
+            {
+                ZoneDef? room = EmergencyRule.GasRoomOf(Map, view.Gas!.Room);
+                var near = new List<byte>();
+                foreach (PlayerView p in view.Players)
+                {
+                    if (!p.IsOut && p.Seat != view.Me.Seat && room != null && room.Contains(p.Position))
+                    {
+                        near.Add(p.Seat);
+                    }
+                }
+
+                _alarms.Add(new AlarmSighting(AlarmSighting.Gas, EmergencyRule.GasZone(Map, view.Gas.Room), matchTime, near));
+            }
+        }
 
         /// <summary>
         /// What this bot worked out from its own view: a player seen standing at a dirty spot for a clean's
@@ -180,6 +290,7 @@ namespace Uncycled.Bots
 
             if (view.Phase == MatchPhase.Playing)
             {
+                NoteAlarms(view, matchTime);
                 RecordOwn(view, matchTime); // never in a meeting: the own zone history is the alibi, and 120 slots fill in 60 s
                 WatchSpots(view, matchTime);
             }

@@ -103,6 +103,7 @@ namespace Uncycled.Bots.Meeting
                 _inMeeting = true;
                 _seen = log.Acts.Count;
                 _seenGen = log.Generation;
+                ReportEmergencyCall(meeting, seat, mem);
             }
 
             if (_stage != meeting.Stage)
@@ -120,6 +121,28 @@ namespace Uncycled.Bots.Meeting
             else if (meeting.Stage == MeetingStage.Voting)
             {
                 StepVoting(view, mem, log, now, send);
+            }
+        }
+
+        /// <summary>One note per bot emergency call (who, why, where) for the server log; the reason is the one the seat's EmergencyRule rolled, "other" when it has none (a free call when infected).</summary>
+        private void ReportEmergencyCall(MeetingView meeting, byte seat, BotMemory mem)
+        {
+            string trigger = mem.EmergencyTrigger ?? "other";
+            string? zone = mem.EmergencyZone;
+            if (meeting.CalledBy != seat || meeting.Cause != MeetingCause.Emergency)
+            {
+                return;
+            }
+
+            mem.EmergencyTrigger = null;
+            mem.EmergencyZone = null;
+            try
+            {
+                (Sink as IEmergencyCallSink)?.EmergencyCall(MatchId, seat, trigger, zone);
+            }
+            catch (Exception)
+            {
+                // a failing log must never break a meeting
             }
         }
 
@@ -238,7 +261,7 @@ namespace Uncycled.Bots.Meeting
             LastSource = say.Source;
             Report(sayState, say);
             _lines++;
-            if ((say.PhraseId == "vote" || say.PhraseId == "sus" || say.PhraseId == "saw_dump" || say.PhraseId == "saw_hit" || say.PhraseId == "near_pile") && say.Seat != null)
+            if ((say.PhraseId == "vote" || say.PhraseId == "sus" || say.PhraseId == "saw_dump" || say.PhraseId == "saw_hit" || say.PhraseId == "near_pile" || say.PhraseId == "saw_near") && say.Seat != null)
             {
                 _announced = true;
                 _announcedVote = say.Seat;

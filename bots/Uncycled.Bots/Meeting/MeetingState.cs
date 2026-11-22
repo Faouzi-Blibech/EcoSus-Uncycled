@@ -14,6 +14,15 @@ namespace Uncycled.Bots.Meeting
         public const string NearPile = "near_pile";
         public const string MyZone = "my_zone";
 
+        /// <summary>The machine jam went up in this bot's sight (Seat null, Zone the machine's zone).</summary>
+        public const string SawJam = "saw_jam";
+
+        /// <summary>A gas warning went up with the room in this bot's sight (Seat null, Zone the room's zone).</summary>
+        public const string SawGas = "saw_gas";
+
+        /// <summary>This bot saw the seat close to the jammed machine or inside the warned gas room when the alarm went up.</summary>
+        public const string SawNear = "saw_near";
+
         public EvidenceItem(string kind, byte? seat, string zone, float time)
         {
             Kind = kind;
@@ -52,6 +61,9 @@ namespace Uncycled.Bots.Meeting
         public bool Replying { get; set; }
 
         public byte Self { get; set; }
+
+        /// <summary>The seat that called this meeting.</summary>
+        public byte CalledBy { get; set; }
 
         public Role Role { get; set; }
 
