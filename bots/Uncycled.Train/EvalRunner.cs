@@ -68,6 +68,10 @@ namespace Uncycled.Train
             int chatLines = 0;
             int identicalLines = 0;
             var saidInMeeting = new HashSet<string>();
+            int hedgeLines = 0;
+            int accusedSeats = 0;
+            int accusedAnswered = 0;
+            var accused = new Dictionary<byte, bool>(); // accused seat of this meeting -> has spoken since
             int wrongEjections = 0;
             int deliveries = 0;
             int repollutes = 0;
@@ -116,10 +120,34 @@ namespace Uncycled.Train
                     {
                         meetings++;
                         saidInMeeting.Clear();
+                        accused.Clear();
                     }
                     else if (e is ChatEvent chat && !chat.Ghost)
                     {
                         chatLines++;
+                        if (chat.PhraseId == "hmm" || chat.PhraseId == "idk" || chat.PhraseId == "sus")
+                        {
+                            hedgeLines++; // an unsure line: no eyewitness claim behind it
+                        }
+
+                        if (accused.TryGetValue(chat.Seat, out bool spoke) && !spoke)
+                        {
+                            accused[chat.Seat] = true;
+                            accusedAnswered++;
+                        }
+
+                        if (chat.PhraseId == "sus" || chat.PhraseId == "saw_dump" || chat.PhraseId == "saw_hit" || chat.PhraseId == "near_pile")
+                        {
+                            foreach (ChatArg arg in chat.Args)
+                            {
+                                if (arg.Kind == ChatArgKind.Seat && arg.Seat != chat.Seat && !accused.ContainsKey(arg.Seat))
+                                {
+                                    accused[arg.Seat] = false;
+                                    accusedSeats++;
+                                }
+                            }
+                        }
+
                         if (chat.PhraseId != null && !saidInMeeting.Add(LineKey(chat)))
                         {
                             identicalLines++; // the same phrase id and slots said twice in one meeting
@@ -146,6 +174,9 @@ namespace Uncycled.Train
             sb.Append(",\"meetings\":").Append(meetings.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"chat_lines\":").Append(chatLines.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"identical_lines\":").Append(identicalLines.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"hedge_lines\":").Append(hedgeLines.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"accused_seats\":").Append(accusedSeats.ToString(CultureInfo.InvariantCulture));
+            sb.Append(",\"accused_answered\":").Append(accusedAnswered.ToString(CultureInfo.InvariantCulture));
             sb.Append(",\"match_time\":").Append(engine.MatchTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append(",\"active_time\":").Append(engine.ActiveTime.ToString("0.##", CultureInfo.InvariantCulture));
             sb.Append('}');
