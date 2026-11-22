@@ -7,8 +7,9 @@ extends Sprite2D
 const ART_PATH: String = "res://assets/props/machine_%s.png"
 const WIDTH_TILES: float = 3.0
 const WORKING_S: float = 1.5
-## How far below the marker the machine's base stands (tiles).
-const BASE_BELOW_TILES: float = 0.5
+## Where the machine's base stands relative to its marker (tiles, + is down): the marker is the
+## use spot in front of the machine pad, the machine stands on the pad just above it.
+const BASE_BELOW_TILES: float = -0.5
 
 var state: String = ""
 var _working_s: float = 0.0
